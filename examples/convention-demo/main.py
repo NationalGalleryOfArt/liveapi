@@ -1,4 +1,4 @@
-"""Convention-based API demo using automatic framework."""
+"""Automatic API discovery demo using automatic framework."""
 
 import sys
 from pathlib import Path
@@ -11,8 +11,8 @@ import uvicorn
 
 
 def main():
-    """Run the convention-based API demo."""
-    print("🚀 Starting Convention-Based API Demo")
+    """Run the automatic API discovery demo."""
+    print("🚀 Starting Automatic API Discovery Demo")
     print("📁 API specs: ./api/")
     print("📁 Implementations: ./implementations/")
     print()

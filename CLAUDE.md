@@ -84,14 +84,14 @@ pip install -e .
 
 2. Use the framework:
 
-**Convention Mode** (recommended):
+**Automatic discovery** (default):
 ```python
 import automatic
-# Expects api/ and implementations/ directories
+# Automatically finds api/ and implementations/ directories
 app = automatic.create_app()
 ```
 
-**Direct Mode** (using components):
+**Explicit specification**:
 ```python
 from automatic import create_app
 
@@ -246,7 +246,7 @@ from automatic import (
 ## Examples
 
 Working examples are available in `examples/`:
-- `examples/convention-demo/` - Shows convention-based multi-API setup
+- `examples/convention-demo/` - Shows automatic multi-API discovery
 - `examples/versioning/` - Demonstrates version-aware API handling
 - `examples/exceptions/` - Exception handling patterns
 - `examples/auth/` - Authentication examples (API key and Bearer token)
@@ -261,7 +261,7 @@ Working examples are available in `examples/`:
 - Path, query, and body parameter handling
 - **Business exception mapping to HTTP responses**
 - **Authentication (API Key & Bearer Token)**
-- Convention-based multi-API support
+- Automatic multi-API discovery
 - Version-aware routing (v1, v2, etc.)
 - RFC 9457 error responses
 - Working examples demonstrating all features

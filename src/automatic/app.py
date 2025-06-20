@@ -41,8 +41,8 @@ def create_app(
     if spec_path and implementation:
         return _create_direct_app(spec_path, implementation, auth_dependency, **kwargs)
     
-    # Convention-based mode
-    return _create_convention_app(api_dir, impl_dir, auth_dependency, **kwargs)
+    # Automatic discovery mode
+    return _create_automatic_app(api_dir, impl_dir, auth_dependency, **kwargs)
 
 
 def _create_direct_app(spec_path: Union[str, Path], implementation: Any, auth_dependency: Optional[Any] = None, **kwargs) -> FastAPI:
@@ -71,15 +71,15 @@ def _create_direct_app(spec_path: Union[str, Path], implementation: Any, auth_de
     return app
 
 
-def _create_convention_app(api_dir: Union[str, Path], impl_dir: Union[str, Path], auth_dependency: Optional[Any] = None, **kwargs) -> FastAPI:
-    """Create app using convention-based file discovery."""
+def _create_automatic_app(api_dir: Union[str, Path], impl_dir: Union[str, Path], auth_dependency: Optional[Any] = None, **kwargs) -> FastAPI:
+    """Create app using automatic file discovery."""
     api_path = Path(api_dir)
     impl_path = Path(impl_dir)
     
     # Create FastAPI app
     app_kwargs = {
         'title': 'Automatic API',
-        'description': 'Convention-based API from automatic framework',
+        'description': 'Automatic API from automatic framework',
         'version': '1.0.0',
     }
     app_kwargs.update(kwargs)

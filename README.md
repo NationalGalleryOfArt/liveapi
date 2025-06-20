@@ -1,13 +1,13 @@
 # automatic
 
-**Convention-based FastAPI from OpenAPI specs. Zero configuration.**
+**FastAPI from OpenAPI specs. Zero configuration.**
 
-A Python framework that automatically discovers and creates FastAPI routes from OpenAPI specifications using simple file naming conventions.
+A Python framework that automatically discovers and creates FastAPI routes from OpenAPI specifications using simple file naming patterns.
 
 ## Key Features
 
 - **Zero Configuration**: Just run `automatic.create_app()` - no mapping files needed
-- **Convention Over Configuration**: File names determine API routes
+- **File-Based Discovery**: File names determine API routes automatically
 - **API Versioning**: Single methods handle multiple versions with version parameters
 - **Postman Friendly**: Export specs directly from Postman collections
 - **Shared Business Logic**: Implementations can easily import and use each other
@@ -138,9 +138,9 @@ python -m pytest tests/test_basic.py -v
 python -m pytest tests/ --cov=src/automatic -v
 ```
 
-## Usage Modes
+## Usage Options
 
-### Convention Mode (Recommended)
+### Automatic Discovery (Default)
 ```python
 # Zero config - uses ./api/ and ./implementations/
 app = automatic.create_app()
@@ -250,7 +250,7 @@ class Implementation:
 A complete working example is available in the `examples/convention-demo/` directory:
 
 ```bash
-# Run the convention-based demo
+# Run the automatic discovery demo
 cd examples/convention-demo
 python main.py
 ```

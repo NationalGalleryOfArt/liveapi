@@ -82,7 +82,7 @@ def sample_openapi_spec():
 
 def test_create_app(sample_openapi_spec, tmp_path):
     """Test basic app creation."""
-    # Create directory structure for convention mode
+    # Create directory structure for automatic discovery
     api_dir = tmp_path / "api"
     impl_dir = tmp_path / "implementations"
     api_dir.mkdir()
@@ -100,10 +100,10 @@ class Implementation:
 '''
     (impl_dir / "test.py").write_text(impl_code)
     
-    # Create app using convention mode
+    # Create app using automatic discovery
     app = automatic.create_app(api_dir=api_dir, impl_dir=impl_dir)
     
-    assert app.title == "Automatic API"  # Default title in convention mode
+    assert app.title == "Automatic API"  # Default title in automatic discovery
 
 
 def test_api_endpoint(sample_openapi_spec, tmp_path):
@@ -113,7 +113,7 @@ def test_api_endpoint(sample_openapi_spec, tmp_path):
     from starlette.requests import Request
     from starlette.responses import JSONResponse
     
-    # Create directory structure for convention mode
+    # Create directory structure for automatic discovery
     api_dir = tmp_path / "api"
     impl_dir = tmp_path / "implementations"
     api_dir.mkdir()
@@ -131,7 +131,7 @@ class Implementation:
 '''
     (impl_dir / "test.py").write_text(impl_code)
     
-    # Create app using convention mode
+    # Create app using automatic discovery
     app = automatic.create_app(api_dir=api_dir, impl_dir=impl_dir)
     
     # Test that the app was created

@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from automatic import create_app, create_api_key_auth, create_bearer_auth, ValidationError, NotFoundError
 
 
-class TestImplementation:
+class AuthTestImplementation:
     """Test implementation with authentication."""
     
     def __init__(self):
@@ -89,7 +89,7 @@ def app_with_auth(test_spec_content, tmp_path):
     # Create app
     app = create_app(
         spec_path=str(spec_file),
-        implementation=TestImplementation(),
+        implementation=AuthTestImplementation(),
         auth_dependency=auth
     )
     
@@ -106,7 +106,7 @@ def app_no_auth(test_spec_content, tmp_path):
     # Create app
     app = create_app(
         spec_path=str(spec_file),
-        implementation=TestImplementation()
+        implementation=AuthTestImplementation()
     )
     
     return app
@@ -257,7 +257,7 @@ def app_with_bearer_auth(test_spec_content, tmp_path):
     # Create app
     app = create_app(
         spec_path=str(spec_file),
-        implementation=TestImplementation(),
+        implementation=AuthTestImplementation(),
         auth_dependency=auth
     )
     

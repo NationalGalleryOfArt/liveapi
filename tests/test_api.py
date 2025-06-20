@@ -1,4 +1,4 @@
-"""Tests for convention-based file discovery functionality."""
+"""Tests for automatic API discovery functionality."""
 
 import pytest
 import tempfile
@@ -8,8 +8,8 @@ from pathlib import Path
 import automatic
 
 
-def test_convention_based_discovery():
-    """Test that convention-based file discovery works correctly."""
+def test_automatic_discovery():
+    """Test that automatic file discovery works correctly."""
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
         
@@ -61,8 +61,8 @@ class Implementation:
             os.chdir(original_cwd)
 
 
-def test_convention_with_custom_directories():
-    """Test convention-based discovery with custom directory names."""
+def test_api_with_custom_directories():
+    """Test automatic discovery with custom directory names."""
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
         

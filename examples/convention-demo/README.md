@@ -1,6 +1,6 @@
-# Convention-Based API Demo
+# Automatic API Discovery Demo
 
-This demo shows the new convention-based approach in the automatic framework.
+This demo shows automatic file discovery in the automatic framework.
 
 ## Directory Structure
 
@@ -67,7 +67,7 @@ curl -X POST http://localhost:8000/orders \
 ## Key Benefits
 
 - **Zero Config**: No mapping files or configuration needed
-- **Convention Over Configuration**: File names determine routes
+- **Convention over configuration**: File names determine routes automatically
 - **Postman Friendly**: Export specs directly to `api/` directory
 - **Shared Code**: Implementations can import and use each other
 - **Clean Separation**: API contracts in YAML, business logic in Python

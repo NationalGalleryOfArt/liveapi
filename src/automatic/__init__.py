@@ -19,6 +19,7 @@ from .exceptions import (
     ServiceUnavailableError
 )
 from .auth import APIKeyAuth, BearerTokenAuth, create_api_key_auth, create_bearer_auth
+from .scaffold import ScaffoldGenerator
 
 __version__ = "0.1.0"
 __all__ = [
@@ -37,5 +38,6 @@ __all__ = [
     "APIKeyAuth",
     "BearerTokenAuth", 
     "create_api_key_auth",
-    "create_bearer_auth"
+    "create_bearer_auth",
+    "ScaffoldGenerator"
 ]
