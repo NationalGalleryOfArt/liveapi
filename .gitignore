@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+*.egg
+*.log
+*.sqlite3
+*.db
+*.env
+.env.*
+.venv/
+venv/
+ENV/
+env/
+
+# FastAPI / Starlette cache
+.cache/
+instance/
+staticfiles/
+
+# Pipenv
+Pipfile.lock
+
+# Poetry
+poetry.lock
+
+# pytest
+.cache/
+.pytest_cache/
+
+# Coverage reports
+htmlcov/
+coverage.xml
+*.cover
+*.py,cover
+.tox/
+nosetests.xml
+test-results/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# VS Code
+.vscode/
+*.code-workspace
+
+
+# macOS
+.DS_Store
+
+# Linux
+*~
