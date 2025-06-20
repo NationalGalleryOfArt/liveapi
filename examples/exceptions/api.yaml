@@ -1,0 +1,56 @@
+openapi: 3.0.0
+info:
+  title: User API with Exception Handling
+  version: 1.0.0
+paths:
+  /users/{user_id}:
+    get:
+      operationId: get_user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: User found
+        404:
+          description: User not found
+    delete:
+      operationId: delete_user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        204:
+          description: User deleted
+        403:
+          description: Forbidden
+        404:
+          description: User not found
+  /users:
+    post:
+      operationId: create_user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                email:
+                  type: string
+              required: [username, email]
+      responses:
+        201:
+          description: User created
+        400:
+          description: Validation error
+        409:
+          description: User already exists

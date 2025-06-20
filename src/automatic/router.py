@@ -7,16 +7,18 @@ from pydantic import BaseModel, create_model, ValidationError
 import inspect
 from .parser import OpenAPIParser
 from .response_transformer import ResponseTransformer
+from .exceptions import BusinessException
 
 
 class RouteGenerator:
     """Generates FastAPI routes from OpenAPI specifications."""
     
-    def __init__(self, implementation: Any, path_prefix: str = ""):
+    def __init__(self, implementation: Any, path_prefix: str = "", auth_dependency: Optional[Callable] = None):
         self.implementation = implementation
         self.path_prefix = path_prefix.rstrip('/')  # Remove trailing slash
         self.routes: List[Dict[str, Any]] = []
         self.response_transformer = ResponseTransformer()
+        self.auth_dependency = auth_dependency
     
     def generate_routes(self, parser: OpenAPIParser) -> List[APIRoute]:
         """Generate FastAPI routes from parsed OpenAPI spec."""
@@ -68,29 +70,81 @@ class RouteGenerator:
         # Create dynamic request model if needed
         request_model = self._create_request_model(route_info)
         
-        async def route_handler(request: Request, response: Response):
-            try:
-                # Prepare data for implementation method
-                data = await self._prepare_request_data(request, route_info, request_model)
-                
-                # Call implementation method with version
-                result = self.call_method_with_version(operation_id, data, version)
-                
-                # Handle response
-                if isinstance(result, tuple) and len(result) == 2:
-                    response_data, status_code = result
-                    response.status_code = status_code
+        # Create auth parameter if dependency exists
+        if self.auth_dependency:
+            async def route_handler(request: Request, response: Response, auth_info: Optional[Dict[str, Any]] = Depends(self.auth_dependency())):
+                try:
+                    # Prepare data for implementation method
+                    data = await self._prepare_request_data(request, route_info, request_model)
                     
-                    # Transform response using RFC 9457 for errors
-                    transformed_data = self.response_transformer.transform_response(response_data, status_code)
-                    return transformed_data
-                else:
-                    return result
+                    # Add auth info to data if present
+                    if auth_info:
+                        data['auth'] = auth_info
                     
-            except ValidationError as e:
-                raise HTTPException(status_code=422, detail=e.errors())
-            except Exception as e:
-                raise HTTPException(status_code=500, detail=str(e))
+                    # Call implementation method with version
+                    result = self.call_method_with_version(operation_id, data, version)
+                    
+                    # Handle response
+                    if isinstance(result, tuple) and len(result) == 2:
+                        response_data, status_code = result
+                        response.status_code = status_code
+                        
+                        # Transform response using RFC 9457 for errors
+                        transformed_data = self.response_transformer.transform_response(response_data, status_code)
+                        return transformed_data
+                    else:
+                        return result
+                        
+                except ValidationError as e:
+                    raise HTTPException(status_code=422, detail=e.errors())
+                except BusinessException as e:
+                    # Business exceptions get converted to proper HTTP responses
+                    response.status_code = e.status_code
+                    return e.to_response()
+                except Exception as e:
+                    # Unexpected errors become 500s with RFC 9457 format
+                    response.status_code = 500
+                    return {
+                        "type": "/errors/internal_server_error",
+                        "title": "Internal Server Error",
+                        "status": 500,
+                        "detail": str(e) if isinstance(e, (ValueError, TypeError, KeyError)) else "An unexpected error occurred"
+                    }
+        else:
+            async def route_handler(request: Request, response: Response):
+                try:
+                    # Prepare data for implementation method
+                    data = await self._prepare_request_data(request, route_info, request_model)
+                    
+                    # Call implementation method with version
+                    result = self.call_method_with_version(operation_id, data, version)
+                    
+                    # Handle response
+                    if isinstance(result, tuple) and len(result) == 2:
+                        response_data, status_code = result
+                        response.status_code = status_code
+                        
+                        # Transform response using RFC 9457 for errors
+                        transformed_data = self.response_transformer.transform_response(response_data, status_code)
+                        return transformed_data
+                    else:
+                        return result
+                        
+                except ValidationError as e:
+                    raise HTTPException(status_code=422, detail=e.errors())
+                except BusinessException as e:
+                    # Business exceptions get converted to proper HTTP responses
+                    response.status_code = e.status_code
+                    return e.to_response()
+                except Exception as e:
+                    # Unexpected errors become 500s with RFC 9457 format
+                    response.status_code = 500
+                    return {
+                        "type": "/errors/internal_server_error",
+                        "title": "Internal Server Error",
+                        "status": 500,
+                        "detail": str(e) if isinstance(e, (ValueError, TypeError, KeyError)) else "An unexpected error occurred"
+                    }
         
         return route_handler
     

@@ -14,6 +14,7 @@ def create_app(
     implementation: Optional[Any] = None,
     api_dir: Union[str, Path] = "api",
     impl_dir: Union[str, Path] = "implementations",
+    auth_dependency: Optional[Any] = None,
     **kwargs
 ) -> FastAPI:
     """
@@ -22,6 +23,7 @@ def create_app(
     Args:
         api_dir: Directory containing *.yaml spec files (default: "api")
         impl_dir: Directory containing implementation *.py files (default: "implementations")
+        auth_dependency: Optional authentication dependency for all routes
         **kwargs: Additional arguments to pass to FastAPI constructor
     
     Returns:
@@ -30,14 +32,46 @@ def create_app(
     Examples:
         >>> app = create_app()
         
-        >>> app = create_app(api_dir="./specs", impl_dir="./handlers")
+        >>> from automatic.auth import create_api_key_auth
+        >>> auth = create_api_key_auth(api_keys=['secret-key'])
+        >>> app = create_app(auth_dependency=auth)
     """
     
+    # Direct mode if spec_path and implementation are provided
+    if spec_path and implementation:
+        return _create_direct_app(spec_path, implementation, auth_dependency, **kwargs)
+    
     # Convention-based mode
-    return _create_convention_app(api_dir, impl_dir, **kwargs)
+    return _create_convention_app(api_dir, impl_dir, auth_dependency, **kwargs)
 
 
-def _create_convention_app(api_dir: Union[str, Path], impl_dir: Union[str, Path], **kwargs) -> FastAPI:
+def _create_direct_app(spec_path: Union[str, Path], implementation: Any, auth_dependency: Optional[Any] = None, **kwargs) -> FastAPI:
+    """Create app using direct spec and implementation."""
+    # Create FastAPI app
+    app_kwargs = {
+        'title': 'Automatic API',
+        'description': 'Direct API from automatic framework',
+        'version': '1.0.0',
+    }
+    app_kwargs.update(kwargs)
+    
+    app = FastAPI(**app_kwargs)
+    
+    # Parse OpenAPI spec
+    parser = OpenAPIParser(spec_path)
+    parser.load_spec()
+    
+    # Generate routes with auth
+    route_generator = RouteGenerator(implementation, auth_dependency=auth_dependency)
+    routes = route_generator.generate_routes(parser)
+    
+    for route in routes:
+        app.router.routes.append(route)
+    
+    return app
+
+
+def _create_convention_app(api_dir: Union[str, Path], impl_dir: Union[str, Path], auth_dependency: Optional[Any] = None, **kwargs) -> FastAPI:
     """Create app using convention-based file discovery."""
     api_path = Path(api_dir)
     impl_path = Path(impl_dir)
@@ -67,8 +101,8 @@ def _create_convention_app(api_dir: Union[str, Path], impl_dir: Union[str, Path]
         parser = OpenAPIParser(spec_file)
         parser.load_spec()
         
-        # Generate routes with prefix
-        route_generator = RouteGenerator(implementation, path_prefix=prefix)
+        # Generate routes with prefix and auth
+        route_generator = RouteGenerator(implementation, path_prefix=prefix, auth_dependency=auth_dependency)
         routes = route_generator.generate_routes(parser)
         
         for route in routes:
