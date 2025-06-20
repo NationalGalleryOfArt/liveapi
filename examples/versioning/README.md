@@ -44,7 +44,6 @@ class UserImplementation:
 The framework automatically:
 - Detects if a method accepts a version parameter
 - Calls `method(data, version=X)` if version parameter exists
-- Falls back to `method(data)` for legacy methods
 
 ## Implementation Pattern
 

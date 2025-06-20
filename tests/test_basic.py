@@ -80,37 +80,71 @@ def sample_openapi_spec():
         return Path(f.name)
 
 
-def test_create_app(sample_openapi_spec):
+def test_create_app(sample_openapi_spec, tmp_path):
     """Test basic app creation."""
-    implementation = MockImplementation()
-    app = automatic.create_app(sample_openapi_spec, implementation)
+    # Create directory structure for convention mode
+    api_dir = tmp_path / "api"
+    impl_dir = tmp_path / "implementations"
+    api_dir.mkdir()
+    impl_dir.mkdir()
     
-    assert app.title == "Test API"
-    assert app.version == "1.0.0"
+    # Copy spec to api directory
+    import shutil
+    shutil.copy(sample_openapi_spec, api_dir / "test.yaml")
+    
+    # Create implementation file
+    impl_code = '''
+class Implementation:
+    def test_operation(self, data):
+        return {"message": "test", "input": data}, 200
+'''
+    (impl_dir / "test.py").write_text(impl_code)
+    
+    # Create app using convention mode
+    app = automatic.create_app(api_dir=api_dir, impl_dir=impl_dir)
+    
+    assert app.title == "Automatic API"  # Default title in convention mode
 
 
-def test_api_endpoint(sample_openapi_spec):
+def test_api_endpoint(sample_openapi_spec, tmp_path):
     """Test that the API endpoint works."""
     import asyncio
     from starlette.applications import Starlette
     from starlette.requests import Request
     from starlette.responses import JSONResponse
     
-    implementation = MockImplementation()
-    app = automatic.create_app(sample_openapi_spec, implementation)
+    # Create directory structure for convention mode
+    api_dir = tmp_path / "api"
+    impl_dir = tmp_path / "implementations"
+    api_dir.mkdir()
+    impl_dir.mkdir()
     
-    # Test that the app was created with correct metadata
-    assert app.title == "Test API"
-    assert app.version == "1.0.0"
+    # Copy spec to api directory
+    import shutil
+    shutil.copy(sample_openapi_spec, api_dir / "test.yaml")
     
-    # Test that routes were created
+    # Create implementation file
+    impl_code = '''
+class Implementation:
+    def test_operation(self, data):
+        return {"message": "test", "input": data}, 200
+'''
+    (impl_dir / "test.py").write_text(impl_code)
+    
+    # Create app using convention mode
+    app = automatic.create_app(api_dir=api_dir, impl_dir=impl_dir)
+    
+    # Test that the app was created
+    assert app.title == "Automatic API"
+    
+    # Test that routes were created with the /test prefix
     routes = [route for route in app.routes if hasattr(route, 'path')]
     assert len(routes) > 0
     
-    # Find our test route
+    # Find our test route (now prefixed with /test)
     test_route = None
     for route in routes:
-        if hasattr(route, 'path') and route.path == "/test":
+        if hasattr(route, 'path') and route.path == "/test/test":
             test_route = route
             break
     

@@ -112,43 +112,6 @@ class Implementation:
             os.chdir(original_cwd)
 
 
-def test_legacy_mode_still_works():
-    """Test that legacy single-spec mode still works."""
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_path = Path(temp_dir)
-        
-        # Create test spec file
-        test_spec = temp_path / "legacy.yaml"
-        test_spec.write_text("""
-openapi: 3.0.0
-info:
-  title: Legacy API
-  version: 1.0.0
-paths:
-  /legacy:
-    get:
-      operationId: legacy_method
-      responses:
-        '200':
-          description: Success
-""")
-        
-        # Create implementation class
-        class TestImplementation:
-            def legacy_method(self, data):
-                return {"legacy": True}, 200
-        
-        # Create app using legacy mode
-        app = automatic.create_app(test_spec, TestImplementation())
-        
-        # Check that routes were created without prefix
-        routes = [route for route in app.routes 
-                 if hasattr(route, 'path') and route.path == '/legacy']
-        
-        assert len(routes) == 1
-        assert "GET" in routes[0].methods
-
-
 def test_missing_implementation_class_error():
     """Test that missing Implementation class raises appropriate error."""
     with tempfile.TemporaryDirectory() as temp_dir:

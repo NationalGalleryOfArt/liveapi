@@ -135,19 +135,41 @@ def fast_openapi_spec():
         return Path(f.name)
 
 
-def test_response_time_under_200ms(fast_openapi_spec):
+def test_response_time_under_200ms(fast_openapi_spec, tmp_path):
     """Test that framework components operate under 200ms."""
-    implementation = FastTestImplementation()
+    # Create directory structure
+    api_dir = tmp_path / "api"
+    impl_dir = tmp_path / "implementations"
+    api_dir.mkdir()
+    impl_dir.mkdir()
+    
+    # Copy spec and create implementation
+    import shutil
+    shutil.copy(fast_openapi_spec, api_dir / "fast.yaml")
+    
+    impl_code = '''
+class Implementation:
+    def get_item(self, data):
+        return {"id": data.get("item_id", 1), "name": "test_item"}, 200
+    
+    def create_item(self, data):
+        return {"id": 123, "name": data.get("name", "new_item")}, 201
+    
+    def list_items(self, data):
+        return {"items": [{"id": 1, "name": "item1"}, {"id": 2, "name": "item2"}]}, 200
+'''
+    (impl_dir / "fast.py").write_text(impl_code)
     
     # Test app creation time
     start_time = time.perf_counter()
-    app = automatic.create_app(fast_openapi_spec, implementation)
+    app = automatic.create_app(api_dir=api_dir, impl_dir=impl_dir)
     end_time = time.perf_counter()
     
     creation_time_ms = (end_time - start_time) * 1000
     assert creation_time_ms < 200, f"App creation time {creation_time_ms:.2f}ms exceeds 200ms"
     
     # Test direct method calls (simulating what happens during requests)
+    implementation = FastTestImplementation()
     start_time = time.perf_counter()
     result = implementation.get_item({"item_id": 123})
     end_time = time.perf_counter()
@@ -158,10 +180,33 @@ def test_response_time_under_200ms(fast_openapi_spec):
     assert result[1] == 200
 
 
-def test_average_response_time_multiple_requests(fast_openapi_spec):
+def test_average_response_time_multiple_requests(fast_openapi_spec, tmp_path):
     """Test average method call time over multiple requests."""
+    # Create directory structure
+    api_dir = tmp_path / "api"
+    impl_dir = tmp_path / "implementations"
+    api_dir.mkdir()
+    impl_dir.mkdir()
+    
+    # Copy spec and create implementation
+    import shutil
+    shutil.copy(fast_openapi_spec, api_dir / "fast.yaml")
+    
+    impl_code = '''
+class Implementation:
+    def get_item(self, data):
+        return {"id": data.get("item_id", 1), "name": "test_item"}, 200
+    
+    def create_item(self, data):
+        return {"id": 123, "name": data.get("name", "new_item")}, 201
+    
+    def list_items(self, data):
+        return {"items": [{"id": 1, "name": "item1"}, {"id": 2, "name": "item2"}]}, 200
+'''
+    (impl_dir / "fast.py").write_text(impl_code)
+    
     implementation = FastTestImplementation()
-    app = automatic.create_app(fast_openapi_spec, implementation)
+    app = automatic.create_app(api_dir=api_dir, impl_dir=impl_dir)
     
     # Warm up (first call is often slower due to initialization)
     implementation.get_item({"item_id": 1})
@@ -185,12 +230,33 @@ def test_average_response_time_multiple_requests(fast_openapi_spec):
     print(f"Average method call time over {num_requests} calls: {average_time_ms:.2f}ms")
 
 
-def test_app_creation_time(fast_openapi_spec):
+def test_app_creation_time(fast_openapi_spec, tmp_path):
     """Test that app creation is fast."""
-    implementation = FastTestImplementation()
+    # Create directory structure
+    api_dir = tmp_path / "api"
+    impl_dir = tmp_path / "implementations"
+    api_dir.mkdir()
+    impl_dir.mkdir()
+    
+    # Copy spec and create implementation
+    import shutil
+    shutil.copy(fast_openapi_spec, api_dir / "fast.yaml")
+    
+    impl_code = '''
+class Implementation:
+    def get_item(self, data):
+        return {"id": data.get("item_id", 1), "name": "test_item"}, 200
+    
+    def create_item(self, data):
+        return {"id": 123, "name": data.get("name", "new_item")}, 201
+    
+    def list_items(self, data):
+        return {"items": [{"id": 1, "name": "item1"}, {"id": 2, "name": "item2"}]}, 200
+'''
+    (impl_dir / "fast.py").write_text(impl_code)
     
     start_time = time.perf_counter()
-    app = automatic.create_app(fast_openapi_spec, implementation)
+    app = automatic.create_app(api_dir=api_dir, impl_dir=impl_dir)
     end_time = time.perf_counter()
     
     creation_time_ms = (end_time - start_time) * 1000

@@ -85,6 +85,35 @@ class Implementation:  # Always this name
 
 **Your API is ready!** Visit http://localhost:8000/docs for interactive documentation.
 
+## Upcoming Features
+
+The following features are planned for future releases:
+
+### Request Validation
+- Automatic validation of incoming requests against OpenAPI schema
+- Path parameter extraction and typing
+- Query parameter handling per OpenAPI spec
+- Type coercion and format validation for implementation methods
+
+### Error Handling
+- Standard error response format
+- Business exception to HTTP status code mapping
+- Structured validation error formatting
+- Middleware-based error handling
+
+### Response Validation
+- Automatic validation of outgoing responses against OpenAPI schema
+- Configurable validation modes (strict in development, optional in production)
+
+### Authentication
+- API key authentication support
+- Authentication context passed to implementation methods
+- Flexible middleware-based auth system
+
+### Configuration
+- Environment-specific settings
+- Flexible configuration options for different deployment scenarios
+
 ## Installation
 
 ```bash
@@ -120,12 +149,6 @@ app = automatic.create_app()
 app = automatic.create_app(api_dir="specs", impl_dir="handlers")
 ```
 
-### Legacy Mode (Single Spec)
-```python
-# For existing single-spec projects
-app = automatic.create_app("api.yaml", MyImplementation())
-```
-
 ## Implementation Interface
 
 Each implementation file contains a standard `Implementation` class with methods matching OpenAPI `operationId` values:
@@ -138,6 +161,14 @@ class Implementation:
             data: Combined request data (body, path params, query params)
         Returns:
             tuple: (response_data, status_code)
+        """
+        """
+        Example response format:
+        {
+            "result": "success",
+            "error": None,  # Optional error details
+            "metadata": {}  # Optional metadata
+        }
         """
         return {"result": "success"}, 200
     
@@ -158,7 +189,41 @@ class Implementation:
             return {"user_id": data["full_name"], "email": data["email"]}, 201
         else:
             raise UnsupportedVersionError(f"Version {version} not supported")
+
+    def handle_error(self, error: Exception) -> tuple[dict, int]:
+        """
+        Optional error handler method.
+        If present, will be called when an exception occurs.
+        
+        Args:
+            error: The caught exception
+        Returns:
+            tuple: (error_response, status_code)
+        """
+        if isinstance(error, ValueError):
+            return {"error": str(error)}, 400
+        return {"error": "Internal server error"}, 500
 ```
+
+## Error Handling
+
+Implementations can include an optional `handle_error` method to provide custom error handling:
+
+```python
+def handle_error(self, error: Exception) -> tuple[dict, int]:
+    """Custom error handling logic"""
+    if isinstance(error, ValueError):
+        return {"error": str(error)}, 400
+    elif isinstance(error, NotFoundError):
+        return {"error": "Resource not found"}, 404
+    return {"error": "Internal server error"}, 500
+```
+
+This allows for:
+- Custom error response formatting
+- HTTP status code mapping
+- Error type-specific handling
+- Consistent error responses across endpoints
 
 ## Shared Business Logic
 

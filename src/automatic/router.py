@@ -6,6 +6,7 @@ from fastapi.routing import APIRoute
 from pydantic import BaseModel, create_model, ValidationError
 import inspect
 from .parser import OpenAPIParser
+from .response_transformer import ResponseTransformer
 
 
 class RouteGenerator:
@@ -15,6 +16,7 @@ class RouteGenerator:
         self.implementation = implementation
         self.path_prefix = path_prefix.rstrip('/')  # Remove trailing slash
         self.routes: List[Dict[str, Any]] = []
+        self.response_transformer = ResponseTransformer()
     
     def generate_routes(self, parser: OpenAPIParser) -> List[APIRoute]:
         """Generate FastAPI routes from parsed OpenAPI spec."""
@@ -78,7 +80,10 @@ class RouteGenerator:
                 if isinstance(result, tuple) and len(result) == 2:
                     response_data, status_code = result
                     response.status_code = status_code
-                    return response_data
+                    
+                    # Transform response using RFC 9457 for errors
+                    transformed_data = self.response_transformer.transform_response(response_data, status_code)
+                    return transformed_data
                 else:
                     return result
                     

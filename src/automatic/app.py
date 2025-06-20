@@ -19,13 +19,7 @@ def create_app(
     """
     Create a FastAPI application from OpenAPI specifications and implementations.
     
-    Two modes:
-    1. Single spec mode (legacy): provide spec_path and implementation
-    2. Convention mode (new): uses api_dir and impl_dir with file discovery
-    
     Args:
-        spec_path: Path to single OpenAPI spec file (for legacy mode)
-        implementation: Implementation class (for legacy mode)
         api_dir: Directory containing *.yaml spec files (default: "api")
         impl_dir: Directory containing implementation *.py files (default: "implementations")
         **kwargs: Additional arguments to pass to FastAPI constructor
@@ -34,50 +28,13 @@ def create_app(
         Configured FastAPI application
     
     Examples:
-        >>> # Legacy mode
-        >>> app = create_app("api.yaml", MyImplementation())
-        
-        >>> # Convention mode (zero config)
         >>> app = create_app()
         
-        >>> # Convention mode with custom directories
         >>> app = create_app(api_dir="./specs", impl_dir="./handlers")
     """
-    # Legacy single-spec mode
-    if spec_path is not None and implementation is not None:
-        return _create_single_spec_app(spec_path, implementation, **kwargs)
     
     # Convention-based mode
     return _create_convention_app(api_dir, impl_dir, **kwargs)
-
-
-def _create_single_spec_app(spec_path: Union[str, Path], implementation: Any, **kwargs) -> FastAPI:
-    """Create app from single spec file (legacy mode)."""
-    # Parse OpenAPI specification
-    parser = OpenAPIParser(spec_path)
-    parser.load_spec()
-    
-    # Extract app metadata from spec
-    info = parser.spec.get('info', {})
-    
-    # Create FastAPI app with metadata from OpenAPI spec
-    app_kwargs = {
-        'title': info.get('title', 'Automatic API'),
-        'description': info.get('description', ''),
-        'version': info.get('version', '1.0.0'),
-    }
-    app_kwargs.update(kwargs)
-    
-    app = FastAPI(**app_kwargs)
-    
-    # Generate and add routes
-    route_generator = RouteGenerator(implementation)
-    routes = route_generator.generate_routes(parser)
-    
-    for route in routes:
-        app.router.routes.append(route)
-    
-    return app
 
 
 def _create_convention_app(api_dir: Union[str, Path], impl_dir: Union[str, Path], **kwargs) -> FastAPI:

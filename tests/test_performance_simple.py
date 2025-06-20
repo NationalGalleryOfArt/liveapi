@@ -89,16 +89,31 @@ def test_framework_components_under_200ms(simple_openapi_spec):
     print(f"✅ Framework processing time: {framework_time_ms:.2f}ms")
 
 
-def test_subsequent_app_creation_is_fast(simple_openapi_spec):
+def test_subsequent_app_creation_is_fast(simple_openapi_spec, tmp_path):
     """Test that subsequent app creation is fast (after imports are loaded)."""
-    implementation = FastTestImplementation()
+    # Create directory structure
+    api_dir = tmp_path / "api"
+    impl_dir = tmp_path / "implementations"
+    api_dir.mkdir()
+    impl_dir.mkdir()
+    
+    # Copy spec and create implementation
+    import shutil
+    shutil.copy(simple_openapi_spec, api_dir / "simple.yaml")
+    
+    impl_code = '''
+class Implementation:
+    def get_item(self, data):
+        return {"id": data.get("item_id", 1), "name": "test_item"}, 200
+'''
+    (impl_dir / "simple.py").write_text(impl_code)
     
     # First creation (includes import overhead)
-    app1 = automatic.create_app(simple_openapi_spec, implementation)
+    app1 = automatic.create_app(api_dir=api_dir, impl_dir=impl_dir)
     
     # Second creation should be much faster
     start_time = time.perf_counter()
-    app2 = automatic.create_app(simple_openapi_spec, implementation)
+    app2 = automatic.create_app(api_dir=api_dir, impl_dir=impl_dir)
     end_time = time.perf_counter()
     
     creation_time_ms = (end_time - start_time) * 1000
