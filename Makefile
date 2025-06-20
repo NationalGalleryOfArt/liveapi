@@ -30,4 +30,4 @@ clean:
 	find . -type f -name "*.pyc" -delete
 
 lint:
-	@echo "No linting configured yet. Add ruff, flake8, or similar to pyproject.toml"
+	flake8 src/ tests/ examples/
