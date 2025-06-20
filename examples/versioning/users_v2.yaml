@@ -1,0 +1,61 @@
+openapi: 3.0.0
+info:
+  title: Users API v2
+  version: 2.0.0
+paths:
+  /users:
+    post:
+      operationId: create_user
+      summary: Create a new user (v2)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                full_name:
+                  type: string
+                email:
+                  type: string
+                phone:
+                  type: string
+              required:
+                - full_name
+                - email
+      responses:
+        201:
+          description: User created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_id:
+                    type: integer
+                  email:
+                    type: string
+  /users/{user_id}:
+    get:
+      operationId: get_user
+      summary: Get user by ID (v2)
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: User details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_id:
+                    type: integer
+                  full_name:
+                    type: string
+                  email:
+                    type: string

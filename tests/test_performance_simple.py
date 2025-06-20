@@ -268,16 +268,21 @@ def test_route_handler_performance(simple_openapi_spec):
         async def body(self):
             return b""
     
+    class MockResponse:
+        def __init__(self):
+            self.status_code = 200
+    
     # Test the route handler performance
     times = []
     for i in range(10):
         mock_request = MockRequest()
+        mock_response = MockResponse()
         
         start_time = time.perf_counter()
         
         # Call the handler (this is what FastAPI calls)
         import asyncio
-        result = asyncio.run(handler(mock_request))
+        result = asyncio.run(handler(mock_request, mock_response))
         
         end_time = time.perf_counter()
         request_time_ms = (end_time - start_time) * 1000

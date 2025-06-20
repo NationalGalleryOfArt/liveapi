@@ -8,6 +8,7 @@ A Python framework that automatically discovers and creates FastAPI routes from 
 
 - **Zero Configuration**: Just run `automatic.create_app()` - no mapping files needed
 - **Convention Over Configuration**: File names determine API routes
+- **API Versioning**: Single methods handle multiple versions with version parameters
 - **Postman Friendly**: Export specs directly from Postman collections
 - **Shared Business Logic**: Implementations can easily import and use each other
 - **Pure Python Functions**: Clean dict-based interfaces for business logic
@@ -139,6 +140,24 @@ class Implementation:
             tuple: (response_data, status_code)
         """
         return {"result": "success"}, 200
+    
+    # Version-aware methods (optional)
+    def create_user(self, data: dict, version: int = 1) -> tuple[dict, int]:
+        """
+        Version-aware method handles multiple API versions.
+        
+        Args:
+            data: Combined request data
+            version: API version (extracted from filename or operationId)
+        Returns:
+            tuple: (response_data, status_code)
+        """
+        if version == 1:
+            return {"user_id": data["name"]}, 201
+        elif version == 2:
+            return {"user_id": data["full_name"], "email": data["email"]}, 201
+        else:
+            raise UnsupportedVersionError(f"Version {version} not supported")
 ```
 
 ## Shared Business Logic
@@ -195,3 +214,78 @@ curl -X POST http://localhost:8000/orders \
 ```
 
 Visit http://localhost:8000/docs for interactive API documentation.
+
+## API Versioning
+
+Automatic supports clean API versioning where a single method can handle multiple versions:
+
+### Version Detection
+
+The framework automatically extracts version information from:
+- **Filenames**: `users_v2.yaml` → version 2
+- **OperationIds**: `create_user_v2` → version 2  
+- **Default**: version 1 if no version specified
+
+### Version-Aware Implementation
+
+```python
+class Implementation:
+    def get_user(self, data, version=1):
+        user = self._get_user_data(data["user_id"])
+        
+        if version == 1:
+            return {"user_id": user.id, "name": user.name}, 200
+        elif version == 2:
+            return {
+                "user_id": user.id,
+                "full_name": user.full_name,
+                "email": user.email
+            }, 200
+        elif version == 3:
+            return {
+                "user_id": user.id,
+                "profile": {
+                    "full_name": user.full_name,
+                    "email": user.email,
+                    "preferences": user.preferences
+                }
+            }, 200
+        else:
+            raise UnsupportedVersionError(f"Version {version} not supported")
+```
+
+### Versioning Example
+
+A complete versioning example is available in `examples/versioning/`:
+
+```bash
+# Run the versioned API example
+cd examples/versioning
+python run_versioned_example.py
+```
+
+Test different versions:
+```bash
+# v1 API - simple format
+curl -X POST "http://localhost:8000/v1/users" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "John", "email": "john@example.com"}'
+
+# v2 API - enhanced format  
+curl -X POST "http://localhost:8000/v2/users" \
+  -H "Content-Type: application/json" \
+  -d '{"full_name": "Jane Doe", "email": "jane@example.com"}'
+
+# Same user, different response formats
+curl "http://localhost:8000/v1/users/1"  # {"user_id": 1, "name": "John"}
+curl "http://localhost:8000/v2/users/1"  # {"user_id": 1, "full_name": "John Doe", "email": "john@example.com"}
+curl "http://localhost:8000/v3/users/1"  # {"user_id": 1, "profile": {...}}
+```
+
+### Benefits
+
+- **DRY Principle**: Single method handles all versions
+- **Easy Migration**: Gradual version transitions
+- **Clean Deprecation**: Clear error messages for deprecated versions
+- **Maintainable**: Version logic contained within implementation
+- **Backward Compatible**: Existing methods without version parameters work unchanged

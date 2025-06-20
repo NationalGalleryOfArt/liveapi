@@ -1,7 +1,7 @@
 """Dynamic FastAPI route generator."""
 
 from typing import Dict, Any, List, Callable, Optional, Union
-from fastapi import FastAPI, Request, HTTPException, Depends
+from fastapi import FastAPI, Request, HTTPException, Depends, Response
 from fastapi.routing import APIRoute
 from pydantic import BaseModel, create_model, ValidationError
 import inspect
@@ -21,7 +21,17 @@ class RouteGenerator:
         self.routes = parser.get_routes()
         api_routes = []
         
+        # Extract version from filename
+        file_version = parser.extract_version_from_filename()
+        
         for route_info in self.routes:
+            # Extract version from operationId or use file version
+            operation_version = parser.extract_version_from_operation_id(route_info['operation_id'])
+            version = operation_version if operation_version > 1 else file_version
+            
+            # Add version info to route_info
+            route_info['version'] = version
+            
             handler = self._create_route_handler(route_info)
             
             # Convert OpenAPI path to FastAPI path format and apply prefix
@@ -45,6 +55,7 @@ class RouteGenerator:
     def _create_route_handler(self, route_info: Dict[str, Any]) -> Callable:
         """Create a FastAPI route handler for the given route info."""
         operation_id = route_info['operation_id']
+        version = route_info.get('version', 1)
         
         # Check if implementation has the required method
         if not hasattr(self.implementation, operation_id):
@@ -55,17 +66,18 @@ class RouteGenerator:
         # Create dynamic request model if needed
         request_model = self._create_request_model(route_info)
         
-        async def route_handler(request: Request):
+        async def route_handler(request: Request, response: Response):
             try:
                 # Prepare data for implementation method
                 data = await self._prepare_request_data(request, route_info, request_model)
                 
-                # Call implementation method
-                result = impl_method(data)
+                # Call implementation method with version
+                result = self.call_method_with_version(operation_id, data, version)
                 
                 # Handle response
                 if isinstance(result, tuple) and len(result) == 2:
                     response_data, status_code = result
+                    response.status_code = status_code
                     return response_data
                 else:
                     return result
@@ -134,7 +146,7 @@ class RouteGenerator:
             try:
                 body = await request.json()
                 validated_data = request_model(**body)
-                data.update(validated_data.dict())
+                data.update(validated_data.model_dump())
             except Exception:
                 # If JSON parsing fails, try to get raw body
                 body = await request.body()
@@ -142,3 +154,24 @@ class RouteGenerator:
                     data['body'] = body.decode('utf-8')
         
         return data
+    
+    def method_accepts_version_parameter(self, method_name: str) -> bool:
+        """Check if a method accepts a version parameter."""
+        if not hasattr(self.implementation, method_name):
+            return False
+        
+        method = getattr(self.implementation, method_name)
+        sig = inspect.signature(method)
+        return 'version' in sig.parameters
+    
+    def call_method_with_version(self, method_name: str, data: Dict[str, Any], version: int) -> Any:
+        """Call a method with version parameter if it accepts it."""
+        if not hasattr(self.implementation, method_name):
+            raise AttributeError(f"Implementation missing method: {method_name}")
+        
+        method = getattr(self.implementation, method_name)
+        
+        if self.method_accepts_version_parameter(method_name):
+            return method(data, version=version)
+        else:
+            return method(data)

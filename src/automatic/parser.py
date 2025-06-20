@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Union
 import prance
+import re
 
 
 class OpenAPIParser:
@@ -93,5 +94,20 @@ class OpenAPIParser:
     
     def get_path_parameters(self, path: str) -> List[str]:
         """Extract path parameter names from a path string."""
-        import re
         return re.findall(r'\{([^}]+)\}', path)
+    
+    def extract_version_from_filename(self) -> int:
+        """Extract version number from filename (e.g., users_v2.yaml -> 2)."""
+        filename = self.spec_path.name
+        match = re.search(r'_v(\d+)\.', filename)
+        if match:
+            return int(match.group(1))
+        return 1  # Default to version 1
+    
+    @staticmethod
+    def extract_version_from_operation_id(operation_id: str) -> int:
+        """Extract version number from operationId (e.g., create_user_v2 -> 2)."""
+        match = re.search(r'_v(\d+)$', operation_id)
+        if match:
+            return int(match.group(1))
+        return 1  # Default to version 1
