@@ -1,7 +1,7 @@
 """Dynamic FastAPI route generator."""
 
-from typing import Dict, Any, List, Callable, Optional, Union
-from fastapi import FastAPI, Request, HTTPException, Depends, Response
+from typing import Dict, Any, List, Callable, Optional
+from fastapi import Request, HTTPException, Depends, Response
 from fastapi.routing import APIRoute
 from pydantic import BaseModel, create_model, ValidationError
 import inspect
@@ -64,8 +64,6 @@ class RouteGenerator:
         # Check if implementation has the required method
         if not hasattr(self.implementation, operation_id):
             raise AttributeError(f"Implementation missing method: {operation_id}")
-        
-        impl_method = getattr(self.implementation, operation_id)
         
         # Create dynamic request model if needed
         request_model = self._create_request_model(route_info)

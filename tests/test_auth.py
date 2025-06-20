@@ -2,7 +2,7 @@
 
 import pytest
 from fastapi.testclient import TestClient
-from automatic import create_app, create_api_key_auth, create_bearer_auth, ValidationError, NotFoundError
+from automatic import create_app, create_api_key_auth, create_bearer_auth, NotFoundError
 
 
 class AuthTestImplementation:

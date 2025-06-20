@@ -2,12 +2,12 @@
 
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../src'))
-
 import uvicorn
 from fastapi import FastAPI
 from automatic.app import create_app
 from implementation import UserImplementation
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../src'))
 
 def main():
     """Run versioned API example."""

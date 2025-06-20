@@ -6,15 +6,14 @@ import tempfile
 import yaml
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
 import sys
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-
 from automatic import OpenAPIParser, RouteGenerator
 from automatic.exceptions import (
     NotFoundError, ValidationError, ConflictError,
     UnauthorizedError, ForbiddenError, RateLimitError
 )
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 
 class ExceptionImplementation:

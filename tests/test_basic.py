@@ -4,12 +4,10 @@ import pytest
 from pathlib import Path
 import tempfile
 import yaml
-from fastapi.testclient import TestClient
-
 import sys
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-
 import automatic
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 
 class MockImplementation:
@@ -108,10 +106,6 @@ class Implementation:
 
 def test_api_endpoint(sample_openapi_spec, tmp_path):
     """Test that the API endpoint works."""
-    import asyncio
-    from starlette.applications import Starlette
-    from starlette.requests import Request
-    from starlette.responses import JSONResponse
     
     # Create directory structure for automatic discovery
     api_dir = tmp_path / "api"

@@ -1,13 +1,12 @@
 """Integration tests for versioning functionality."""
 
-import pytest
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../examples/versioning'))
-
 from src.automatic.app import create_app
 from examples.versioning.implementation import UserImplementation
 from fastapi.testclient import TestClient
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../examples/versioning'))
 
 
 class TestVersioningIntegration:

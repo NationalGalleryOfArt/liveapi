@@ -27,3 +27,6 @@ twine = "^4.0.0"
 
 [tool.poetry.scripts]
 automatic = "automatic.cli:main"
+
+[tool.flake8]
+ignore = ["E501"]

@@ -1,6 +1,5 @@
 """Tests for response transformation functionality."""
 
-import pytest
 from src.automatic.response_transformer import ResponseTransformer
 
 
@@ -54,12 +53,12 @@ class TestResponseTransformer:
     
     def test_is_error_status_detection(self):
         """Test error status code detection."""
-        assert self.transformer.is_error_status(400) == True
-        assert self.transformer.is_error_status(404) == True
-        assert self.transformer.is_error_status(500) == True
-        assert self.transformer.is_error_status(200) == False
-        assert self.transformer.is_error_status(201) == False
-        assert self.transformer.is_error_status(299) == False
+        assert self.transformer.is_error_status(400) is True
+        assert self.transformer.is_error_status(404) is True
+        assert self.transformer.is_error_status(500) is True
+        assert self.transformer.is_error_status(200) is False
+        assert self.transformer.is_error_status(201) is False
+        assert self.transformer.is_error_status(299) is False
     
     def test_transform_response_calls_transform_error_for_errors(self):
         """Test that transform_response delegates to transform_error for error statuses."""

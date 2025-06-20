@@ -1,6 +1,5 @@
 """Integration tests for RFC 9457 error response transformation."""
 
-import pytest
 from fastapi.testclient import TestClient
 from src.automatic.app import create_app
 

@@ -5,7 +5,6 @@ from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.security.api_key import APIKeyHeader
 import os
-from .exceptions import UnauthorizedError
 
 
 class APIKeyAuth:

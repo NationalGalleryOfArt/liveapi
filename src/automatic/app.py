@@ -4,7 +4,6 @@ from typing import Union, Any, Optional
 from pathlib import Path
 from fastapi import FastAPI
 import importlib.util
-import glob
 from .parser import OpenAPIParser
 from .router import RouteGenerator
 

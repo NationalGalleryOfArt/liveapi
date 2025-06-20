@@ -2,12 +2,11 @@
 
 import sys
 from pathlib import Path
+import automatic
+import uvicorn
 
 # Add automatic to path for demo
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
-
-import automatic
-import uvicorn
 
 
 def main():

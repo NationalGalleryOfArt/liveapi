@@ -1,7 +1,6 @@
 """Tests for API versioning functionality."""
 
 import pytest
-from pathlib import Path
 from src.automatic.parser import OpenAPIParser
 from src.automatic.router import RouteGenerator
 

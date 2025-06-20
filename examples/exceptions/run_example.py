@@ -2,12 +2,12 @@
 
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
-
 from automatic import OpenAPIParser, RouteGenerator
 from fastapi import FastAPI
 import uvicorn
 from implementation import UserImplementation
+
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 
 def main():

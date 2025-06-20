@@ -1,8 +1,7 @@
 """Scaffold generation for automatic implementations."""
 
-import sys
 from pathlib import Path
-from typing import Dict, List, Any, Set
+from typing import Dict, List, Any
 from .parser import OpenAPIParser
 
 
@@ -35,8 +34,6 @@ class ScaffoldGenerator:
         
     def _generate_implementation_code(self, routes: List[Dict[str, Any]]) -> str:
         """Generate the implementation class code."""
-        # Get unique operation IDs
-        operation_ids = [route['operation_id'] for route in routes]
         
         # Generate imports
         imports = self._generate_imports()

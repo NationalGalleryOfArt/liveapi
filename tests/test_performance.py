@@ -4,15 +4,11 @@ import pytest
 import time
 import tempfile
 import yaml
-import asyncio
 from pathlib import Path
-import httpx
-from fastapi.testclient import TestClient
-
 import sys
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-
 import automatic
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 
 class FastTestImplementation:
@@ -162,7 +158,7 @@ class Implementation:
     
     # Test app creation time
     start_time = time.perf_counter()
-    app = automatic.create_app(api_dir=api_dir, impl_dir=impl_dir)
+    automatic.create_app(api_dir=api_dir, impl_dir=impl_dir)
     end_time = time.perf_counter()
     
     creation_time_ms = (end_time - start_time) * 1000
@@ -206,7 +202,7 @@ class Implementation:
     (impl_dir / "fast.py").write_text(impl_code)
     
     implementation = FastTestImplementation()
-    app = automatic.create_app(api_dir=api_dir, impl_dir=impl_dir)
+    automatic.create_app(api_dir=api_dir, impl_dir=impl_dir)
     
     # Warm up (first call is often slower due to initialization)
     implementation.get_item({"item_id": 1})
@@ -217,7 +213,7 @@ class Implementation:
     
     for i in range(num_requests):
         start_time = time.perf_counter()
-        result = implementation.get_item({"item_id": i+1})
+        result = implementation.get_item({"item_id": i + 1})
         end_time = time.perf_counter()
         
         assert result[1] == 200
@@ -256,7 +252,7 @@ class Implementation:
     (impl_dir / "fast.py").write_text(impl_code)
     
     start_time = time.perf_counter()
-    app = automatic.create_app(api_dir=api_dir, impl_dir=impl_dir)
+    automatic.create_app(api_dir=api_dir, impl_dir=impl_dir)
     end_time = time.perf_counter()
     
     creation_time_ms = (end_time - start_time) * 1000

@@ -5,11 +5,10 @@ from pathlib import Path
 import tempfile
 import yaml
 from fastapi.testclient import TestClient
-
 import sys
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-
 import automatic
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 
 class ParamsImplementation:

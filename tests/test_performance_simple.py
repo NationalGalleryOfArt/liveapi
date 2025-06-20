@@ -5,11 +5,10 @@ import time
 import tempfile
 import yaml
 from pathlib import Path
-
 import sys
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-
 import automatic
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 
 class FastTestImplementation:
@@ -79,7 +78,7 @@ def test_framework_components_under_200ms(simple_openapi_spec):
     
     # 2. Generate routes
     route_generator = automatic.RouteGenerator(implementation)
-    routes = route_generator.generate_routes(parser)
+    route_generator.generate_routes(parser)
     
     end_time = time.perf_counter()
     framework_time_ms = (end_time - start_time) * 1000
@@ -109,11 +108,11 @@ class Implementation:
     (impl_dir / "simple.py").write_text(impl_code)
     
     # First creation (includes import overhead)
-    app1 = automatic.create_app(api_dir=api_dir, impl_dir=impl_dir)
+    automatic.create_app(api_dir=api_dir, impl_dir=impl_dir)
     
     # Second creation should be much faster
     start_time = time.perf_counter()
-    app2 = automatic.create_app(api_dir=api_dir, impl_dir=impl_dir)
+    automatic.create_app(api_dir=api_dir, impl_dir=impl_dir)
     end_time = time.perf_counter()
     
     creation_time_ms = (end_time - start_time) * 1000
@@ -196,7 +195,7 @@ def test_end_to_end_performance_breakdown(simple_openapi_spec):
     
     # 2. Route extraction
     start_time = time.perf_counter()
-    routes_info = parser.get_routes()
+    parser.get_routes()
     extraction_time = time.perf_counter() - start_time
     print(f"2. Route extraction: {extraction_time * 1000:.2f}ms")
     
@@ -346,7 +345,7 @@ def test_sub_200ms_response_capability():
     p95_time = sorted(response_times)[95]  # 95th percentile
     max_time = max(response_times)
     
-    print(f"✅ Response time stats:")
+    print("✅ Response time stats:")
     print(f"   Average: {avg_time:.4f}ms")
     print(f"   95th percentile: {p95_time:.4f}ms") 
     print(f"   Maximum: {max_time:.4f}ms")
@@ -356,8 +355,8 @@ def test_sub_200ms_response_capability():
     assert p95_time < 5, f"95th percentile {p95_time:.4f}ms too high"
     assert max_time < 10, f"Maximum response time {max_time:.4f}ms too high"
     
-    print(f"🎯 Framework demonstrates sub-200ms response capability!")
-    print(f"   Actual API responses would be: framework_time + HTTP_overhead (~1-5ms)")
+    print("🎯 Framework demonstrates sub-200ms response capability!")
+    print("   Actual API responses would be: framework_time + HTTP_overhead (~1-5ms)")
     print(f"   Total expected response time: ~{avg_time + 5:.2f}ms")
 
 
