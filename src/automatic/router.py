@@ -11,8 +11,9 @@ from .parser import OpenAPIParser
 class RouteGenerator:
     """Generates FastAPI routes from OpenAPI specifications."""
     
-    def __init__(self, implementation: Any):
+    def __init__(self, implementation: Any, path_prefix: str = ""):
         self.implementation = implementation
+        self.path_prefix = path_prefix.rstrip('/')  # Remove trailing slash
         self.routes: List[Dict[str, Any]] = []
     
     def generate_routes(self, parser: OpenAPIParser) -> List[APIRoute]:
@@ -23,8 +24,10 @@ class RouteGenerator:
         for route_info in self.routes:
             handler = self._create_route_handler(route_info)
             
-            # Convert OpenAPI path to FastAPI path format
+            # Convert OpenAPI path to FastAPI path format and apply prefix
             fastapi_path = self._convert_path_format(route_info['path'])
+            if self.path_prefix:
+                fastapi_path = self.path_prefix + fastapi_path
             
             api_route = APIRoute(
                 path=fastapi_path,

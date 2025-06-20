@@ -1,86 +1,88 @@
 # automatic
 
-**Runtime OpenAPI to FastAPI. No code generation.**
+**Convention-based FastAPI from OpenAPI specs. Zero configuration.**
 
-A Python framework that dynamically creates FastAPI routes from OpenAPI specifications at runtime, eliminating code generation.
+A Python framework that automatically discovers and creates FastAPI routes from OpenAPI specifications using simple file naming conventions.
 
-## Concept
+## Key Features
 
-Instead of:
+- **Zero Configuration**: Just run `automatic.create_app()` - no mapping files needed
+- **Convention Over Configuration**: File names determine API routes
+- **Postman Friendly**: Export specs directly from Postman collections
+- **Shared Business Logic**: Implementations can easily import and use each other
+- **Pure Python Functions**: Clean dict-based interfaces for business logic
+
+## How It Works
+
 ```
-OpenAPI Spec → Generate Code → Implement Business Logic
+Directory Structure → Auto-Discovery → FastAPI Routes
 ```
 
-We want:
+Your directory structure becomes your API:
 ```
-OpenAPI Spec → Runtime Router → Your Implementation Interface
+my-app/
+├── api/                    # OpenAPI specs
+│   ├── users.yaml         # → /users routes
+│   └── orders.yaml        # → /orders routes
+├── implementations/        # Business logic
+│   ├── users.py           # Standard Implementation class
+│   └── orders.py          # Can import users.py
+└── main.py
 ```
 
-Your business logic becomes pure functions:
+## Quick Start
+
+### 1. Zero-config setup
 ```python
-class ArtObjectImplementation:
-    def create_art_object(self, request_data: dict) -> (dict, int):
-        # Pure business logic here - no HTTP concerns
-        return {"art_object_id": 123}, 201
-```
-
-## MVP Requirements
-
-### Core Features
-1. **Parse OpenAPI spec** - Load YAML/JSON at startup
-2. **Generate FastAPI routes** - Create endpoints from spec
-3. **JSON interface** - Pure dict in/out for business logic
-4. **Basic validation** - Request validation using spec
-
-### Project Structure
-```
-automatic/
-├── src/
-│   └── automatic/
-│       ├── __init__.py
-│       ├── parser.py     # OpenAPI parsing
-│       ├── router.py     # Route generation  
-│       └── app.py        # Main interface
-├── tests/
-├── examples/
-├── pyproject.toml
-└── README.md
-```
-
-## Implementation Plan
-
-### Week 1: Core MVP
-1. **OpenAPI Parser** - Parse spec, extract endpoints
-2. **Route Generator** - Create FastAPI routes from spec
-3. **Basic Interface** - Simple dict in/out
-
-### API Design
-```python
+# main.py
 import automatic
-
-# Create app
-app = automatic.create_app("api.yaml", MyImplementation())
-
-# Implementation
-class MyImplementation:
-    def create_art_object(self, data):
-        return {"id": 1, "title": data["title"]}, 201
+app = automatic.create_app()  # That's it!
 ```
 
-## Dependencies
-```toml
-[tool.poetry.dependencies]
-python = "^3.9"
-fastapi = "^0.100.0"
-pydantic = "^2.0.0"
-pyyaml = "^6.0"
+### 2. Create your API specs
+```yaml
+# api/users.yaml
+openapi: 3.0.0
+info:
+  title: Users API
+  version: 1.0.0
+paths:
+  /:
+    get:
+      operationId: get_users
+      responses:
+        '200':
+          description: List of users
+  /{user_id}:
+    get:
+      operationId: get_user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema: {type: integer}
+      responses:
+        '200':
+          description: User details
 ```
 
-## Success Criteria
-- [ ] Load OpenAPI spec and generate working FastAPI app
-- [ ] Simple dict interface for business logic  
-- [ ] Basic request validation
-- [ ] Working example with art objects API
+### 3. Implement your business logic
+```python
+# implementations/users.py
+class Implementation:  # Always this name
+    def get_users(self, data):
+        return [{"id": 1, "name": "Alice"}], 200
+    
+    def get_user(self, data):
+        user_id = data["user_id"]
+        return {"id": user_id, "name": "Alice"}, 200
+```
+
+### 4. Generated Routes
+- `users.yaml` → `/users/` and `/users/{user_id}`
+- `orders.yaml` → `/orders/` and `/orders/{order_id}`
+
+**Your API is ready!** Visit http://localhost:8000/docs for interactive documentation.
 
 ## Installation
 
@@ -106,151 +108,90 @@ python -m pytest tests/test_basic.py -v
 python -m pytest tests/ --cov=src/automatic -v
 ```
 
-## Usage
+## Usage Modes
 
-### Basic Usage
-
+### Convention Mode (Recommended)
 ```python
-import automatic
+# Zero config - uses ./api/ and ./implementations/
+app = automatic.create_app()
 
-# Create FastAPI app from OpenAPI spec and implementation
-app = automatic.create_app("api.yaml", MyImplementation())
-
-# Run with uvicorn
-import uvicorn
-uvicorn.run(app, host="0.0.0.0", port=8000)
+# Custom directories
+app = automatic.create_app(api_dir="specs", impl_dir="handlers")
 ```
 
-### Implementation Interface
+### Legacy Mode (Single Spec)
+```python
+# For existing single-spec projects
+app = automatic.create_app("api.yaml", MyImplementation())
+```
 
-Your implementation class should provide methods that match the `operationId` values in your OpenAPI spec:
+## Implementation Interface
+
+Each implementation file contains a standard `Implementation` class with methods matching OpenAPI `operationId` values:
 
 ```python
-class MyImplementation:
+class Implementation:
     def my_operation(self, data: dict) -> tuple[dict, int]:
         """
-        Business logic method.
-        
         Args:
             data: Combined request data (body, path params, query params)
-            
         Returns:
             tuple: (response_data, status_code)
         """
         return {"result": "success"}, 200
 ```
 
-## Quick Start
+## Shared Business Logic
 
-1. **Define your business logic:**
+Implementations can easily import and use each other:
+
 ```python
-# my_api.py
-class ArtObjectsAPI:
-    def __init__(self):
-        self.art_objects = {}
-        self.next_id = 1
-    
-    def create_art_object(self, data):
-        art_object = {
-            "id": self.next_id,
-            "title": data["title"],
-            "artist": data.get("artist", "Unknown")
-        }
-        self.art_objects[self.next_id] = art_object
-        self.next_id += 1
-        return art_object, 201
-    
-    def get_art_object(self, data):
-        art_id = int(data["art_object_id"])
-        if art_id not in self.art_objects:
-            return {"error": "Not found"}, 404
-        return self.art_objects[art_id], 200
+# implementations/orders.py
+class Implementation:
+    def create_order(self, data):
+        # Import users service
+        from .users import Implementation as UserService
+        user_service = UserService()
+        
+        # Validate user exists
+        user, status = user_service.get_user({"user_id": data["user_id"]})
+        if status != 200:
+            return {"error": "User not found"}, 400
+            
+        return {"order_id": 123, "user_id": data["user_id"]}, 201
 ```
-
-2. **Create your OpenAPI spec:**
-```yaml
-# api.yaml
-openapi: 3.0.0
-info:
-  title: Art API
-  version: 1.0.0
-paths:
-  /art-objects:
-    post:
-      operationId: create_art_object
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [title]
-              properties:
-                title: {type: string}
-                artist: {type: string}
-      responses:
-        201:
-          content:
-            application/json:
-              schema:
-                properties:
-                  id: {type: integer}
-                  title: {type: string}
-                  artist: {type: string}
-  /art-objects/{art_object_id}:
-    get:
-      operationId: get_art_object
-      parameters:
-        - name: art_object_id
-          in: path
-          required: true
-          schema: {type: integer}
-      responses:
-        200:
-          content:
-            application/json:
-              schema:
-                properties:
-                  id: {type: integer}
-                  title: {type: string}
-                  artist: {type: string}
-```
-
-3. **Create and run your app:**
-```python
-import automatic
-from my_api import ArtObjectsAPI
-import uvicorn
-
-app = automatic.create_app("api.yaml", ArtObjectsAPI())
-uvicorn.run(app, port=8000)
-```
-
-**That's it. Your API is running at http://localhost:8000**
 
 ## Working Example
 
-A complete working example is available in the `examples/` directory:
+A complete working example is available in the `examples/convention-demo/` directory:
 
 ```bash
-# Run the example server
-cd examples
-python run_example.py
+# Run the convention-based demo
+cd examples/convention-demo
+python main.py
 ```
 
-This will start a server at http://localhost:8000 with:
-- **Interactive docs**: http://localhost:8000/docs 
-- **API endpoints**: Based on the OpenAPI spec in `examples/api.yaml`
-- **Implementation**: See `examples/my_api.py` for the business logic
+This demonstrates:
+- **Zero-config setup**: Just `automatic.create_app()`
+- **Multiple APIs**: Users and Orders with shared business logic
+- **Path prefixing**: `users.yaml` → `/users/*` routes
+- **Inter-service communication**: Orders service validates users
 
 ### Example API calls:
 
 ```bash
-# Create an art object
-curl -X POST http://localhost:8000/art-objects \
+# Users API
+curl http://localhost:8000/users
+curl http://localhost:8000/users/1
+curl -X POST http://localhost:8000/users \
   -H "Content-Type: application/json" \
-  -d '{"title": "Mona Lisa", "artist": "Leonardo da Vinci"}'
+  -d '{"name": "Charlie"}'
 
-# Get an art object  
-curl http://localhost:8000/art-objects/1
+# Orders API (validates users exist)
+curl http://localhost:8000/orders
+curl -X POST http://localhost:8000/orders \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": 1, "total": 75.00}'
 ```
+
+Visit http://localhost:8000/docs for interactive API documentation.

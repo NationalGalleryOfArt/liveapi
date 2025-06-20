@@ -1,0 +1,83 @@
+openapi: 3.0.0
+info:
+  title: Orders API
+  version: 1.0.0
+  description: Order management API
+
+paths:
+  /:
+    get:
+      operationId: get_orders
+      summary: Get all orders
+      responses:
+        '200':
+          description: List of orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    order_id:
+                      type: integer
+                    user_id:
+                      type: integer
+                    total:
+                      type: number
+    post:
+      operationId: create_order
+      summary: Create a new order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: integer
+                total:
+                  type: number
+              required:
+                - user_id
+                - total
+      responses:
+        '201':
+          description: Order created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  order_id:
+                    type: integer
+                  user_id:
+                    type: integer
+                  total:
+                    type: number
+
+  /{order_id}:
+    get:
+      operationId: get_order
+      summary: Get order by ID
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  order_id:
+                    type: integer
+                  user_id:
+                    type: integer
+                  total:
+                    type: number
