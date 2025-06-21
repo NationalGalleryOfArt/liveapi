@@ -19,7 +19,6 @@ from .exceptions import (
 from .auth import APIKeyAuth, BearerTokenAuth, create_api_key_auth, create_bearer_auth
 from .scaffold import ScaffoldGenerator
 from .base import BaseCrudImplementation, BaseImplementation
-from .middleware import RedirectSlashesMiddleware
 
 __version__ = "0.1.0"
 __all__ = [
@@ -39,5 +38,4 @@ __all__ = [
     "ScaffoldGenerator",
     "BaseCrudImplementation",
     "BaseImplementation",
-    "RedirectSlashesMiddleware",
 ]
