@@ -14,7 +14,7 @@ def test_automatic_discovery():
         temp_path = Path(temp_dir)
         
         # Create directory structure
-        api_dir = temp_path / "api"
+        api_dir = temp_path / "specifications"
         impl_dir = temp_path / "implementations"
         api_dir.mkdir()
         impl_dir.mkdir()
@@ -118,7 +118,7 @@ def test_missing_implementation_class_error():
         temp_path = Path(temp_dir)
         
         # Create directory structure
-        api_dir = temp_path / "api"
+        api_dir = temp_path / "specifications"
         impl_dir = temp_path / "implementations"
         api_dir.mkdir()
         impl_dir.mkdir()
@@ -163,7 +163,7 @@ def test_no_matching_files_error():
         temp_path = Path(temp_dir)
         
         # Create empty directories
-        api_dir = temp_path / "api"
+        api_dir = temp_path / "specifications"
         impl_dir = temp_path / "implementations"
         api_dir.mkdir()
         impl_dir.mkdir()

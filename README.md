@@ -1,118 +1,143 @@
 # automatic
 
-**FastAPI from OpenAPI specs. Zero configuration.**
+**Zero Configuration OpenAPI Framework**
 
-A Python framework that automatically discovers and creates FastAPI routes from OpenAPI specifications using simple file naming patterns.
+A Python framework that automatically creates FastAPI routes from OpenAPI specifications with **Rails-style base classes**, **intelligent auto-discovery**, and **built-in authentication**.
 
 ## Key Features
 
-- **Zero Configuration**: Just run `automatic.create_app()` - no mapping files needed
-- **File-Based Discovery**: File names determine API routes automatically
-- **API Versioning**: Single methods handle multiple versions with version parameters
-- **Postman Friendly**: Export specs directly from Postman collections
-- **Shared Business Logic**: Implementations can easily import and use each other
-- **Pure Python Functions**: Clean dict-based interfaces for business logic
+### 🚀 Zero Configuration Auto-Discovery
+- **Ultimate simplicity**: Just run `automatic` to set up complete projects
+- **Smart detection**: Automatically detects first-run vs incremental mode
+- **Multi-spec support**: Processes all OpenAPI specs in one command
+
+### 🏗️ Rails-Style Base Classes
+- **BaseCrudImplementation**: Automatic CRUD operation delegation for REST APIs
+- **BaseImplementation**: Helper methods for custom business logic
+- **Intelligent selection**: Auto-detects CRUD vs custom patterns
+
+### 🔐 Built-in Authentication
+- **API Key & Bearer Token**: Built-in authentication with metadata support
+- **Flexible configuration**: Lists, dicts, environment variables
+- **Auth context**: Authentication info passed to all methods
+
+### 🛡️ Comprehensive Error Handling
+- **Business exceptions**: NotFoundError, ValidationError, ConflictError, etc.
+- **RFC 9457 compliance**: Standardized error response format
+- **Automatic mapping**: Business exceptions → HTTP status codes
+
+### 🏥 Built-in Health Monitoring
+- **Automatic `/health` endpoint**: Added to every application
+- **Service identification**: For monitoring and health checks
 
 ## How It Works
 
-```
-Directory Structure → Auto-Discovery → FastAPI Routes
-```
+Just run `automatic` in any directory with OpenAPI specs - that's it!
 
-Your directory structure becomes your API:
-```
-my-app/
-├── api/                    # OpenAPI specs
-│   ├── users.yaml         # → /users routes
-│   └── orders.yaml        # → /orders routes
-├── implementations/        # Business logic
-│   ├── users.py           # Standard Implementation class
-│   └── orders.py          # Can import users.py
-└── main.py
+```bash
+# Place your OpenAPI specs anywhere
+ls *.yaml
+# users.yaml  orders.yaml  products.yaml
+
+# One command setup
+automatic
+# ✅ Complete project structure created
+# ✅ All implementations generated with proper base classes  
+# ✅ main.py configured and ready to run
+
+python main.py  # Your API is live!
 ```
 
 ## Quick Start
 
-### 1. Zero-config setup
-```python
-# main.py
-import automatic
-app = automatic.create_app()  # That's it!
+### 1. Ultimate Simplicity - Zero Configuration
+```bash
+# Just run automatic in any directory with OpenAPI specs
+automatic
+
+# Creates this structure automatically:
+# ├── specifications/
+# │   ├── users.yaml         # Your specs moved here
+# │   └── orders.yaml        
+# ├── implementations/
+# │   ├── user_service.py    # Generated with CRUD base class
+# │   └── order_service.py   # Generated with custom base class  
+# ├── main.py                # Auto-generated FastAPI app
+# └── .gitignore             # Python gitignore
 ```
 
-### 2. Create your API specs
-```yaml
-# api/users.yaml
-openapi: 3.0.0
-info:
-  title: Users API
-  version: 1.0.0
-paths:
-  /:
-    get:
-      operationId: get_users
-      responses:
-        '200':
-          description: List of users
-  /{user_id}:
-    get:
-      operationId: get_user
-      parameters:
-        - name: user_id
-          in: path
-          required: true
-          schema: {type: integer}
-      responses:
-        '200':
-          description: User details
-```
-
-### 3. Implement your business logic
+### 2. Generated CRUD Implementation (Rails-style)
 ```python
-# implementations/users.py
-class Implementation:  # Always this name
-    def get_users(self, data):
-        return [{"id": 1, "name": "Alice"}], 200
+# implementations/user_service.py - Auto-generated!
+from automatic import BaseCrudImplementation
+
+class UserService(BaseCrudImplementation):
+    resource_name = "user"
+    
+    def get_data_store(self):
+        return self._data_store  # Replace with your database
     
     def get_user(self, data):
-        user_id = data["user_id"]
-        return {"id": user_id, "name": "Alice"}, 200
+        # Automatically delegates to self.show()
+        return self.show(data.get('user_id'), auth_info=data.get('auth'))
+    
+    def create_user(self, data):
+        # Automatically delegates to self.create()  
+        return self.create(data=data.get('body', {}), auth_info=data.get('auth'))
 ```
 
-### 4. Generated Routes
-- `users.yaml` → `/users/` and `/users/{user_id}`
-- `orders.yaml` → `/orders/` and `/orders/{order_id}`
+### 3. Custom Business Logic
+```python
+# implementations/report_service.py - For non-CRUD APIs
+from automatic import BaseImplementation
+
+class ReportService(BaseImplementation):
+    def generate_report(self, data):
+        # Use built-in get_data() for external services
+        external_data = await self.get_data("analytics", "daily", data.get('auth'))
+        return {"report_id": "123", "status": "generated"}, 201
+```
+
+### 4. Built-in Authentication
+```python
+# main.py - Auto-generated with auth support
+from automatic import create_app, create_api_key_auth
+
+auth = create_api_key_auth(api_keys=['secret-key-123'])
+app = create_app(auth_dependency=auth)
+
+# Now all endpoints require X-API-Key header
+```
 
 **Your API is ready!** Visit http://localhost:8000/docs for interactive documentation.
 
-## Upcoming Features
+## Current Feature Set
 
-The following features are planned for future releases:
+**automatic** includes the following features:
 
-### Request Validation
-- Automatic validation of incoming requests against OpenAPI schema
-- Path parameter extraction and typing
-- Query parameter handling per OpenAPI spec
-- Type coercion and format validation for implementation methods
+### ✅ Request & Response Validation
+- Automatic validation against OpenAPI schema
+- Path, query, and body parameter extraction
+- Type coercion and format validation
+- Pydantic model generation from OpenAPI specs
 
-### Error Handling
-- Standard error response format
+### ✅ Advanced Error Handling  
+- Standard RFC 9457 error response format
 - Business exception to HTTP status code mapping
-- Structured validation error formatting
-- Middleware-based error handling
+- Built-in exceptions: NotFoundError, ValidationError, ConflictError, etc.
+- Custom error handling with context preservation
 
-### Response Validation
-- Automatic validation of outgoing responses against OpenAPI schema
-- Configurable validation modes (strict in development, optional in production)
+### ✅ Production Authentication
+- API key authentication (X-API-Key header)
+- Bearer token authentication (Authorization header)
+- Flexible token storage (lists, dicts, env vars)
+- Authentication context passed to all methods
 
-### Authentication
-- API key authentication support
-- Authentication context passed to implementation methods
-- Flexible middleware-based auth system
-
-### Configuration
-- Environment-specific settings
-- Flexible configuration options for different deployment scenarios
+### ✅ Enterprise Features
+- Built-in `/health` endpoint for monitoring
+- Multi-API project support with auto-discovery
+- Version-aware routing (v1, v2, etc.)
+- Comprehensive logging and error tracking
 
 ## Installation
 

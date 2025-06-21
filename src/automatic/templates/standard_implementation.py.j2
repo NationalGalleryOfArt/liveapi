@@ -1,0 +1,96 @@
+"""Implementation for OpenAPI specification."""
+
+import json
+import asyncio
+from typing import Dict, Any, Tuple, Optional, List
+from automatic import (
+    BaseImplementation,
+    NotFoundError,
+    ValidationError,
+    ConflictError,
+    UnauthorizedError,
+    ForbiddenError,
+    RateLimitError,
+    ServiceUnavailableError
+)
+
+
+class {{ class_name }}(BaseImplementation):
+    """Implementation for OpenAPI operations."""
+    
+    def __init__(self):
+        """Initialize the implementation."""
+        super().__init__()
+        # Add your custom initialization here
+
+{% for route in routes %}
+    def {{ route.operation_id }}(self, data: Dict[str, Any], version: int = 1) -> Tuple[Dict[str, Any], int]:
+        """
+        {{ route.summary }}
+        
+        {{ route.description }}
+        
+        Method: {{ route.method }}
+        Path: {{ route.path }}
+        
+        Args:
+            data: Request data containing:
+                - Path parameters (if any)
+                - Query parameters (if any) 
+                - Request body (if any)
+                - Authentication info in data['auth'] (if configured)
+        
+        Returns:
+            Tuple of (response_data, status_code)
+        
+        Raises:
+{%- for error_code in route.error_codes %}
+{%- if error_code == '400' %}
+            ValidationError: For invalid input (400)
+{%- elif error_code == '401' %}
+            UnauthorizedError: For authentication required (401)
+{%- elif error_code == '403' %}
+            ForbiddenError: For insufficient permissions (403)
+{%- elif error_code == '404' %}
+            NotFoundError: For resource not found (404)
+{%- elif error_code == '409' %}
+            ConflictError: For resource conflicts (409)
+{%- elif error_code == '429' %}
+            RateLimitError: For rate limit exceeded (429)
+{%- elif error_code == '503' %}
+            ServiceUnavailableError: For service unavailable (503)
+{%- endif %}
+{%- else %}
+            BusinessException: For any business logic errors
+{%- endfor %}
+        """
+        print(f"🔄 {{ route.operation_id }} called with data: {json.dumps(data, indent=2)}")
+        print(f"📦 Version: {version}")
+        
+        # TODO: Implement your business logic here
+        # 
+        # Access request data:
+        auth_info = data.get('auth')              # Authentication context
+        body = data.get('body', {})              # Request body (for POST/PUT/PATCH)
+        # path_param = data.get('param_name')     # Path parameters
+        # query_param = data.get('query_name')    # Query parameters
+        
+        # Use the inherited get_data method for external data fetching:
+        # try:
+        #     external_data = await self.get_data("resource_type", "resource_id", auth_info)
+        # except Exception as e:
+        #     raise ServiceUnavailableError("Data service unavailable")
+        
+        # Example response with version handling
+        response_data = {
+            "message": "Not implemented yet",
+            "operation": "{{ route.operation_id }}",
+            "method": "{{ route.method }}",
+            "path": "{{ route.path }}",
+            "version": version,
+            "received_data": data
+        }
+        
+        return response_data, {{ route.success_codes[0] if route.success_codes else '200' }}
+
+{% endfor %}

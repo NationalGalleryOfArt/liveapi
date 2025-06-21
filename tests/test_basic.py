@@ -194,5 +194,103 @@ def test_openapi_parser():
     assert path_params == ['item_id']
 
 
+def test_health_check_endpoint():
+    """Test that health check endpoint is automatically added."""
+    from fastapi.testclient import TestClient
+    
+    # Create simple implementation
+    class SimpleImplementation:
+        def test_operation(self, data):
+            return {"message": "test"}, 200
+    
+    # Create app with proper test setup
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_path = Path(tmp_dir)
+        api_dir = tmp_path / "specifications"
+        impl_dir = tmp_path / "implementations"
+        api_dir.mkdir()
+        impl_dir.mkdir()
+        
+        # Create minimal spec
+        spec_data = {
+            "openapi": "3.0.0",
+            "info": {"title": "Health Test", "version": "1.0.0"},
+            "paths": {
+                "/test": {
+                    "get": {
+                        "operationId": "test_operation",
+                        "responses": {"200": {"description": "Success"}}
+                    }
+                }
+            }
+        }
+        
+        with open(api_dir / "test.yaml", 'w') as f:
+            yaml.dump(spec_data, f)
+        
+        # Create implementation
+        impl_code = '''
+class Implementation:
+    def test_operation(self, data):
+        return {"message": "test"}, 200
+'''
+        (impl_dir / "test.py").write_text(impl_code)
+        
+        app = automatic.create_app(api_dir=api_dir, impl_dir=impl_dir)
+        client = TestClient(app)
+        
+        # Test health endpoint
+        response = client.get("/health")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["status"] == "healthy"
+        assert data["service"] == "automatic"
+        assert "timestamp" in data
+
+
+def test_health_check_direct_mode():
+    """Test health check endpoint with direct app creation."""
+    from fastapi.testclient import TestClient
+    
+    class SimpleImplementation:
+        def test_operation(self, data):
+            return {"message": "test"}, 200
+    
+    # Create minimal spec file
+    spec_data = {
+        "openapi": "3.0.0",
+        "info": {"title": "Direct Health Test", "version": "1.0.0"},
+        "paths": {
+            "/test": {
+                "get": {
+                    "operationId": "test_operation",
+                    "responses": {"200": {"description": "Success"}}
+                }
+            }
+        }
+    }
+    
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        yaml.dump(spec_data, f)
+        spec_path = Path(f.name)
+    
+    app = automatic.create_app(
+        spec_path=spec_path,
+        implementation=SimpleImplementation()
+    )
+    
+    client = TestClient(app)
+    
+    # Test health endpoint
+    response = client.get("/health")
+    assert response.status_code == 200
+    
+    data = response.json()
+    assert data["status"] == "healthy"
+    assert data["service"] == "automatic"
+    assert "timestamp" in data
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

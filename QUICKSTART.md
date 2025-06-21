@@ -1,68 +1,59 @@
 # Automatic - Quick Start Guide
 
-Get your API running in 3 simple steps using the scaffold generator!
+Get your API running in 2 simple steps using automatic discovery!
 
-## 🚀 Quick Setup
+## 🚀 Ultimate Quick Setup
 
-### Step 1: Generate Implementation Scaffold
+### Step 1: Auto-Generate Everything
 
-Generate a Python implementation class from your OpenAPI spec:
+Automatic's smart discovery analyzes all your OpenAPI specs and creates complete project structure:
 
 ```bash
-# Generate scaffold from service.yaml -> creates ServiceImplementation class
-automatic scaffold service.yaml
+# 🎯 Ultimate simplicity - just run automatic!
+automatic
+# Discovers all specs, creates implementations, sets up main.py
 
-# Or specify custom output path  
-automatic scaffold service.yaml -o my_implementation.py
+# Or specify a single spec
+automatic users.yaml
 
-# Force overwrite existing file
-automatic scaffold service.yaml -f
+# Custom output path for single specs
+automatic users.yaml -o services/user_service.py
 ```
 
-The scaffold generator creates a complete implementation class with:
-- ✅ All OpenAPI operations as methods  
-- ✅ Detailed docstrings with method signatures
-- ✅ Example patterns for common use cases
+### 🧠 Intelligent Base Class Selection
+
+The generator automatically chooses the best pattern for your API:
+
+- **CRUD APIs** (with list/show/create/update/delete) → `BaseCrudImplementation`
+- **Custom APIs** (non-standard operations) → `BaseImplementation`  
+- **Manual control** → No inheritance
+
+Generated implementations include:
+- ✅ Smart base class selection based on your OpenAPI operations
+- ✅ All OpenAPI operations as methods with proper signatures
+- ✅ Built-in CRUD delegation for REST resources
 - ✅ Exception handling templates
 - ✅ Debug output showing received data
+- ✅ Complete project structure with main.py
+- ✅ Organized specifications directory
 
 ### Step 2: Run Your API
 
-Create a simple runner script:
+Since automatic created everything, just start the server:
 
-```python
-# main.py
-import automatic
-
-# Automatic finds service.yaml and ServiceImplementation
-app = automatic.create_app()
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-```
-
-Or be explicit about paths if you prefer:
-
-```python
-# main.py  
-import automatic
-from implementation import ServiceImplementation
-
-app = automatic.create_app(
-    spec_path="service.yaml",
-    implementation=ServiceImplementation()
-)
-```
-
-Start your server:
 ```bash
 python main.py
 ```
 
-### Step 3: Test Your API
+The generated `main.py` already includes:
+- FastAPI app configuration
+- Implementation imports
+- uvicorn server setup
+- Multi-API support (if multiple specs)
 
-Your API is now running! The scaffold responds with "Not implemented" messages and prints all received data to stdout for debugging.
+### Test Your API
+
+Your API is now running! The implementations respond with "Not implemented" messages and print all received data to stdout for debugging.
 
 ```bash
 # Test any endpoint
@@ -78,26 +69,40 @@ curl http://localhost:8000/your-endpoint
 
 ## 📋 What You Get
 
-The generated implementation includes:
+### For CRUD APIs - BaseCrudImplementation
 
-### Method Structure
+Automatic CRUD operations with method delegation:
+
 ```python
-def your_operation(self, data: Dict[str, Any]) -> Tuple[Dict[str, Any], int]:
-    """
-    Operation summary from OpenAPI spec
+class UserService(BaseCrudImplementation):
+    resource_name = "user"
     
-    Args:
-        data: Contains path params, query params, body, and auth info
+    def get_data_store(self):
+        return {}  # Your database/storage
     
-    Returns:
-        Tuple of (response_data, status_code)
-    """
-    # Debug output
-    print(f"🔄 your_operation called with data: {json.dumps(data, indent=2)}")
+    def get_user(self, data):
+        # Automatically delegates to self.show()
+        return self.show(data.get('user_id'), data.get('auth'))
     
-    # TODO: Your business logic here
-    
-    return response_data, 200
+    # Built-in CRUD methods available:
+    # - self.index(filters, auth_info) - List resources
+    # - self.show(resource_id, auth_info) - Get single resource  
+    # - self.create(data, auth_info) - Create resource
+    # - self.update(resource_id, data, auth_info) - Update resource
+    # - self.destroy(resource_id, auth_info) - Delete resource
+```
+
+### For Custom APIs - BaseImplementation
+
+Helper methods for external data access:
+
+```python
+class ReportService(BaseImplementation):
+    def generate_report(self, data):
+        # Use inherited get_data() for external calls
+        external_data = await self.get_data("analytics", "daily", data.get('auth'))
+        
+        return {"report_id": "123", "status": "generated"}, 201
 ```
 
 ### Exception Handling Templates
@@ -140,30 +145,30 @@ from automatic import create_api_key_auth, create_bearer_auth
 
 # API Key authentication
 auth = create_api_key_auth(api_keys=['secret-key-123'])
-app = automatic.create_app("api.yaml", ApiImplementation(), auth_dependency=auth)
+app = automatic.create_app(auth_dependency=auth)
 
 # Bearer Token authentication  
 auth = create_bearer_auth(tokens=['token-123'])
-app = automatic.create_app("api.yaml", ApiImplementation(), auth_dependency=auth)
+app = automatic.create_app(auth_dependency=auth)
 ```
 
 Auth info is passed to your methods in `data['auth']`.
 
 ## 💡 Development Tips
 
-1. **Start with the scaffold** - It handles all OpenAPI operations and shows you the data structure
-2. **Check the debug output** - See exactly what data your methods receive
-3. **Implement incrementally** - Replace placeholder responses one method at a time
-4. **Use the exceptions** - They automatically generate proper HTTP error responses
-5. **Test as you go** - The scaffold makes it easy to test each endpoint immediately
+1. **Start with automatic discovery** - Zero configuration, everything is set up automatically
+2. **Use CRUD base classes** - For REST resources, inherit from `BaseCrudImplementation`
+3. **Check the debug output** - See exactly what data your methods receive
+4. **Implement incrementally** - Override CRUD methods or add custom validation as needed
+5. **Use the exceptions** - They automatically generate proper HTTP error responses
 
 ## 🎯 Next Steps
 
-1. Replace placeholder responses with real business logic
-2. Add data storage (database, files, etc.)
-3. Implement proper authentication checks
-4. Add input validation beyond the OpenAPI schema
-5. Deploy your API to production
+1. **For CRUD APIs**: Implement `get_data_store()` with your database/storage
+2. **For Custom APIs**: Add business logic using the `get_data()` helper for external calls
+3. **Add authentication**: Use the built-in API key or Bearer token auth
+4. **Override CRUD methods**: Add custom validation with `validate_create()`, `validate_update()`, etc.
+5. **Deploy your API**: Your implementation is ready for production
 
 ## 📚 Examples
 
@@ -175,4 +180,4 @@ Check the `examples/` directory for complete working examples:
 
 ---
 
-**That's it!** You now have a fully functional API server that responds to all your OpenAPI operations. The scaffold handles the plumbing so you can focus on implementing your business logic.
+**That's it!** You now have a fully functional API server with intelligent auto-discovery that chooses the right base class for your API pattern. CRUD resources get automatic method delegation, while custom APIs get helper utilities for external data access.

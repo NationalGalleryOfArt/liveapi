@@ -1,219 +1,448 @@
 """Scaffold generation for automatic implementations."""
 
+import re
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Tuple, Optional
+from jinja2 import Environment, FileSystemLoader
 from .parser import OpenAPIParser
 
 
 class ScaffoldGenerator:
-    """Generates implementation scaffolds from OpenAPI specifications."""
+    """Generates implementation scaffolds from OpenAPI specifications using Jinja templates."""
     
     def __init__(self, spec_path: str):
         self.spec_path = Path(spec_path)
         self.parser = OpenAPIParser(spec_path)
         
-    def generate_scaffold(self, output_path: str, force: bool = False):
-        """Generate scaffold implementation file."""
+        # Set up Jinja environment
+        template_dir = Path(__file__).parent / 'templates'
+        self.jinja_env = Environment(
+            loader=FileSystemLoader(template_dir),
+            trim_blocks=True,
+            lstrip_blocks=True
+        )
+    
+    def get_default_output_path(self) -> str:
+        """Generate default output path in implementations/ directory."""
+        # Parse routes to get class name
+        routes = self.parser.get_routes()
+        template_data = self._prepare_template_data(routes)
+        class_name = template_data['class_name']
+        
+        # Convert class name to snake_case filename
+        # UserService -> user_service.py
+        # UsersV2Service -> users_v2_service.py
+        filename = self._class_name_to_filename(class_name)
+        
+        # Create implementations directory if it doesn't exist
+        implementations_dir = Path('implementations')
+        implementations_dir.mkdir(exist_ok=True)
+        
+        return str(implementations_dir / filename)
+    
+    def _class_name_to_filename(self, class_name: str) -> str:
+        """Convert class name to snake_case filename."""
+        # Remove 'Service' suffix if present
+        if class_name.endswith('Service'):
+            base_name = class_name[:-7]  # Remove 'Service'
+        else:
+            base_name = class_name
+        
+        # Convert PascalCase to snake_case
+        # UserV2 -> user_v2
+        import re
+        snake_case = re.sub(r'([a-z0-9])([A-Z])', r'\1_\2', base_name).lower()
+        
+        return f"{snake_case}_service.py"
+        
+    def generate_scaffold(self, output_path: str) -> bool:
+        """Generate scaffold implementation file and optionally initialize project.
+        
+        Returns:
+            bool: True if successful, False if cancelled by user
+        """
         output_file = Path(output_path)
         
-        # Check if file exists and handle overwrite
-        if output_file.exists() and not force:
+        # Auto-detect if this should be a project initialization
+        should_init = self._should_init_project()
+        
+        # Create parent directories if they don't exist
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Check if implementation file exists and ask user
+        if output_file.exists():
             response = input(f"⚠️  File '{output_path}' already exists. Overwrite? (y/N): ")
             if response.lower() not in ['y', 'yes']:
                 print("❌ Scaffold generation cancelled.")
-                return
+                return False
         
-        # Parse the OpenAPI spec
+        # Check if we're initializing and main.py exists, ask user
+        if should_init and Path('main.py').exists():
+            response = input("⚠️  main.py already exists. Overwrite? (y/N): ")
+            if response.lower() not in ['y', 'yes']:
+                print("❌ Project initialization cancelled.")
+                should_init = False
+        
+        # Parse the OpenAPI spec and prepare template data
         routes = self.parser.get_routes()
+        template_data = self._prepare_template_data(routes)
         
-        # Generate implementation code
-        code = self._generate_implementation_code(routes)
+        # Choose template based on API type
+        template_name = 'crud_implementation.py.j2' if template_data['use_crud_base'] else 'standard_implementation.py.j2'
+        template = self.jinja_env.get_template(template_name)
+        
+        # Generate code from template
+        code = template.render(**template_data)
         
         # Write to file
         output_file.write_text(code)
         
-    def _generate_implementation_code(self, routes: List[Dict[str, Any]]) -> str:
-        """Generate the implementation class code."""
+        # Initialize project structure if needed
+        if should_init:
+            self._init_project_structure(output_file, template_data)
         
-        # Generate imports
-        imports = self._generate_imports()
+        return True
         
-        # Generate class definition
-        class_def = self._generate_class_definition()
+    def _prepare_template_data(self, routes: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Prepare data for template rendering."""
+        # Determine if this looks like a CRUD API
+        use_crud_base, resource_name = self._analyze_crud_patterns(routes)
         
-        # Generate methods
-        methods = []
+        # Process routes for template
+        processed_routes = []
         for route in routes:
-            method_code = self._generate_method(route)
-            methods.append(method_code)
+            processed_route = {
+                'operation_id': route['operation_id'],
+                'method': route['method'],
+                'path': route['path'],
+                'summary': route.get('summary', ''),
+                'description': route.get('description', ''),
+                'success_codes': [code for code in route.get('responses', {}).keys() if code.startswith('2')],
+                'error_codes': [code for code in route.get('responses', {}).keys() if not code.startswith('2')]
+            }
+            
+            # Add CRUD mapping for CRUD APIs
+            if use_crud_base:
+                processed_route['crud_mapping'] = self._map_to_crud_operation(
+                    route['operation_id'], 
+                    route['method'], 
+                    route['path']
+                )
+            
+            processed_routes.append(processed_route)
         
-        # Combine all parts
-        code_parts = [
-            imports,
-            "",
-            class_def,
-            ""
-        ]
-        
-        for method in methods:
-            code_parts.extend([method, ""])
-        
-        return "\n".join(code_parts)
+        return {
+            'class_name': self._get_class_name(resource_name),
+            'resource_name': resource_name,
+            'use_crud_base': use_crud_base,
+            'routes': processed_routes
+        }
     
-    def _generate_imports(self) -> str:
-        """Generate import statements."""
-        return '''"""Implementation for OpenAPI specification."""
-
-import json
-from typing import Dict, Any, Tuple
-from automatic import (
-    NotFoundError,
-    ValidationError,
-    ConflictError,
-    UnauthorizedError,
-    ForbiddenError,
-    RateLimitError,
-    ServiceUnavailableError
-)'''
-    
-    def _generate_class_definition(self) -> str:
-        """Generate class definition."""
-        class_name = self._get_class_name()
-        return f'''class {class_name}:
-    """Implementation class for OpenAPI operations."""
-    
-    def __init__(self):
-        """Initialize the implementation."""
-        pass'''
-    
-    def _generate_method(self, route: Dict[str, Any]) -> str:
-        """Generate method implementation."""
-        operation_id = route['operation_id']
-        method = route['method']
-        path = route['path']
-        summary = route.get('summary', '')
-        description = route.get('description', '')
-        
-        # Extract expected status codes from responses
-        responses = route.get('responses', {})
-        success_codes = [code for code in responses.keys() if code.startswith('2')]
-        error_codes = [code for code in responses.keys() if not code.startswith('2')]
-        
-        # Generate method signature and docstring
-        method_code = f'''    def {operation_id}(self, data: Dict[str, Any]) -> Tuple[Dict[str, Any], int]:
+    def _analyze_crud_patterns(self, routes: List[Dict[str, Any]]) -> Tuple[bool, str]:
         """
-        {summary}
-        
-        {description}
-        
-        Method: {method}
-        Path: {path}
-        
-        Args:
-            data: Request data containing:
-                - Path parameters (if any)
-                - Query parameters (if any) 
-                - Request body (if any)
-                - Authentication info in data['auth'] (if configured)
+        Analyze routes to determine if this looks like a CRUD API.
         
         Returns:
-            Tuple of (response_data, status_code)
-        
-        Raises:'''
-        
-        # Add exception documentation
-        exception_docs = self._generate_exception_docs(error_codes)
-        method_code += exception_docs
-        
-        method_code += f'''
+            Tuple of (use_crud_base, resource_name)
         """
-        print(f"🔄 {operation_id} called with data: {{json.dumps(data, indent=2)}}")
+        # Look for common CRUD patterns
+        paths = [route['path'] for route in routes]
+        operation_ids = [route['operation_id'] for route in routes]
         
-        # TODO: Implement your business logic here
-        # 
-        # Example patterns:
-        #
-        # 1. Access path parameters:
-        #    user_id = data.get('user_id')
-        #
-        # 2. Access query parameters:
-        #    limit = data.get('limit', 10)
-        #
-        # 3. Access request body:
-        #    body = data.get('body', {{}})
-        #
-        # 4. Access authentication info:
-        #    auth_info = data.get('auth')
-        #    if not auth_info:
-        #        raise UnauthorizedError("Authentication required")
-        #
-        # 5. Validate input:
-        #    if not data.get('required_field'):
-        #        raise ValidationError("Required field missing")
-        #
-        # 6. Handle not found:
-        #    if resource_id not in self.resources:
-        #        raise NotFoundError(f"Resource {{resource_id}} not found")
-        #
-        # 7. Handle conflicts:
-        #    if self.resource_exists(data['name']):
-        #        raise ConflictError("Resource already exists")
+        # Check if we have typical CRUD operations by examining method-path combinations
+        route_combinations = [(route['method'], route['path']) for route in routes]
         
-        # Placeholder response
-        response_data = {{
-            "message": "Not implemented yet",
-            "operation": "{operation_id}",
-            "method": "{method}",
-            "path": "{path}",
-            "received_data": data
-        }}
+        has_get_list = any(method == 'GET' and '{' not in path for method, path in route_combinations)
+        has_get_single = any(method == 'GET' and '{' in path for method, path in route_combinations)
+        has_post = any(method == 'POST' and '{' not in path for method, path in route_combinations)  # POST to collection
+        has_put_patch = any(method in ['PUT', 'PATCH'] for method, path in route_combinations)
+        has_delete = any(method == 'DELETE' for method, path in route_combinations)
         
-        # Return successful response (change status code as needed)'''
+        crud_score = sum([has_get_list, has_get_single, has_post, has_put_patch, has_delete])
         
-        # Add default success status code
-        if success_codes:
-            default_status = success_codes[0]
-        else:
-            default_status = "200"
-            
-        method_code += f'''
-        return response_data, {default_status}'''
+        # Look for typical CRUD operation patterns in operation IDs
+        crud_verbs = {'get_', 'list_', 'create_', 'update_', 'delete_', 'destroy_'}
+        crud_operation_patterns = sum([
+            any(op_id.lower().startswith(verb) for verb in crud_verbs)
+            for op_id in operation_ids
+        ])
         
-        return method_code
+        # Must have both collection-style paths AND CRUD operation names to be considered CRUD
+        # Also need at least one basic collection endpoint (list or create on base path)
+        base_collection_operations = any(
+            (method == 'GET' and path.count('/') <= 2 and '{' not in path) or  # GET /users 
+            (method == 'POST' and path.count('/') <= 2 and '{' not in path)    # POST /users
+            for method, path in route_combinations
+        )
+        
+        # If we have 3+ CRUD operations AND CRUD operation names AND collection-style endpoints
+        use_crud_base = crud_score >= 3 and crud_operation_patterns >= 2 and base_collection_operations
+        
+        # Extract resource name from paths or operation IDs
+        resource_name = self._extract_resource_name(paths, operation_ids)
+        
+        return use_crud_base, resource_name
     
-    def _generate_exception_docs(self, error_codes: List[str]) -> str:
-        """Generate exception documentation based on error codes."""
-        exceptions = []
+    def _extract_resource_name(self, paths: List[str], operation_ids: List[str]) -> str:
+        """Extract the resource name from paths or operation IDs."""
+        # Try to extract from operation IDs first (more reliable)
+        for op_id in operation_ids:
+            # Look for patterns like 'get_user', 'create_user', etc.
+            parts = op_id.split('_')
+            if len(parts) >= 2:
+                # Skip verbs like 'get', 'create', 'update', 'delete'
+                verbs = {'get', 'create', 'update', 'delete', 'list', 'show', 'destroy'}
+                for part in parts:
+                    if part not in verbs:
+                        # Remove plural 's' if present
+                        if part.endswith('s') and len(part) > 1:
+                            return part[:-1]
+                        return part
         
-        for code in error_codes:
-            if code == '400':
-                exceptions.append("            ValidationError: For invalid input (400)")
-            elif code == '401':
-                exceptions.append("            UnauthorizedError: For authentication required (401)")
-            elif code == '403':
-                exceptions.append("            ForbiddenError: For insufficient permissions (403)")
-            elif code == '404':
-                exceptions.append("            NotFoundError: For resource not found (404)")
-            elif code == '409':
-                exceptions.append("            ConflictError: For resource conflicts (409)")
-            elif code == '429':
-                exceptions.append("            RateLimitError: For rate limit exceeded (429)")
-            elif code == '503':
-                exceptions.append("            ServiceUnavailableError: For service unavailable (503)")
+        # Try to extract from paths as fallback
+        for path in paths:
+            # Remove leading slash and parameters
+            parts = path.strip('/').split('/')
+            if parts and parts[0] and not parts[0].startswith('{'):
+                # Remove version prefixes like 'v1', 'api'
+                resource = parts[0]
+                if resource.lower() not in ['api', 'v1', 'v2', 'v3']:
+                    return resource.rstrip('s').lower()  # Remove plural 's' and normalize
         
-        if exceptions:
-            return "\n" + "\n".join(exceptions)
-        else:
-            return "\n            BusinessException: For any business logic errors"
+        # Final fallback
+        return "resource"
     
-    def _get_class_name(self) -> str:
-        """Generate class name from spec file name."""
+    def _map_to_crud_operation(self, operation_id: str, method: str, path: str) -> Optional[Dict[str, str]]:
+        """
+        Map an operation to a CRUD method and parameter extraction.
+        
+        Returns:
+            Dict with 'crud_method' and 'param_extraction' keys, or None if no mapping
+        """
+        
+        # Detect if this is a list operation (GET without ID parameter)
+        if method == "GET" and '{' not in path:
+            return {
+                'crud_method': 'index(filters=data, auth_info=auth_info)',
+                'param_extraction': '# List operation - pass query parameters as filters\n        filters = {k: v for k, v in data.items() if k != \'auth\'}'
+            }
+        
+        # Detect if this is a show operation (GET with ID parameter)
+        elif method == "GET" and '{' in path:
+            param_name = self._extract_id_param_name(path)
+            return {
+                'crud_method': 'show(resource_id, auth_info=auth_info)',
+                'param_extraction': f'# Show operation - extract resource ID\n        resource_id = data.get(\'{param_name}\')\n        if not resource_id:\n            raise ValidationError(\'Resource ID is required\')'
+            }
+        
+        # Create operation (POST)
+        elif method == "POST":
+            return {
+                'crud_method': 'create(data=body, auth_info=auth_info)',
+                'param_extraction': '# Create operation - extract request body\n        body = data.get(\'body\', {})'
+            }
+        
+        # Update operation (PUT/PATCH)
+        elif method in ["PUT", "PATCH"]:
+            param_name = self._extract_id_param_name(path)
+            return {
+                'crud_method': 'update(resource_id, data=body, auth_info=auth_info)',
+                'param_extraction': f'# Update operation - extract resource ID and body\n        resource_id = data.get(\'{param_name}\')\n        if not resource_id:\n            raise ValidationError(\'Resource ID is required\')\n        body = data.get(\'body\', {{}})'
+            }
+        
+        # Delete operation (DELETE)
+        elif method == "DELETE":
+            param_name = self._extract_id_param_name(path)
+            return {
+                'crud_method': 'destroy(resource_id, auth_info=auth_info)',
+                'param_extraction': f'# Delete operation - extract resource ID\n        resource_id = data.get(\'{param_name}\')\n        if not resource_id:\n            raise ValidationError(\'Resource ID is required\')'
+            }
+        
+        return None
+    
+    def _extract_id_param_name(self, path: str) -> str:
+        """Extract the ID parameter name from a path like /users/{user_id}."""
+        match = re.search(r'\{([^}]+)\}', path)
+        if match:
+            return match.group(1)
+        return "id"  # fallback
+    
+    def _get_class_name(self, resource_name: str = None) -> str:
+        """Generate class name from resource name or spec file name."""
+        if resource_name and resource_name != "resource":
+            # Use resource-based naming: user -> UserService
+            return f"{resource_name.capitalize()}Service"
+        
+        # Fallback to file-based naming for non-CRUD APIs
         stem = self.spec_path.stem
         
         # Convert to PascalCase without removing version info
-        # example.yaml -> ExampleImplementation
-        # users_v2.yaml -> UsersV2Implementation  
+        # example.yaml -> ExampleService
+        # users_v2.yaml -> UsersV2Service  
         words = stem.replace('-', '_').split('_')
         class_name = ''.join(word.capitalize() for word in words if word)
         
-        return f"{class_name}Implementation"
+        return f"{class_name}Service"
+    
+    def _should_init_project(self) -> bool:
+        """Determine if this should initialize a new project structure."""
+        current_dir = Path('.')
+        
+        # Check if we're in an empty or minimal directory
+        has_main = (current_dir / 'main.py').exists()
+        has_implementations = (current_dir / 'implementations').exists() and any((current_dir / 'implementations').iterdir())
+        has_specifications_dir = (current_dir / 'specifications').exists() and any((current_dir / 'specifications').iterdir())
+        
+        # Initialize if we don't have main.py AND don't have existing implementations or specifications structure
+        return not has_main and not has_implementations and not has_specifications_dir
+    
+    def _init_project_structure(self, implementation_file: Path, template_data: Dict[str, Any]):
+        """Initialize complete project structure."""
+        print("🚀 Initializing project structure...")
+        
+        # Create main.py
+        self._create_main_py(implementation_file, template_data)
+        
+        # Move API spec to specifications/ directory if needed
+        spec_moved = self._organize_api_spec()
+        
+        # Create .gitignore if it doesn't exist
+        self._create_gitignore()
+        
+        print("✨ Project structure initialized!")
+        print("📁 Created:")
+        print("   - main.py (FastAPI app entry point)")
+        print(f"   - {implementation_file} (implementation)")
+        if spec_moved:
+            print(f"   - specifications/{self.spec_path.name} (organized API spec)")
+        print("🚀 Run with: python main.py")
+    
+    def _create_main_py(self, implementation_file: Path, template_data: Dict[str, Any]):
+        """Create main.py that sets up and runs the automatic app."""
+        class_name = template_data['class_name']
+        
+        # Determine import path for the implementation
+        # implementations/user_service.py -> implementations.user_service.UserService
+        impl_module = str(implementation_file.with_suffix('').as_posix()).replace('/', '.')
+        
+        # Determine API spec path (use organized path if we moved it)
+        api_spec_path = f"specifications/{self.spec_path.name}" if self._should_organize_spec() else str(self.spec_path)
+        
+        main_content = f'''"""FastAPI application entry point."""
+
+import uvicorn
+from automatic import create_app
+from {impl_module} import {class_name}
+
+
+def main():
+    """Create and run the FastAPI application."""
+    # Create the implementation instance
+    implementation = {class_name}()
+    
+    # Create the automatic app
+    app = create_app(
+        spec_path="{api_spec_path}",
+        implementation=implementation
+    )
+    
+    return app
+
+
+# Create the app instance for deployment
+app = main()
+
+if __name__ == "__main__":
+    # Run the development server
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True
+    )
+'''
+        
+        main_file = Path('main.py')
+        main_file.write_text(main_content)
+    
+    def _should_organize_spec(self) -> bool:
+        """Check if the spec should be moved to specifications/ directory."""
+        # Only organize if the spec is in the current directory and not already in specifications/
+        return (
+            self.spec_path.parent == Path('.') and 
+            not str(self.spec_path).startswith('specifications/')
+        )
+    
+    def _organize_api_spec(self) -> bool:
+        """Move API spec to specifications/ directory if appropriate."""
+        if not self._should_organize_spec():
+            return False
+        
+        # Create specifications directory
+        specs_dir = Path('specifications')
+        specs_dir.mkdir(exist_ok=True)
+        
+        # Move the spec file
+        new_spec_path = specs_dir / self.spec_path.name
+        if not new_spec_path.exists():
+            import shutil
+            shutil.move(str(self.spec_path), str(new_spec_path))
+            # Update our internal path reference
+            self.spec_path = new_spec_path
+            return True
+        
+        return False
+    
+    def _create_gitignore(self):
+        """Create a basic .gitignore if it doesn't exist."""
+        gitignore_path = Path('.gitignore')
+        if gitignore_path.exists():
+            return
+        
+        gitignore_content = '''# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+'''
+        
+        gitignore_path.write_text(gitignore_content)

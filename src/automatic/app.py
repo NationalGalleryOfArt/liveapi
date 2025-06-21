@@ -4,14 +4,34 @@ from typing import Union, Any, Optional
 from pathlib import Path
 from fastapi import FastAPI
 import importlib.util
+from datetime import datetime, timezone
 from .parser import OpenAPIParser
 from .router import RouteGenerator
+
+
+def _add_health_check_endpoint(app: FastAPI):
+    """Add a health check endpoint to the FastAPI app."""
+    @app.get("/health", 
+             summary="Health Check", 
+             description="Simple health check endpoint",
+             tags=["Health"])
+    async def health_check():
+        """
+        Simple health check that returns basic service status.
+        
+        Returns service uptime and status without checking data sources.
+        """
+        return {
+            "status": "healthy",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "service": "automatic"
+        }
 
 
 def create_app(
     spec_path: Optional[Union[str, Path]] = None, 
     implementation: Optional[Any] = None,
-    api_dir: Union[str, Path] = "api",
+    api_dir: Union[str, Path] = "specifications",
     impl_dir: Union[str, Path] = "implementations",
     auth_dependency: Optional[Any] = None,
     **kwargs
@@ -67,6 +87,9 @@ def _create_direct_app(spec_path: Union[str, Path], implementation: Any, auth_de
     for route in routes:
         app.router.routes.append(route)
     
+    # Add health check endpoint
+    _add_health_check_endpoint(app)
+    
     return app
 
 
@@ -106,6 +129,9 @@ def _create_automatic_app(api_dir: Union[str, Path], impl_dir: Union[str, Path],
         
         for route in routes:
             app.router.routes.append(route)
+    
+    # Add health check endpoint
+    _add_health_check_endpoint(app)
     
     return app
 

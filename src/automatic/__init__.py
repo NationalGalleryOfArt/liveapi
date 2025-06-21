@@ -20,6 +20,7 @@ from .exceptions import (
 )
 from .auth import APIKeyAuth, BearerTokenAuth, create_api_key_auth, create_bearer_auth
 from .scaffold import ScaffoldGenerator
+from .base import BaseCrudImplementation, BaseImplementation
 
 __version__ = "0.1.0"
 __all__ = [
@@ -39,5 +40,7 @@ __all__ = [
     "BearerTokenAuth", 
     "create_api_key_auth",
     "create_bearer_auth",
-    "ScaffoldGenerator"
+    "ScaffoldGenerator",
+    "BaseCrudImplementation",
+    "BaseImplementation"
 ]
