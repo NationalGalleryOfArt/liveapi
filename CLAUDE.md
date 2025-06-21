@@ -78,19 +78,6 @@ class UserService(BaseCrudImplementation):
 - `update(resource_id, data, auth_info)` - Update resource (PUT/PATCH /users/{id})
 - `destroy(resource_id, auth_info)` - Delete resource (DELETE /users/{id})
 
-**Automatic Method Mapping**: Your OpenAPI operation methods automatically delegate to CRUD operations:
-
-```python
-def get_user(self, data: dict):
-    # Automatically extracts user_id and delegates to self.show()
-    resource_id = data.get('user_id')
-    return self.show(resource_id, auth_info=data.get('auth'))
-
-def create_user(self, data: dict):
-    # Automatically extracts body and delegates to self.create()
-    body = data.get('body', {})
-    return self.create(data=body, auth_info=data.get('auth'))
-```
 
 #### **Non-CRUD APIs (Custom business logic)**
 
@@ -171,15 +158,7 @@ automatic my_api.yaml
 # Creates: implementations/my_api_service.py (+ project setup if first run)
 
 # Custom output path for single specs
-automatic my_api.yaml -o services/user_handler.py
-
-# Example generated CRUD service:
-# class UserService(BaseCrudImplementation):
-#     resource_name = "user"
-#     def get_data_store(self): ...
-#     def get_user(self, data): return self.show(...)
-#     def create_user(self, data): return self.create(...)
-```
+automatic my_api.yaml -o services/user_handler.py```
 
 3. Use the framework:
 
@@ -198,19 +177,9 @@ from automatic import create_app
 from implementations.user_service import UserService
 app = create_app(spec_path="specifications/users.yaml", implementation=UserService())
 
-# With custom service
-from implementations.report_service import ReportService
-app = create_app(spec_path="specifications/reports.yaml", implementation=ReportService())
-
 # With authentication
-from automatic import create_api_key_auth, create_bearer_auth
-
-# API Key authentication
+from automatic import create_api_key_auth
 auth = create_api_key_auth(api_keys=['secret-key-123', 'secret-key-456'])
-app = create_app(spec_path="specifications/api.yaml", implementation=UserService(), auth_dependency=auth)
-
-# Bearer token authentication
-auth = create_bearer_auth(tokens=['token-123', 'token-456'])
 app = create_app(spec_path="specifications/api.yaml", implementation=UserService(), auth_dependency=auth)
 ```
 
@@ -230,23 +199,6 @@ When you run `automatic` in a directory without existing `specifications/` or `i
 5. **Setup**: Creates `main.py` with proper imports and FastAPI configuration
 6. **Structure**: Generates `.gitignore` for Python projects
 
-**Example:**
-```bash
-# Directory with: users.yaml, orders.yaml, products.yaml
-automatic
-
-# Results in:
-# ├── specifications/
-# │   ├── users.yaml
-# │   ├── orders.yaml
-# │   └── products.yaml
-# ├── implementations/
-# │   ├── user_service.py
-# │   ├── order_service.py
-# │   └── product_service.py
-# ├── main.py
-# └── .gitignore
-```
 
 #### **🔄 Incremental Mode** (existing project)
 When you run `automatic` in a directory with existing `specifications/` and `implementations/` directories:
@@ -256,14 +208,6 @@ When you run `automatic` in a directory with existing `specifications/` and `imp
 3. **Generate**: Creates missing implementations only
 4. **Preserve**: Leaves existing files and structure unchanged
 
-**Example:**
-```bash
-# Add new spec to existing project
-cp new_api.yaml specifications/
-automatic
-
-# Only creates: implementations/new_api_service.py
-```
 
 #### **📋 Single Spec Mode**
 When you provide a specific spec file path:
@@ -272,12 +216,6 @@ When you provide a specific spec file path:
 2. **Auto-setup**: If first file in empty project, also creates project structure
 3. **Custom path**: Supports `-o` flag for custom output location
 
-**Example:**
-```bash
-automatic my_api.yaml                    # Auto-detects project setup needs
-automatic specifications/users.yaml      # Existing project, implementation only
-automatic my_api.yaml -o custom/path.py  # Custom output location
-```
 
 ### **Automatic Base Class Selection**
 
@@ -291,77 +229,13 @@ The generator analyzes your API patterns and chooses the best base class:
 
 ```bash
 # Automatic discovery and setup
-automatic                                                # Auto-discover all specs
+automatic                                # Auto-discover all specs
 
 # Single specification processing  
 automatic <spec_path> [-o <output_path>]
-
-# Examples:
-
-# 🚀 Ultimate convenience - zero configuration
-automatic                                                # Sets up everything automatically
-
-# Single spec with auto-setup
-automatic my_api.yaml                                    # Full project setup if needed
-
-# Custom output path
-automatic specifications/users.yaml -o services/users.py  # Custom location
-
-# The generator will ask before overwriting any existing files
 ```
 
-### **Development Workflows**
 
-#### **Starting a New Project**
-```bash
-# 1. Create project directory with your OpenAPI specs
-mkdir my-project && cd my-project
-cp *.yaml .
-
-# 2. One command setup
-automatic
-# ✅ Complete project structure created
-# ✅ All implementations generated
-# ✅ main.py configured and ready
-
-# 3. Start developing
-python main.py
-```
-
-#### **Adding APIs to Existing Project**
-```bash
-# 1. Add new specification
-cp new_api.yaml specifications/
-
-# 2. Generate implementation
-automatic
-# ✅ Only creates implementations/new_api_service.py
-# ✅ Preserves existing code
-
-# 3. Update main.py manually if needed for multi-API setup
-```
-
-#### **Iterative Development**
-```bash
-# 1. Modify your OpenAPI spec
-vim specifications/users.yaml
-
-# 2. Regenerate implementation (asks about overwrite)
-automatic specifications/users.yaml
-# Choose 'y' to overwrite with updated structure
-
-# 3. Re-implement your business logic in the new scaffold
-```
-
-### **Intelligent Class Naming**
-
-Generated classes use meaningful names based on the resource:
-
-- `users.yaml` → `UserService`
-- `products_v2.yaml` → `ProductsV2Service` 
-- `analytics_api.yaml` → `AnalyticsApiService`
-
-No more generic "Implementation" classes that clash!
 
 ### **Generated CRUD Service Example**
 
@@ -392,32 +266,8 @@ class UserService(BaseCrudImplementation):
         body = data.get('body', {})
         return self.create(data=body, auth_info=data.get('auth'))
     
-    # ... update_user, delete_user, list_users methods
 ```
 
-### **Generated Non-CRUD Service Example**
-
-For custom business operations:
-
-```python
-class ReportService(BaseImplementation):
-    """Implementation for OpenAPI operations."""
-    
-    def generate_report(self, data: Dict[str, Any]) -> Tuple[Dict[str, Any], int]:
-        """Generate a new report"""
-        auth_info = data.get('auth')
-        body = data.get('body', {})
-        
-        # Use the inherited get_data method for external data fetching:
-        # external_data = await self.get_data("resource_type", "resource_id", auth_info)
-        
-        response_data = {
-            "message": "Not implemented yet",
-            "operation": "generate_report",
-            "received_data": data
-        }
-        return response_data, 200
-```
 
 ## Testing
 
@@ -437,22 +287,9 @@ Header-based API key authentication using `X-API-Key` header:
 ```python
 from automatic import create_api_key_auth
 
-# Multiple configuration options:
-
-# 1. List of valid API keys
-auth = create_api_key_auth(api_keys=['key1', 'key2', 'key3'])
-
-# 2. Single API key
-auth = create_api_key_auth(api_keys='single-secret-key')
-
-# 3. Dictionary with metadata
-auth = create_api_key_auth(api_keys={
-    'admin-key': {'role': 'admin', 'permissions': ['read', 'write', 'delete']},
-    'readonly-key': {'role': 'readonly', 'permissions': ['read']}
-})
-
-# 4. From environment variable (default: API_KEY)
-auth = create_api_key_auth()  # Uses os.getenv('API_KEY')
+# Configuration options:
+auth = create_api_key_auth(api_keys=['key1', 'key2'])  # List of keys
+auth = create_api_key_auth()  # From env var API_KEY
 
 # Apply to app
 app = create_app(spec_path="specifications/api.yaml", implementation=MyImpl(), auth_dependency=auth)
@@ -467,22 +304,9 @@ Standard Authorization header with Bearer tokens:
 ```python
 from automatic import create_bearer_auth
 
-# Multiple configuration options:
-
-# 1. List of valid tokens
-auth = create_bearer_auth(tokens=['token1', 'token2', 'token3'])
-
-# 2. Single token
-auth = create_bearer_auth(tokens='single-secret-token')
-
-# 3. Dictionary with metadata
-auth = create_bearer_auth(tokens={
-    'admin-token': {'user': 'admin', 'scope': 'full'},
-    'api-token': {'user': 'service', 'scope': 'api'}
-})
-
-# 4. From environment variable (default: BEARER_TOKEN)
-auth = create_bearer_auth()  # Uses os.getenv('BEARER_TOKEN')
+# Configuration options:
+auth = create_bearer_auth(tokens=['token1', 'token2'])  # List of tokens
+auth = create_bearer_auth()  # From env var BEARER_TOKEN
 
 # Apply to app
 app = create_app(spec_path="specifications/api.yaml", implementation=MyImpl(), auth_dependency=auth)
@@ -607,24 +431,6 @@ class UserService(BaseCrudImplementation):
         else:
             raise ValidationError(f"Unsupported version: {version}")
 
-    def create_user(self, data: Dict[str, Any], version: int = 1) -> Tuple[Dict[str, Any], int]:
-        """Version-aware user creation."""
-        body = data.get('body', {})
-        auth_info = data.get('auth')
-        
-        if version == 1:
-            # Basic validation for v1
-            required_fields = ['name', 'email']
-        else:
-            # Enhanced validation for v2+
-            required_fields = ['first_name', 'last_name', 'email', 'phone']
-        
-        # Apply version-specific validation
-        for field in required_fields:
-            if field not in body:
-                raise ValidationError(f"Missing required field for v{version}: {field}")
-        
-        return self.create(data=body, auth_info=auth_info)
 ```
 
 ### **Automatic Version Detection and Routing**
@@ -636,52 +442,9 @@ The framework automatically:
 - **Passes version to handlers** - Calls `method(data, version=X)` if supported
 - **Backward compatibility** - Calls `method(data)` for methods without version parameter
 
-### **Multi-Version Project Structure**
 
-```
-project/
-├── specifications/
-│   ├── users_v1.yaml      # Version 1 API
-│   ├── users_v2.yaml      # Version 2 API  
-│   └── products_v1.yaml   # Products API
-├── implementations/
-│   ├── user_service.py    # Handles both v1 and v2
-│   └── product_service.py # Handles v1
-└── main.py               # Auto-discovery setup
-```
 
-### **Version-Specific Operation IDs**
 
-You can also version individual operations:
-
-```yaml
-# In users_v1.yaml
-paths:
-  /users/{id}:
-    get:
-      operationId: get_user_v2  # This operation uses v2 logic
-      # ... rest of spec
-```
-
-### **CLI Generation with Versions**
-
-The generator automatically creates version-aware methods:
-
-```bash
-# Generates methods with version parameters
-automatic specifications/users_v2.yaml
-
-# Generated method signature:
-# def get_user(self, data: Dict[str, Any], version: int = 1) -> Tuple[Dict[str, Any], int]:
-```
-
-### **Best Practices**
-
-- **Single implementation per resource** - Handle multiple versions in one service class
-- **Version-specific logic** - Use `if version == X:` blocks for version differences
-- **Progressive enhancement** - Keep v1 simple, add features in higher versions
-- **Validation by version** - Apply different validation rules per version
-- **Graceful degradation** - Support older versions with reduced functionality
 
 ## Examples
 

@@ -13,7 +13,7 @@ class DeprecatedAPIError(Exception):
     pass
 
 
-class UserImplementation:
+class UserService:
     """Implementation class with version-aware methods."""
 
     def __init__(self):

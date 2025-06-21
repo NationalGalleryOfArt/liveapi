@@ -5,7 +5,7 @@ from datetime import datetime
 from automatic import NotFoundError, ConflictError, ValidationError
 
 
-class Implementation:
+class UserService:
     """Implementation class for the authenticated API."""
 
     def __init__(self):

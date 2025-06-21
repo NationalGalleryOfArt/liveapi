@@ -30,7 +30,7 @@ Test commands:
 
 import uvicorn
 from automatic import create_app, create_api_key_auth
-from implementation import Implementation
+from implementation import UserService
 
 
 def main():
@@ -54,8 +54,8 @@ def main():
 
     # Create the application with authentication
     app = create_app(
-        spec_path="api.yaml",
-        implementation=Implementation(),
+        spec_path="users.yaml",
+        implementation=UserService(),
         auth_dependency=auth,
         title="Authenticated API Example",
         description="Example API demonstrating API key authentication",

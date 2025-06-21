@@ -23,7 +23,7 @@ Test commands:
 
 import uvicorn
 from automatic import create_app, create_bearer_auth
-from implementation import Implementation
+from implementation import UserService
 
 
 def main():
@@ -47,8 +47,8 @@ def main():
 
     # Create the application with authentication
     app = create_app(
-        spec_path="api.yaml",
-        implementation=Implementation(),
+        spec_path="users.yaml",
+        implementation=UserService(),
         auth_dependency=auth,
         title="Bearer Token API Example",
         description="Example API demonstrating Bearer token authentication",

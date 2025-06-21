@@ -5,7 +5,7 @@ import os
 import uvicorn
 from fastapi import FastAPI
 from automatic.app import create_app
-from implementation import UserImplementation
+from implementation import UserService
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
@@ -20,7 +20,7 @@ def main():
     print()
 
     # Create implementation
-    impl = UserImplementation()
+    impl = UserService()
 
     # Create three separate apps for different versions
     app_v1 = create_app("examples/versioning/users_v1.yaml", impl)

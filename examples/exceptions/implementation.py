@@ -3,7 +3,7 @@
 from automatic import NotFoundError, ValidationError, ConflictError, ForbiddenError
 
 
-class UserImplementation:
+class UserService:
     """User API implementation with exception handling."""
 
     def __init__(self):

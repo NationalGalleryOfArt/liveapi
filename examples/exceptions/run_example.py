@@ -1,36 +1,21 @@
 """Run the exception handling example."""
 
-import sys
-from pathlib import Path
-from automatic import OpenAPIParser, RouteGenerator
-from fastapi import FastAPI
 import uvicorn
-from implementation import UserImplementation
-
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
+from automatic import create_app
+from implementation import UserService
 
 
 def main():
-    # Create parser and load spec
-    parser = OpenAPIParser("api.yaml")
-    parser.load_spec()
-
     # Create implementation
-    implementation = UserImplementation()
+    implementation = UserService()
 
-    # Generate routes
-    router_gen = RouteGenerator(implementation)
-    routes = router_gen.generate_routes(parser)
-
-    # Create FastAPI app
-    app = FastAPI(
+    # Create app using modern API
+    app = create_app(
+        spec_path="users.yaml",
+        implementation=implementation,
         title="User API with Exception Handling",
         description="Demonstrates automatic exception to HTTP response mapping",
     )
-
-    # Add routes
-    for route in routes:
-        app.routes.append(route)
 
     print("Starting server with exception handling example...")
     print("Try these commands:")

@@ -3,7 +3,7 @@
 import sys
 import os
 from src.automatic.app import create_app
-from examples.versioning.implementation import UserImplementation
+from examples.versioning.implementation import UserService
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../examples/versioning"))
@@ -14,7 +14,7 @@ class TestVersioningIntegration:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.impl = UserImplementation()
+        self.impl = UserService()
 
     def test_v1_create_and_get_user(self, tmp_path):
         """Test v1 API user creation and retrieval."""
@@ -31,7 +31,7 @@ class TestVersioningIntegration:
 
         # Create wrapper implementation that imports UserImplementation as Implementation
         impl_code = """
-from examples.versioning.implementation import UserImplementation as Implementation
+from examples.versioning.implementation import UserService as Implementation
 """
         (impl_dir / "users_v1.py").write_text(impl_code)
 
@@ -70,7 +70,7 @@ from examples.versioning.implementation import UserImplementation as Implementat
 
         # Create wrapper implementation that imports UserImplementation as Implementation
         impl_code = """
-from examples.versioning.implementation import UserImplementation as Implementation
+from examples.versioning.implementation import UserService as Implementation
 """
         (impl_dir / "users_v2.py").write_text(impl_code)
 
@@ -120,7 +120,7 @@ from examples.versioning.implementation import UserImplementation as Implementat
 
         # Create wrapper implementation that imports UserImplementation as Implementation
         impl_code = """
-from examples.versioning.implementation import UserImplementation as Implementation
+from examples.versioning.implementation import UserService as Implementation
 """
         (impl_dir / "users_v3.py").write_text(impl_code)
 
@@ -158,7 +158,7 @@ from examples.versioning.implementation import UserImplementation as Implementat
 
         # Create wrapper implementations
         impl_code = """
-from examples.versioning.implementation import UserImplementation as Implementation
+from examples.versioning.implementation import UserService as Implementation
 """
         (impl_dir / "users_v1.py").write_text(impl_code)
         (impl_dir / "users_v2.py").write_text(impl_code)
