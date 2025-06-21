@@ -24,7 +24,7 @@ class UserService:
                 f"User with ID {user_id} not found", extra={"requested_id": user_id}
             )
 
-        return self.users[user_id], 200
+        return self.users[user_id]  # Status code automatically inferred (GET=200)
 
     def create_user(self, data):
         """Create new user."""
@@ -56,7 +56,7 @@ class UserService:
         self.users[self.next_id] = new_user
         self.next_id += 1
 
-        return new_user, 201
+        return new_user  # Status code automatically inferred (POST=201)
 
     def delete_user(self, data):
         """Delete user by ID."""
@@ -73,4 +73,4 @@ class UserService:
             )
 
         del self.users[user_id]
-        return {}, 204  # No content
+        return {}  # Status code automatically inferred (DELETE=204)

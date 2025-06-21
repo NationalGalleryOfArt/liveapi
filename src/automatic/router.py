@@ -135,6 +135,9 @@ class RouteGenerator:
                         )
                         return transformed_data
                     else:
+                        # Auto-infer status code from HTTP method for non-CRUD operations
+                        inferred_status = self._infer_status_code(route_info["method"])
+                        response.status_code = inferred_status
                         return result
 
                 except ValidationError as e:
@@ -216,6 +219,9 @@ class RouteGenerator:
                         )
                         return transformed_data
                     else:
+                        # Auto-infer status code from HTTP method for non-CRUD operations
+                        inferred_status = self._infer_status_code(route_info["method"])
+                        response.status_code = inferred_status
                         return result
 
                 except ValidationError as e:
@@ -342,3 +348,17 @@ class RouteGenerator:
             return method(data, version=version)
         else:
             return method(data)
+
+    def _infer_status_code(self, http_method: str) -> int:
+        """Infer appropriate HTTP status code from HTTP method."""
+        method_status_map = {
+            "GET": 200,     # OK
+            "POST": 201,    # Created
+            "PUT": 200,     # OK (full replacement)
+            "PATCH": 200,   # OK (partial update)
+            "DELETE": 204,  # No Content
+            "HEAD": 200,    # OK
+            "OPTIONS": 200, # OK
+        }
+        
+        return method_status_map.get(http_method.upper(), 200)

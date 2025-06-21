@@ -2,7 +2,7 @@
 # For full documentation, see: https://automatic.readthedocs.io/
 """Implementation for OpenAPI specification."""
 
-from typing import Dict, Any, Tuple
+from typing import Dict, Any
 import json
 from automatic import (
     BaseImplementation,
@@ -22,7 +22,7 @@ class {{ class_name }}(BaseImplementation):
         super().__init__()
 
 {% for route in routes %}
-    def {{ route.operation_id }}(self, data: Dict[str, Any], version: int = 1) -> Tuple[Dict[str, Any], int]:
+    def {{ route.operation_id }}(self, data: Dict[str, Any], version: int = 1) -> Dict[str, Any]:
         """
         {{ route.summary }}
 
@@ -40,7 +40,8 @@ class {{ class_name }}(BaseImplementation):
             version: API version (if applicable)
 
         Returns:
-            Tuple of (response_data, status_code)
+            Dict with response data. HTTP status code is automatically inferred from method type.
+            (GET=200, POST=201, PUT=200, PATCH=200, DELETE=204)
 
         Raises:
 {%- for error_code in route.error_codes %}
@@ -62,5 +63,5 @@ class {{ class_name }}(BaseImplementation):
         """
         print("Called with:", json.dumps(data, indent=2))
         raise NotImplementedError("{{ route.operation_id }} is not implemented yet.")
-        # return {"result": "success"}, 200
+        # return {"result": "success"}
 {% endfor %}

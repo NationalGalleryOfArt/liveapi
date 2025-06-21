@@ -1,9 +1,10 @@
-.PHONY: test test-verbose install build clean lint format upload help
+.PHONY: test test-verbose coverage install build clean lint format upload help
 
 help:
 	@echo "Available targets:"
 	@echo "  test          - Run test suite"
 	@echo "  test-verbose  - Run test suite with verbose output"
+	@echo "  coverage      - Run test suite with coverage report"
 	@echo "  install       - Install package in development mode"
 	@echo "  build         - Build the package"
 	@echo "  clean         - Clean build artifacts"
@@ -18,6 +19,9 @@ test:
 test-verbose:
 	python -m pytest tests/ -vv
 
+coverage:
+	python -m pytest tests/ --cov=src/automatic --cov-report=html --cov-report=term-missing
+
 install:
 	pip install -e .
 
@@ -28,6 +32,8 @@ clean:
 	rm -rf dist/
 	rm -rf build/
 	rm -rf *.egg-info/
+	rm -rf htmlcov/
+	rm -rf .coverage
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
 

@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from datetime import datetime, timezone
 from .parser import OpenAPIParser
 from .router import RouteGenerator
+from .middleware import RedirectSlashesMiddleware
 
 
 def _add_health_check_endpoint(app: FastAPI):
@@ -83,6 +84,9 @@ def _create_direct_app(
     app_kwargs.update(kwargs)
 
     app = FastAPI(**app_kwargs)
+    
+    # Add redirect slashes middleware
+    app.add_middleware(RedirectSlashesMiddleware)
 
     # Parse OpenAPI spec
     parser = OpenAPIParser(spec_path)
@@ -120,6 +124,9 @@ def _create_automatic_app(
     app_kwargs.update(kwargs)
 
     app = FastAPI(**app_kwargs)
+    
+    # Add redirect slashes middleware
+    app.add_middleware(RedirectSlashesMiddleware)
 
     # Discover spec/implementation pairs
     spec_impl_pairs = _discover_spec_impl_pairs(api_path, impl_path)

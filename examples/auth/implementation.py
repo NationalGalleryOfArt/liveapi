@@ -13,7 +13,7 @@ class UserService:
         self.users = {}
         self.user_counter = 1
 
-    def list_users(self, data: Dict[str, Any]) -> tuple[list, int]:
+    def list_users(self, data: Dict[str, Any]) -> list:
         """List all users (requires authentication)."""
         # Auth info is available in data['auth'] if authentication passed
         auth_info = data.get("auth")
@@ -21,9 +21,9 @@ class UserService:
             raise Exception("Authentication required")
 
         users_list = list(self.users.values())
-        return users_list, 200
+        return users_list  # Status code automatically inferred (GET=200)
 
-    def create_user(self, data: Dict[str, Any]) -> tuple[Dict[str, Any], int]:
+    def create_user(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Create a new user (requires authentication)."""
         # Auth info is available in data['auth'] if authentication passed
         auth_info = data.get("auth")
@@ -53,9 +53,9 @@ class UserService:
         }
 
         self.users[user_id] = user
-        return user, 201
+        return user  # Status code automatically inferred (POST=201)
 
-    def get_user(self, data: Dict[str, Any]) -> tuple[Dict[str, Any], int]:
+    def get_user(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Get a user by ID (requires authentication)."""
         # Auth info is available in data['auth'] if authentication passed
         auth_info = data.get("auth")
@@ -69,10 +69,10 @@ class UserService:
         if user_id not in self.users:
             raise NotFoundError(f"User {user_id} not found")
 
-        return self.users[user_id], 200
+        return self.users[user_id]  # Status code automatically inferred (GET=200)
 
-    def health_check(self, data: Dict[str, Any]) -> tuple[Dict[str, Any], int]:
+    def health_check(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Public health check (no authentication required)."""
         # This endpoint doesn't require authentication
         # Note: auth info may or may not be present in data['auth']
-        return {"status": "healthy"}, 200
+        return {"status": "healthy"}  # Status code automatically inferred (GET=200)

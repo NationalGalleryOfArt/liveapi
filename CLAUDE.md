@@ -112,13 +112,22 @@ class ReportService(BaseImplementation):
 
 For complete control, implement methods directly without inheritance:
 
+**Automatic Status Code Inference**: Non-CRUD implementation methods can return just the response data. HTTP status codes are automatically inferred from the HTTP method:
+- GET → 200 (OK)
+- POST → 201 (Created)  
+- PUT → 200 (OK)
+- PATCH → 200 (OK)
+- DELETE → 204 (No Content)
+
+You can still return `(data, status_code)` tuples for custom status codes.
+
 ```python
 from automatic import NotFoundError, ValidationError, ConflictError
 
 class MyImplementation:
-    def create_art_object(self, data: dict) -> tuple[dict, int]:
-        # Returns (response_data, status_code)
-        return {"id": 1, "title": data["title"]}, 201
+    def create_art_object(self, data: dict) -> dict:
+        # Returns response data - status code automatically inferred (POST=201)
+        return {"id": 1, "title": data["title"]}
     
     def get_art_object(self, data: dict):
         # Auth info is available in data['auth'] if authentication is configured
@@ -127,7 +136,7 @@ class MyImplementation:
         art_id = data["art_id"]
         if art_id not in self.objects:
             raise NotFoundError(f"Art object {art_id} not found")
-        return self.objects[art_id], 200
+        return self.objects[art_id]  # Status code automatically inferred (GET=200)
 ```
 
 ## Development Setup

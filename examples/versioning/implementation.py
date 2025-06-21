@@ -75,9 +75,9 @@ class UserService:
 
         # Format output based on version
         if version == 1:
-            return {"user_id": user_data["id"]}, 201
+            return {"user_id": user_data["id"]}  # Status code automatically inferred (POST=201)
         elif version == 2:
-            return {"user_id": user_data["id"], "email": user_data["email"]}, 201
+            return {"user_id": user_data["id"], "email": user_data["email"]}  # Status code automatically inferred (POST=201)
 
     def get_user(self, data, version=1):
         """Get user with version-aware output formatting."""
@@ -90,14 +90,14 @@ class UserService:
 
         if version == 1:
             # v1 output format: simple user info
-            return {"user_id": user["id"], "name": user["name"]}, 200
+            return {"user_id": user["id"], "name": user["name"]}  # Status code automatically inferred (GET=200)
         elif version == 2:
             # v2 output format: enhanced user info
             return {
                 "user_id": user["id"],
                 "full_name": user["full_name"],
                 "email": user["email"],
-            }, 200
+            }  # Status code automatically inferred (GET=200)
         elif version == 3:
             # v3 output format: nested profile structure
             return {
@@ -107,6 +107,6 @@ class UserService:
                     "email": user["email"],
                     "preferences": user["preferences"],
                 },
-            }, 200
+            }  # Status code automatically inferred (GET=200)
         else:
             raise UnsupportedVersionError(f"Version {version} not supported")

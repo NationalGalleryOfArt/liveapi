@@ -128,7 +128,8 @@ class ReportService(BaseImplementation):
     def generate_report(self, data):
         # Use built-in get_data() for external services
         external_data = await self.get_data("analytics", "daily", data.get('auth'))
-        return {"report_id": "123", "status": "generated"}, 201
+        # Status code automatically inferred (POST=201)
+        return {"report_id": "123", "status": "generated"}
 ```
 
 ### 4. Built-in Authentication
@@ -153,6 +154,7 @@ app = create_app(auth_dependency=auth)
 - Path, query, and body parameter extraction
 - Type coercion and format validation
 - Pydantic model generation from OpenAPI specs
+- **Automatic HTTP status code inference** from method types
 
 ### ✅ Advanced Error Handling  
 - Standard RFC 9457 error response format
@@ -242,10 +244,22 @@ For non-CRUD APIs, you can still define methods matching OpenAPI `operationId` v
 
 ```python
 class Implementation:
-    def my_operation(self, data: dict) -> tuple[dict, int]:
+    def my_operation(self, data: dict) -> dict:
         # Custom business logic for non-CRUD endpoints
-        return {"result": "success"}, 200
+        # Status code automatically inferred from HTTP method
+        return {"result": "success"}
 ```
+
+### Automatic Status Code Inference
+
+For non-CRUD methods, HTTP status codes are automatically inferred from the HTTP method:
+- **GET** → 200 (OK)
+- **POST** → 201 (Created)
+- **PUT** → 200 (OK)
+- **PATCH** → 200 (OK)
+- **DELETE** → 204 (No Content)
+
+You can still return `(data, status_code)` tuples for custom status codes.
 
 ### Version-aware methods and error handling
 
@@ -345,13 +359,14 @@ class Implementation:
         user = self._get_user_data(data["user_id"])
         
         if version == 1:
-            return {"user_id": user.id, "name": user.name}, 200
+            # Status code automatically inferred (GET=200)
+            return {"user_id": user.id, "name": user.name}
         elif version == 2:
             return {
                 "user_id": user.id,
                 "full_name": user.full_name,
                 "email": user.email
-            }, 200
+            }
         elif version == 3:
             return {
                 "user_id": user.id,
@@ -360,7 +375,7 @@ class Implementation:
                     "email": user.email,
                     "preferences": user.preferences
                 }
-            }, 200
+            }
         else:
             raise UnsupportedVersionError(f"Version {version} not supported")
 ```
