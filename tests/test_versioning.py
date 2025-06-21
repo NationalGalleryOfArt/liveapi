@@ -2,7 +2,7 @@
 
 import pytest
 from src.automatic.parser import OpenAPIParser
-from src.automatic.router import RouteGenerator
+from src.automatic.request_processor import RequestProcessor
 
 
 class TestVersionExtraction:
@@ -59,8 +59,8 @@ class TestMethodSignatureDetection:
                 return {"id": 1}, 201
 
         impl = TestImpl()
-        generator = RouteGenerator(impl)
-        accepts_version = generator.method_accepts_version_parameter("create_user")
+        processor = RequestProcessor(impl, None)
+        accepts_version = processor._method_accepts_version_parameter("create_user")
         assert accepts_version is True
 
     def test_method_does_not_accept_version_parameter(self):
@@ -71,8 +71,8 @@ class TestMethodSignatureDetection:
                 return {"id": 1}, 201
 
         impl = TestImpl()
-        generator = RouteGenerator(impl)
-        accepts_version = generator.method_accepts_version_parameter("create_user")
+        processor = RequestProcessor(impl, None)
+        accepts_version = processor._method_accepts_version_parameter("create_user")
         assert accepts_version is False
 
     def test_method_accepts_version_parameter_no_default(self):
@@ -83,8 +83,8 @@ class TestMethodSignatureDetection:
                 return {"id": 1}, 201
 
         impl = TestImpl()
-        generator = RouteGenerator(impl)
-        accepts_version = generator.method_accepts_version_parameter("create_user")
+        processor = RequestProcessor(impl, None)
+        accepts_version = processor._method_accepts_version_parameter("create_user")
         assert accepts_version is True
 
 
@@ -102,14 +102,14 @@ class TestVersionedMethodCalls:
                     return {"user_id": data["full_name"], "email": data["email"]}, 201
 
         impl = TestImpl()
-        generator = RouteGenerator(impl)
+        processor = RequestProcessor(impl, None)
 
         # Test version 1
-        result = generator.call_method_with_version("create_user", {"name": "John"}, 1)
+        result = processor.call_method_with_version("create_user", {"name": "John"}, 1)
         assert result == ({"user_id": "John"}, 201)
 
         # Test version 2
-        result = generator.call_method_with_version(
+        result = processor.call_method_with_version(
             "create_user", {"full_name": "John Doe", "email": "john@example.com"}, 2
         )
         assert result == ({"user_id": "John Doe", "email": "john@example.com"}, 201)
@@ -122,9 +122,9 @@ class TestVersionedMethodCalls:
                 return {"user_id": data["name"]}, 201
 
         impl = TestImpl()
-        generator = RouteGenerator(impl)
+        processor = RequestProcessor(impl, None)
 
-        result = generator.call_method_with_version("create_user", {"name": "John"}, 1)
+        result = processor.call_method_with_version("create_user", {"name": "John"}, 1)
         assert result == ({"user_id": "John"}, 201)
 
 

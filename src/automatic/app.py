@@ -83,7 +83,6 @@ def _create_direct_app(
     app_kwargs.update(kwargs)
 
     app = FastAPI(**app_kwargs)
-    
 
     # Parse OpenAPI spec
     parser = OpenAPIParser(spec_path)
@@ -121,7 +120,6 @@ def _create_automatic_app(
     app_kwargs.update(kwargs)
 
     app = FastAPI(**app_kwargs)
-    
 
     # Discover spec/implementation pairs
     spec_impl_pairs = _discover_spec_impl_pairs(api_path, impl_path)

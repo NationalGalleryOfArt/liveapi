@@ -8,6 +8,9 @@ specifications at runtime, eliminating code generation.
 from .app import create_app
 from .parser import OpenAPIParser
 from .router import RouteGenerator
+from .request_processor import RequestProcessor
+from .validator import ResponseValidator
+from .response_transformer import ResponseTransformer
 from .exceptions import (
     BusinessException,
     ValidationError,
@@ -25,6 +28,9 @@ __all__ = [
     "create_app",
     "OpenAPIParser",
     "RouteGenerator",
+    "RequestProcessor",
+    "ResponseValidator",
+    "ResponseTransformer",
     "BusinessException",
     "ValidationError",
     "NotFoundError",

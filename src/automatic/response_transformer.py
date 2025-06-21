@@ -1,16 +1,35 @@
 """Response transformation utilities for RFC 9457 error handling."""
 
-from typing import Any, Dict, Union
+from typing import Any, Dict, Union, Optional
+from .validator import ResponseValidator
 
 
 class ResponseTransformer:
     """Transforms responses to standardized formats, particularly RFC 9457 for errors."""
 
-    def transform_response(self, data: Any, status_code: int) -> Any:
+    def __init__(self, spec: Optional[Dict[str, Any]] = None):
+        self.validator = ResponseValidator(spec)
+
+    def transform_response(
+        self,
+        data: Any,
+        status_code: int,
+        operation_id: Optional[str] = None,
+        version: int = 1
+    ) -> Any:
         """Transform response data based on status code."""
         if self.is_error_status(status_code):
             return self.transform_error(data, status_code)
+
+        # Apply validation and conversion for successful responses
+        if operation_id:
+            data = self.validator.validate_and_convert(data, operation_id, status_code, version)
+
         return data
+
+    def update_spec(self, spec: Dict[str, Any]):
+        """Update the OpenAPI specification for validation."""
+        self.validator.update_spec(spec)
 
     def transform_error(
         self, error_data: Union[str, Dict], status_code: int

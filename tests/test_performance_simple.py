@@ -321,7 +321,7 @@ def test_route_handler_performance(simple_openapi_spec):
         request_time_ms = (end_time - start_time) * 1000
         times.append(request_time_ms)
 
-        assert result["id"] == "123"
+        assert result["id"] == 123  # Converted from string to int by validation layer
 
     average_time = sum(times) / len(times)
     max_time = max(times)

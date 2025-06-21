@@ -1,13 +1,12 @@
 """Dynamic FastAPI route generator."""
 
 from typing import Dict, Any, List, Callable, Optional
-from fastapi import Request, HTTPException, Depends, Response
+from fastapi import Request, Depends, Response
 from fastapi.routing import APIRoute
-from pydantic import BaseModel, create_model, ValidationError
-import inspect
+from pydantic import BaseModel, create_model
 from .parser import OpenAPIParser
 from .response_transformer import ResponseTransformer
-from .exceptions import BusinessException
+from .request_processor import RequestProcessor
 
 
 class RouteGenerator:
@@ -24,11 +23,15 @@ class RouteGenerator:
         self.routes: List[Dict[str, Any]] = []
         self.response_transformer = ResponseTransformer()
         self.auth_dependency = auth_dependency
+        self.request_processor = RequestProcessor(implementation, self.response_transformer)
 
     def generate_routes(self, parser: OpenAPIParser) -> List[APIRoute]:
         """Generate FastAPI routes from parsed OpenAPI spec."""
         self.routes = parser.get_routes()
         api_routes = []
+
+        # Update response transformer with OpenAPI spec for validation
+        self.response_transformer.update_spec(parser.spec)
 
         # Extract version from filename
         file_version = parser.extract_version_from_filename()
@@ -75,183 +78,38 @@ class RouteGenerator:
         # Create dynamic request model if needed
         request_model = self._create_request_model(route_info)
 
-        # Create auth parameter if dependency exists
-        if self.auth_dependency:
+        # Create unified handler that works with or without auth
+        async def route_handler(
+            request: Request,
+            response: Response,
+            auth_info: Optional[Dict[str, Any]] = Depends(self.auth_dependency()) if self.auth_dependency else None,
+        ):
+            try:
+                # Prepare data for implementation method
+                data = await self.request_processor.prepare_request_data(
+                    request, route_info, request_model
+                )
 
-            async def route_handler(
-                request: Request,
-                response: Response,
-                auth_info: Optional[Dict[str, Any]] = Depends(self.auth_dependency()),
-            ):
-                try:
-                    # Prepare data for implementation method
-                    data = await self._prepare_request_data(
-                        request, route_info, request_model
+                # Add auth info to data if present
+                if auth_info:
+                    data["auth"] = auth_info
+
+                # Try CRUD delegation first
+                result = self.request_processor.handle_crud_delegation(
+                    operation_id, data, auth_info
+                )
+                
+                # If not a CRUD operation, call the method directly
+                if result is None:
+                    result = self.request_processor.call_method_with_version(
+                        operation_id, data, version
                     )
 
-                    # Add auth info to data if present
-                    if auth_info:
-                        data["auth"] = auth_info
+                # Handle response transformation
+                return self.request_processor.handle_response(result, route_info, response)
 
-                    # Decouple HTTP and business logic for CRUD methods
-                    crud_methods = {"index", "show", "create", "update", "destroy"}
-                    if operation_id in crud_methods:
-                        # Extract arguments for CRUD methods
-                        auth = data.get("auth")
-                        if operation_id == "index":
-                            filters = {k: v for k, v in data.items() if k not in ["auth", "body"]}
-                            result = getattr(self.implementation, "index")(filters, auth)
-                        elif operation_id == "show":
-                            resource_id = data.get("id") or next((v for k, v in data.items() if k.endswith("id")), None)
-                            if not resource_id:
-                                raise ValidationError("Resource ID is required")
-                            result = getattr(self.implementation, "show")(resource_id, auth)
-                        elif operation_id == "create":
-                            body = data.get("body", data)
-                            result = getattr(self.implementation, "create")(body, auth)
-                        elif operation_id == "update":
-                            resource_id = data.get("id") or next((v for k, v in data.items() if k.endswith("id")), None)
-                            if not resource_id:
-                                raise ValidationError("Resource ID is required")
-                            body = data.get("body", data)
-                            result = getattr(self.implementation, "update")(resource_id, body, auth)
-                        elif operation_id == "destroy":
-                            resource_id = data.get("id") or next((v for k, v in data.items() if k.endswith("id")), None)
-                            if not resource_id:
-                                raise ValidationError("Resource ID is required")
-                            result = getattr(self.implementation, "destroy")(resource_id, auth)
-                    else:
-                        # Call implementation method with version (legacy/non-CRUD)
-                        result = self.call_method_with_version(operation_id, data, version)
-
-                    # Handle response
-                    if isinstance(result, tuple) and len(result) == 2:
-                        response_data, status_code = result
-                        response.status_code = status_code
-
-                        # Transform response using RFC 9457 for errors
-                        transformed_data = self.response_transformer.transform_response(
-                            response_data, status_code
-                        )
-                        return transformed_data
-                    else:
-                        # Auto-infer status code from HTTP method for non-CRUD operations
-                        inferred_status = self._infer_status_code(route_info["method"])
-                        response.status_code = inferred_status
-                        return result
-
-                except ValidationError as e:
-                    raise HTTPException(status_code=422, detail=e.errors())
-                except BusinessException as e:
-                    # Business exceptions get converted to proper HTTP responses
-                    response.status_code = e.status_code
-                    return e.to_response()
-                except NotImplementedError as e:
-                    # Map NotImplementedError to HTTP 501 Not Implemented
-                    response.status_code = 501
-                    return {
-                        "type": "/errors/not_implemented",
-                        "title": "Not Implemented",
-                        "status": 501,
-                        "detail": str(e) or "This operation is not implemented."
-                    }
-                except Exception as e:
-                    # Unexpected errors become 500s with RFC 9457 format
-                    response.status_code = 500
-                    return {
-                        "type": "/errors/internal_server_error",
-                        "title": "Internal Server Error",
-                        "status": 500,
-                        "detail": (
-                            str(e)
-                            if isinstance(e, (ValueError, TypeError, KeyError))
-                            else "An unexpected error occurred"
-                        ),
-                    }
-
-        else:
-
-            async def route_handler(request: Request, response: Response):
-                try:
-                    # Prepare data for implementation method
-                    data = await self._prepare_request_data(
-                        request, route_info, request_model
-                    )
-
-                    # Decouple HTTP and business logic for CRUD methods
-                    crud_methods = {"index", "show", "create", "update", "destroy"}
-                    if operation_id in crud_methods:
-                        auth = data.get("auth")
-                        if operation_id == "index":
-                            filters = {k: v for k, v in data.items() if k not in ["auth", "body"]}
-                            result = getattr(self.implementation, "index")(filters, auth)
-                        elif operation_id == "show":
-                            resource_id = data.get("id") or next((v for k, v in data.items() if k.endswith("id")), None)
-                            if not resource_id:
-                                raise ValidationError("Resource ID is required")
-                            result = getattr(self.implementation, "show")(resource_id, auth)
-                        elif operation_id == "create":
-                            body = data.get("body", data)
-                            result = getattr(self.implementation, "create")(body, auth)
-                        elif operation_id == "update":
-                            resource_id = data.get("id") or next((v for k, v in data.items() if k.endswith("id")), None)
-                            if not resource_id:
-                                raise ValidationError("Resource ID is required")
-                            body = data.get("body", data)
-                            result = getattr(self.implementation, "update")(resource_id, body, auth)
-                        elif operation_id == "destroy":
-                            resource_id = data.get("id") or next((v for k, v in data.items() if k.endswith("id")), None)
-                            if not resource_id:
-                                raise ValidationError("Resource ID is required")
-                            result = getattr(self.implementation, "destroy")(resource_id, auth)
-                    else:
-                        # Call implementation method with version (legacy/non-CRUD)
-                        result = self.call_method_with_version(operation_id, data, version)
-
-                    # Handle response
-                    if isinstance(result, tuple) and len(result) == 2:
-                        response_data, status_code = result
-                        response.status_code = status_code
-
-                        # Transform response using RFC 9457 for errors
-                        transformed_data = self.response_transformer.transform_response(
-                            response_data, status_code
-                        )
-                        return transformed_data
-                    else:
-                        # Auto-infer status code from HTTP method for non-CRUD operations
-                        inferred_status = self._infer_status_code(route_info["method"])
-                        response.status_code = inferred_status
-                        return result
-
-                except ValidationError as e:
-                    raise HTTPException(status_code=422, detail=e.errors())
-                except BusinessException as e:
-                    # Business exceptions get converted to proper HTTP responses
-                    response.status_code = e.status_code
-                    return e.to_response()
-                except NotImplementedError as e:
-                    # Map NotImplementedError to HTTP 501 Not Implemented
-                    response.status_code = 501
-                    return {
-                        "type": "/errors/not_implemented",
-                        "title": "Not Implemented",
-                        "status": 501,
-                        "detail": str(e) or "This operation is not implemented."
-                    }
-                except Exception as e:
-                    # Unexpected errors become 500s with RFC 9457 format
-                    response.status_code = 500
-                    return {
-                        "type": "/errors/internal_server_error",
-                        "title": "Internal Server Error",
-                        "status": 500,
-                        "detail": (
-                            str(e)
-                            if isinstance(e, (ValueError, TypeError, KeyError))
-                            else "An unexpected error occurred"
-                        ),
-                    }
+            except Exception as e:
+                return self.request_processor.handle_exceptions(e, response)
 
         return route_handler
 
@@ -296,69 +154,3 @@ class RouteGenerator:
         # OpenAPI uses {param} format, FastAPI also uses {param} format
         # So no conversion needed for basic cases
         return openapi_path
-
-    async def _prepare_request_data(
-        self,
-        request: Request,
-        route_info: Dict[str, Any],
-        request_model: Optional[BaseModel],
-    ) -> Dict[str, Any]:
-        """Prepare request data for implementation method."""
-        data = {}
-
-        # Add path parameters
-        data.update(request.path_params)
-
-        # Add query parameters
-        data.update(dict(request.query_params))
-
-        # Add request body if present
-        if request_model and request.method in ["POST", "PUT", "PATCH"]:
-            try:
-                body = await request.json()
-                validated_data = request_model(**body)
-                data.update(validated_data.model_dump())
-            except Exception:
-                # If JSON parsing fails, try to get raw body
-                body = await request.body()
-                if body:
-                    data["body"] = body.decode("utf-8")
-
-        return data
-
-    def method_accepts_version_parameter(self, method_name: str) -> bool:
-        """Check if a method accepts a version parameter."""
-        if not hasattr(self.implementation, method_name):
-            return False
-
-        method = getattr(self.implementation, method_name)
-        sig = inspect.signature(method)
-        return "version" in sig.parameters
-
-    def call_method_with_version(
-        self, method_name: str, data: Dict[str, Any], version: int
-    ) -> Any:
-        """Call a method with version parameter if it accepts it."""
-        if not hasattr(self.implementation, method_name):
-            raise AttributeError(f"Implementation missing method: {method_name}")
-
-        method = getattr(self.implementation, method_name)
-
-        if self.method_accepts_version_parameter(method_name):
-            return method(data, version=version)
-        else:
-            return method(data)
-
-    def _infer_status_code(self, http_method: str) -> int:
-        """Infer appropriate HTTP status code from HTTP method."""
-        method_status_map = {
-            "GET": 200,     # OK
-            "POST": 201,    # Created
-            "PUT": 200,     # OK (full replacement)
-            "PATCH": 200,   # OK (partial update)
-            "DELETE": 204,  # No Content
-            "HEAD": 200,    # OK
-            "OPTIONS": 200, # OK
-        }
-        
-        return method_status_map.get(http_method.upper(), 200)
