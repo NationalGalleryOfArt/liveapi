@@ -15,8 +15,6 @@ from .exceptions import (
     ConflictError,
     UnauthorizedError,
     ForbiddenError,
-    RateLimitError,
-    ServiceUnavailableError,
 )
 from .auth import APIKeyAuth, BearerTokenAuth, create_api_key_auth, create_bearer_auth
 from .scaffold import ScaffoldGenerator
@@ -33,8 +31,6 @@ __all__ = [
     "ConflictError",
     "UnauthorizedError",
     "ForbiddenError",
-    "RateLimitError",
-    "ServiceUnavailableError",
     "APIKeyAuth",
     "BearerTokenAuth",
     "create_api_key_auth",

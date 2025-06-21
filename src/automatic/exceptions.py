@@ -58,25 +58,3 @@ class ForbiddenError(BusinessException):
 
     status_code = 403
     error_type = "forbidden"
-
-
-class RateLimitError(BusinessException):
-    """Too many requests."""
-
-    status_code = 429
-    error_type = "rate_limit"
-
-    def __init__(
-        self, detail: str = "Rate limit exceeded", retry_after: Optional[int] = None
-    ):
-        extra = {}
-        if retry_after:
-            extra["retry_after"] = retry_after
-        super().__init__(detail, extra)
-
-
-class ServiceUnavailableError(BusinessException):
-    """External service unavailable."""
-
-    status_code = 503
-    error_type = "service_unavailable"

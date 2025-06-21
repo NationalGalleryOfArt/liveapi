@@ -257,14 +257,10 @@ class BaseImplementation:
 
         except (ConnectionError, TimeoutError) as e:
             # Network issues
-            from .exceptions import ServiceUnavailableError
-
-            raise ServiceUnavailableError(
-                f"Unable to fetch {resource_type} data: {str(e)}"
-            )
+            # Previously raised ServiceUnavailableError; now let the API layer handle it
+            raise Exception(f"Unable to fetch {resource_type} data: {str(e)}")
         except Exception as e:
             # Log the error and return a safe response
             print(f"Unexpected error fetching {resource_type} {resource_id}: {e}")
-            from .exceptions import ServiceUnavailableError
-
-            raise ServiceUnavailableError("Data service temporarily unavailable")
+            # Previously raised ServiceUnavailableError; now let the API layer handle it
+            raise Exception("Data service temporarily unavailable")

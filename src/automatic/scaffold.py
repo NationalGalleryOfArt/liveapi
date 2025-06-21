@@ -263,39 +263,44 @@ class ScaffoldGenerator:
         # Detect if this is a list operation (GET without ID parameter)
         if method == "GET" and "{" not in path:
             return {
-                "crud_method": "index(filters=data, auth_info=auth_info)",
-                "param_extraction": "# List operation - pass query parameters as filters\n        filters = {k: v for k, v in data.items() if k != 'auth'}",
+                "crud_method": "index(filters=filters)",
+                "param_extraction": "# List operation - pass query parameters as filters\n            filters = {k: v for k, v in data.items() if k not in ['auth', 'body']}",
+                "operation_name": "list"
             }
 
         # Detect if this is a show operation (GET with ID parameter)
         elif method == "GET" and "{" in path:
             param_name = self._extract_id_param_name(path)
             return {
-                "crud_method": "show(resource_id, auth_info=auth_info)",
-                "param_extraction": f"# Show operation - extract resource ID\n        resource_id = data.get('{param_name}')\n        if not resource_id:\n            raise ValidationError('Resource ID is required')",
+                "crud_method": "show(resource_id)",
+                "param_extraction": f"# Show operation - extract resource ID\n            resource_id = data.get('{param_name}')\n            if not resource_id:\n                raise ValidationError('Resource ID is required')",
+                "operation_name": "read"
             }
 
         # Create operation (POST)
         elif method == "POST":
             return {
-                "crud_method": "create(data=body, auth_info=auth_info)",
-                "param_extraction": "# Create operation - extract request body\n        body = data.get('body', {})",
+                "crud_method": "create(data=body)",
+                "param_extraction": "# Create operation - extract request body\n            body = data.get('body', {})",
+                "operation_name": "create"
             }
 
         # Update operation (PUT/PATCH)
         elif method in ["PUT", "PATCH"]:
             param_name = self._extract_id_param_name(path)
             return {
-                "crud_method": "update(resource_id, data=body, auth_info=auth_info)",
-                "param_extraction": f"# Update operation - extract resource ID and body\n        resource_id = data.get('{param_name}')\n        if not resource_id:\n            raise ValidationError('Resource ID is required')\n        body = data.get('body', {{}})",
+                "crud_method": "update(resource_id, data=body)",
+                "param_extraction": f"# Update operation - extract resource ID and body\n            resource_id = data.get('{param_name}')\n            if not resource_id:\n                raise ValidationError('Resource ID is required')\n            body = data.get('body', {{}})",
+                "operation_name": "update"
             }
 
         # Delete operation (DELETE)
         elif method == "DELETE":
             param_name = self._extract_id_param_name(path)
             return {
-                "crud_method": "destroy(resource_id, auth_info=auth_info)",
-                "param_extraction": f"# Delete operation - extract resource ID\n        resource_id = data.get('{param_name}')\n        if not resource_id:\n            raise ValidationError('Resource ID is required')",
+                "crud_method": "destroy(resource_id)",
+                "param_extraction": f"# Delete operation - extract resource ID\n            resource_id = data.get('{param_name}')\n            if not resource_id:\n                raise ValidationError('Resource ID is required')",
+                "operation_name": "delete"
             }
 
         return None

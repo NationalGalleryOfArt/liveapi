@@ -14,7 +14,6 @@ from automatic.exceptions import (
     ConflictError,
     UnauthorizedError,
     ForbiddenError,
-    RateLimitError,
 )
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -47,7 +46,7 @@ class ExceptionImplementation:
             raise ForbiddenError("Insufficient permissions to create items")
 
         if name == "rate_limit":
-            raise RateLimitError("Too many requests", retry_after=60)
+            raise Exception("Too many requests (rate limit exceeded)")
 
         if name == "crash":
             # This will trigger a generic 500 error
@@ -219,20 +218,7 @@ def test_forbidden_exception(exception_spec):
     assert data["status"] == 403
 
 
-def test_rate_limit_exception(exception_spec):
-    """Test RateLimitError mapping."""
-    app = create_test_app(exception_spec)
-    client = TestClient(app)
-
-    response = client.post("/items", json={"name": "rate_limit"})
-    assert response.status_code == 429
-
-    data = response.json()
-    assert data["type"] == "/errors/rate_limit"
-    assert data["title"] == "RateLimit"
-    assert data["status"] == 429
-    assert data["retry_after"] == 60
-
+# test_rate_limit_exception removed: rate limiting is now handled by the API gateway/layer.
 
 def test_generic_exception_handling(exception_spec):
     """Test generic exception becomes 500."""

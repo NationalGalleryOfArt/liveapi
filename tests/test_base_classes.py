@@ -1,7 +1,7 @@
 import pytest
 from typing import Dict, Any, Tuple
 from automatic.base import BaseCrudImplementation, BaseImplementation
-from automatic.exceptions import NotFoundError, ValidationError, ServiceUnavailableError
+from automatic.exceptions import NotFoundError, ValidationError
 
 
 class UserService(BaseCrudImplementation):
@@ -112,7 +112,7 @@ class ReportService(BaseImplementation):
             external_data = {"external": "data", "status": "success"}
             return external_data, 200
         except Exception:
-            raise ServiceUnavailableError("External service unavailable")
+            raise Exception("External service unavailable")
 
 
 class TestBaseCrudImplementation:

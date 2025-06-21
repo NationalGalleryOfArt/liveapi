@@ -93,8 +93,36 @@ class RouteGenerator:
                     if auth_info:
                         data["auth"] = auth_info
 
-                    # Call implementation method with version
-                    result = self.call_method_with_version(operation_id, data, version)
+                    # Decouple HTTP and business logic for CRUD methods
+                    crud_methods = {"index", "show", "create", "update", "destroy"}
+                    if operation_id in crud_methods:
+                        # Extract arguments for CRUD methods
+                        auth = data.get("auth")
+                        if operation_id == "index":
+                            filters = {k: v for k, v in data.items() if k not in ["auth", "body"]}
+                            result = getattr(self.implementation, "index")(filters, auth)
+                        elif operation_id == "show":
+                            resource_id = data.get("id") or next((v for k, v in data.items() if k.endswith("id")), None)
+                            if not resource_id:
+                                raise ValidationError("Resource ID is required")
+                            result = getattr(self.implementation, "show")(resource_id, auth)
+                        elif operation_id == "create":
+                            body = data.get("body", data)
+                            result = getattr(self.implementation, "create")(body, auth)
+                        elif operation_id == "update":
+                            resource_id = data.get("id") or next((v for k, v in data.items() if k.endswith("id")), None)
+                            if not resource_id:
+                                raise ValidationError("Resource ID is required")
+                            body = data.get("body", data)
+                            result = getattr(self.implementation, "update")(resource_id, body, auth)
+                        elif operation_id == "destroy":
+                            resource_id = data.get("id") or next((v for k, v in data.items() if k.endswith("id")), None)
+                            if not resource_id:
+                                raise ValidationError("Resource ID is required")
+                            result = getattr(self.implementation, "destroy")(resource_id, auth)
+                    else:
+                        # Call implementation method with version (legacy/non-CRUD)
+                        result = self.call_method_with_version(operation_id, data, version)
 
                     # Handle response
                     if isinstance(result, tuple) and len(result) == 2:
@@ -115,6 +143,15 @@ class RouteGenerator:
                     # Business exceptions get converted to proper HTTP responses
                     response.status_code = e.status_code
                     return e.to_response()
+                except NotImplementedError as e:
+                    # Map NotImplementedError to HTTP 501 Not Implemented
+                    response.status_code = 501
+                    return {
+                        "type": "/errors/not_implemented",
+                        "title": "Not Implemented",
+                        "status": 501,
+                        "detail": str(e) or "This operation is not implemented."
+                    }
                 except Exception as e:
                     # Unexpected errors become 500s with RFC 9457 format
                     response.status_code = 500
@@ -138,8 +175,35 @@ class RouteGenerator:
                         request, route_info, request_model
                     )
 
-                    # Call implementation method with version
-                    result = self.call_method_with_version(operation_id, data, version)
+                    # Decouple HTTP and business logic for CRUD methods
+                    crud_methods = {"index", "show", "create", "update", "destroy"}
+                    if operation_id in crud_methods:
+                        auth = data.get("auth")
+                        if operation_id == "index":
+                            filters = {k: v for k, v in data.items() if k not in ["auth", "body"]}
+                            result = getattr(self.implementation, "index")(filters, auth)
+                        elif operation_id == "show":
+                            resource_id = data.get("id") or next((v for k, v in data.items() if k.endswith("id")), None)
+                            if not resource_id:
+                                raise ValidationError("Resource ID is required")
+                            result = getattr(self.implementation, "show")(resource_id, auth)
+                        elif operation_id == "create":
+                            body = data.get("body", data)
+                            result = getattr(self.implementation, "create")(body, auth)
+                        elif operation_id == "update":
+                            resource_id = data.get("id") or next((v for k, v in data.items() if k.endswith("id")), None)
+                            if not resource_id:
+                                raise ValidationError("Resource ID is required")
+                            body = data.get("body", data)
+                            result = getattr(self.implementation, "update")(resource_id, body, auth)
+                        elif operation_id == "destroy":
+                            resource_id = data.get("id") or next((v for k, v in data.items() if k.endswith("id")), None)
+                            if not resource_id:
+                                raise ValidationError("Resource ID is required")
+                            result = getattr(self.implementation, "destroy")(resource_id, auth)
+                    else:
+                        # Call implementation method with version (legacy/non-CRUD)
+                        result = self.call_method_with_version(operation_id, data, version)
 
                     # Handle response
                     if isinstance(result, tuple) and len(result) == 2:
@@ -160,6 +224,15 @@ class RouteGenerator:
                     # Business exceptions get converted to proper HTTP responses
                     response.status_code = e.status_code
                     return e.to_response()
+                except NotImplementedError as e:
+                    # Map NotImplementedError to HTTP 501 Not Implemented
+                    response.status_code = 501
+                    return {
+                        "type": "/errors/not_implemented",
+                        "title": "Not Implemented",
+                        "status": 501,
+                        "detail": str(e) or "This operation is not implemented."
+                    }
                 except Exception as e:
                     # Unexpected errors become 500s with RFC 9457 format
                     response.status_code = 500

@@ -73,6 +73,39 @@ from automatic import BaseCrudImplementation
 
 class UserService(BaseCrudImplementation):
     resource_name = "user"
+
+    def get_data_store(self):
+        return self._data_store  # Replace with your database
+
+    def index(self, filters=None, auth_info=None):
+        # List users (business logic only)
+        return super().index(filters, auth_info)
+
+    def show(self, resource_id, auth_info=None):
+        # Show a user (business logic only)
+        return super().show(resource_id, auth_info)
+
+    def create(self, data, auth_info=None):
+        # Create a user (business logic only)
+        return super().create(data, auth_info)
+
+    def update(self, resource_id, data, auth_info=None):
+        # Update a user (business logic only)
+        return super().update(resource_id, data, auth_info)
+
+    def destroy(self, resource_id, auth_info=None):
+        # Delete a user (business logic only)
+        return super().destroy(resource_id, auth_info)
+```
+### 2. Generated CRUD Implementation (Rails-style)
+
+**Note:** The router now handles all HTTP parameter extraction and error mapping. The generated CRUD implementation contains only business logic methods with explicit arguments, making your code minimal and easy to test.
+```python
+# implementations/user_service.py - Auto-generated!
+from automatic import BaseCrudImplementation
+
+class UserService(BaseCrudImplementation):
+    resource_name = "user"
     
     def get_data_store(self):
         return self._data_store  # Replace with your database
@@ -176,59 +209,47 @@ app = automatic.create_app(api_dir="specs", impl_dir="handlers")
 
 ## Implementation Interface
 
-Each implementation file contains a standard `Implementation` class with methods matching OpenAPI `operationId` values:
+### CRUD APIs
+
+For CRUD APIs, the generated implementation contains only the standard CRUD methods with explicit arguments. The router handles all HTTP parameter extraction and calls these methods directly:
+
+```python
+class UserService(BaseCrudImplementation):
+    def index(self, filters=None, auth_info=None):
+        # List users (business logic only)
+        return super().index(filters, auth_info)
+
+    def show(self, resource_id, auth_info=None):
+        # Show a user (business logic only)
+        return super().show(resource_id, auth_info)
+
+    def create(self, data, auth_info=None):
+        # Create a user (business logic only)
+        return super().create(data, auth_info)
+
+    def update(self, resource_id, data, auth_info=None):
+        # Update a user (business logic only)
+        return super().update(resource_id, data, auth_info)
+
+    def destroy(self, resource_id, auth_info=None):
+        # Delete a user (business logic only)
+        return super().destroy(resource_id, auth_info)
+```
+
+### Non-CRUD APIs
+
+For non-CRUD APIs, you can still define methods matching OpenAPI `operationId` values, which will receive a combined `data` dict as before:
 
 ```python
 class Implementation:
     def my_operation(self, data: dict) -> tuple[dict, int]:
-        """
-        Args:
-            data: Combined request data (body, path params, query params)
-        Returns:
-            tuple: (response_data, status_code)
-        """
-        """
-        Example response format:
-        {
-            "result": "success",
-            "error": None,  # Optional error details
-            "metadata": {}  # Optional metadata
-        }
-        """
+        # Custom business logic for non-CRUD endpoints
         return {"result": "success"}, 200
-    
-    # Version-aware methods (optional)
-    def create_user(self, data: dict, version: int = 1) -> tuple[dict, int]:
-        """
-        Version-aware method handles multiple API versions.
-        
-        Args:
-            data: Combined request data
-            version: API version (extracted from filename or operationId)
-        Returns:
-            tuple: (response_data, status_code)
-        """
-        if version == 1:
-            return {"user_id": data["name"]}, 201
-        elif version == 2:
-            return {"user_id": data["full_name"], "email": data["email"]}, 201
-        else:
-            raise UnsupportedVersionError(f"Version {version} not supported")
-
-    def handle_error(self, error: Exception) -> tuple[dict, int]:
-        """
-        Optional error handler method.
-        If present, will be called when an exception occurs.
-        
-        Args:
-            error: The caught exception
-        Returns:
-            tuple: (error_response, status_code)
-        """
-        if isinstance(error, ValueError):
-            return {"error": str(error)}, 400
-        return {"error": "Internal server error"}, 500
 ```
+
+### Version-aware methods and error handling
+
+You can still use version-aware methods and custom error handlers as described below for non-CRUD endpoints.
 
 ## Error Handling
 
