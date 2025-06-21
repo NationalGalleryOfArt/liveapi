@@ -1,4 +1,4 @@
-.PHONY: test test-verbose install build clean lint upload help
+.PHONY: test test-verbose install build clean lint format upload help
 
 help:
 	@echo "Available targets:"
@@ -8,6 +8,7 @@ help:
 	@echo "  build         - Build the package"
 	@echo "  clean         - Clean build artifacts"
 	@echo "  lint          - Run linting (if configured)"
+	@echo "  format        - Format code with black"
 	@echo "  upload        - Upload package to PyPI"
 	@echo "  help          - Show this help message"
 
@@ -32,6 +33,9 @@ clean:
 
 lint:
 	flake8 src/ tests/ examples/
+
+format:
+	black src/ tests/ examples/
 
 upload:
 	twine upload dist/*

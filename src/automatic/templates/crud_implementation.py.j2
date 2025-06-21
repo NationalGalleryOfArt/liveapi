@@ -17,16 +17,16 @@ from automatic import (
 
 class {{ class_name }}(BaseCrudImplementation):
     """CRUD implementation for {{ resource_name }} resources."""
-    
+
     resource_name = "{{ resource_name }}"
-    
+
     def get_data_store(self) -> Dict[str, Any]:
         """Return the data storage mechanism."""
         # TODO: Replace with actual database/cache/service connection
         if not hasattr(self, '_data_store'):
             self._data_store = {}
         return self._data_store
-    
+
     # Override CRUD methods as needed:
     # def validate_create(self, data: Dict) -> None:
     #     """Add custom validation for creating {{ resource_name }}s."""
@@ -41,6 +41,7 @@ class {{ class_name }}(BaseCrudImplementation):
     #         # Add your custom fields here
     #         **data
     #     }
+
 
 {% for route in routes %}
     def {{ route.operation_id }}(self, data: Dict[str, Any], version: int = 1) -> Tuple[Dict[str, Any], int]:
@@ -85,18 +86,18 @@ class {{ class_name }}(BaseCrudImplementation):
         """
         print(f"🔄 {{ route.operation_id }} called with data: {json.dumps(data, indent=2)}")
         print(f"📦 Version: {version}")
-        
+
         # Extract parameters and delegate to CRUD method
         auth_info = data.get('auth')
 {%- if route.crud_mapping %}
         {{ route.crud_mapping.param_extraction }}
-        
+
         # Delegate to base CRUD method
         return self.{{ route.crud_mapping.crud_method }}
 {%- else %}
         # TODO: This operation doesn't map to standard CRUD - implement custom logic
         body = data.get('body', {})
-        
+
         response_data = {
             "message": "Not implemented yet",
             "operation": "{{ route.operation_id }}",
@@ -105,7 +106,7 @@ class {{ class_name }}(BaseCrudImplementation):
             "version": version,
             "received_data": data
         }
-        
+
         return response_data, {{ route.success_codes[0] if route.success_codes else '200' }}
 {%- endif %}
 

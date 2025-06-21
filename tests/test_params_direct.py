@@ -14,18 +14,18 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 class ParamsImplementation:
     """Implementation that echoes all received parameters."""
-    
+
     def get_item(self, data):
         """Echo back all parameters received."""
         return {"received": data, "item_id": data.get("item_id")}, 200
-    
+
     def search_items(self, data):
         """Search with query parameters."""
         return {
             "query": data.get("q", ""),
             "limit": data.get("limit", "10"),
             "offset": data.get("offset", "0"),
-            "all_params": data
+            "all_params": data,
         }, 200
 
 
@@ -44,39 +44,31 @@ def simple_spec():
                             "name": "item_id",
                             "in": "path",
                             "required": True,
-                            "schema": {"type": "string"}
+                            "schema": {"type": "string"},
                         }
                     ],
-                    "responses": {"200": {"description": "Success"}}
+                    "responses": {"200": {"description": "Success"}},
                 }
             },
             "/items": {
                 "get": {
                     "operationId": "search_items",
                     "parameters": [
-                        {
-                            "name": "q",
-                            "in": "query",
-                            "schema": {"type": "string"}
-                        },
-                        {
-                            "name": "limit",
-                            "in": "query",
-                            "schema": {"type": "integer"}
-                        },
+                        {"name": "q", "in": "query", "schema": {"type": "string"}},
+                        {"name": "limit", "in": "query", "schema": {"type": "integer"}},
                         {
                             "name": "offset",
                             "in": "query",
-                            "schema": {"type": "integer"}
-                        }
+                            "schema": {"type": "integer"},
+                        },
                     ],
-                    "responses": {"200": {"description": "Success"}}
+                    "responses": {"200": {"description": "Success"}},
                 }
-            }
-        }
+            },
+        },
     }
-    
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
         yaml.dump(spec, f)
         return Path(f.name)
 
@@ -86,22 +78,22 @@ def test_direct_components(simple_spec):
     # Create parser and load spec
     parser = OpenAPIParser(simple_spec)
     parser.load_spec()
-    
+
     # Create route generator
     implementation = ParamsImplementation()
     router_gen = RouteGenerator(implementation)
-    
+
     # Generate routes
     routes = router_gen.generate_routes(parser)
-    
+
     # Create FastAPI app and add routes
     app = FastAPI()
     for route in routes:
         app.routes.append(route)
-    
+
     # Test with client
     client = TestClient(app)
-    
+
     # Test path parameter
     response = client.get("/items/123")
     assert response.status_code == 200
@@ -109,7 +101,7 @@ def test_direct_components(simple_spec):
     print(f"Path param response: {data}")
     assert data["item_id"] == "123"
     assert data["received"]["item_id"] == "123"
-    
+
     # Test query parameters
     response = client.get("/items?q=test&limit=20&offset=5")
     assert response.status_code == 200

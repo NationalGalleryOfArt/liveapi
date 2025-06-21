@@ -9,17 +9,17 @@ import os
 
 class APIKeyAuth:
     """API Key authentication handler."""
-    
+
     def __init__(
         self,
         api_keys: Union[List[str], Dict[str, Any], str, None] = None,
         header_name: str = "X-API-Key",
         auto_error: bool = True,
-        env_var: str = "API_KEY"
+        env_var: str = "API_KEY",
     ):
         """
         Initialize API Key authentication.
-        
+
         Args:
             api_keys: Valid API keys. Can be:
                 - List of strings: ['key1', 'key2']
@@ -32,7 +32,7 @@ class APIKeyAuth:
         """
         self.auto_error = auto_error
         self.env_var = env_var
-        
+
         # Normalize api_keys to dict format
         if api_keys is None:
             # Try to get from environment variable
@@ -49,65 +49,69 @@ class APIKeyAuth:
             self.api_keys = api_keys
         else:
             raise ValueError("api_keys must be None, str, list, or dict")
-        
+
         # Create FastAPI security scheme
         self.header_scheme = APIKeyHeader(name=header_name, auto_error=False)
-    
+
     def __call__(self) -> Callable:
         """Return the dependency function for FastAPI."""
+
         async def dependency(
             api_key: Optional[str] = Depends(self.header_scheme),
         ) -> Optional[Dict[str, Any]]:
             """
             Validate API key from header.
-            
+
             Returns:
                 Dict with key metadata if valid, None if invalid and auto_error=False
-                
+
             Raises:
                 HTTPException: If key is invalid and auto_error=True
             """
-            
+
             if not api_key:
                 if self.auto_error:
-                    raise HTTPException(status_code=401, detail={
+                    raise HTTPException(
+                        status_code=401,
+                        detail={
+                            "type": "/errors/unauthorized",
+                            "title": "Unauthorized",
+                            "status": 401,
+                            "detail": "API key required",
+                        },
+                    )
+                return None
+
+            if api_key in self.api_keys:
+                return {"api_key": api_key, "metadata": self.api_keys[api_key]}
+
+            if self.auto_error:
+                raise HTTPException(
+                    status_code=401,
+                    detail={
                         "type": "/errors/unauthorized",
                         "title": "Unauthorized",
                         "status": 401,
-                        "detail": "API key required"
-                    })
-                return None
-            
-            if api_key in self.api_keys:
-                return {
-                    "api_key": api_key,
-                    "metadata": self.api_keys[api_key]
-                }
-            
-            if self.auto_error:
-                raise HTTPException(status_code=401, detail={
-                    "type": "/errors/unauthorized",
-                    "title": "Unauthorized", 
-                    "status": 401,
-                    "detail": "Invalid API key"
-                })
+                        "detail": "Invalid API key",
+                    },
+                )
             return None
-        
+
         return dependency
 
 
 class BearerTokenAuth:
     """Bearer token authentication handler."""
-    
+
     def __init__(
         self,
         tokens: Union[List[str], Dict[str, Any], str, None] = None,
         auto_error: bool = True,
-        env_var: str = "BEARER_TOKEN"
+        env_var: str = "BEARER_TOKEN",
     ):
         """
         Initialize Bearer token authentication.
-        
+
         Args:
             tokens: Valid bearer tokens. Can be:
                 - List of strings: ['token1', 'token2']
@@ -119,7 +123,7 @@ class BearerTokenAuth:
         """
         self.auto_error = auto_error
         self.env_var = env_var
-        
+
         # Normalize tokens to dict format
         if tokens is None:
             env_token = os.getenv(env_var)
@@ -135,65 +139,69 @@ class BearerTokenAuth:
             self.tokens = tokens
         else:
             raise ValueError("tokens must be None, str, list, or dict")
-        
+
         self.bearer_scheme = HTTPBearer(auto_error=False)
-    
+
     def __call__(self) -> Callable:
         """Return the dependency function for FastAPI."""
+
         async def dependency(
-            credentials: Optional[HTTPAuthorizationCredentials] = Depends(self.bearer_scheme)
+            credentials: Optional[HTTPAuthorizationCredentials] = Depends(
+                self.bearer_scheme
+            ),
         ) -> Optional[Dict[str, Any]]:
             """
             Validate bearer token.
-            
+
             Returns:
                 Dict with token metadata if valid, None if invalid and auto_error=False
-                
+
             Raises:
                 HTTPException: If token is invalid and auto_error=True
             """
             if not credentials:
                 if self.auto_error:
-                    raise HTTPException(status_code=401, detail={
+                    raise HTTPException(
+                        status_code=401,
+                        detail={
+                            "type": "/errors/unauthorized",
+                            "title": "Unauthorized",
+                            "status": 401,
+                            "detail": "Bearer token required",
+                        },
+                    )
+                return None
+
+            token = credentials.credentials
+
+            if token in self.tokens:
+                return {"token": token, "metadata": self.tokens[token]}
+
+            if self.auto_error:
+                raise HTTPException(
+                    status_code=401,
+                    detail={
                         "type": "/errors/unauthorized",
                         "title": "Unauthorized",
                         "status": 401,
-                        "detail": "Bearer token required"
-                    })
-                return None
-            
-            token = credentials.credentials
-            
-            if token in self.tokens:
-                return {
-                    "token": token,
-                    "metadata": self.tokens[token]
-                }
-            
-            if self.auto_error:
-                raise HTTPException(status_code=401, detail={
-                    "type": "/errors/unauthorized",
-                    "title": "Unauthorized",
-                    "status": 401,
-                    "detail": "Invalid bearer token"
-                })
+                        "detail": "Invalid bearer token",
+                    },
+                )
             return None
-        
+
         return dependency
 
 
 # Convenience functions for common auth patterns
 def create_api_key_auth(
-    api_keys: Union[List[str], Dict[str, Any], str, None] = None,
-    **kwargs
+    api_keys: Union[List[str], Dict[str, Any], str, None] = None, **kwargs
 ) -> APIKeyAuth:
     """Create API key authentication dependency."""
     return APIKeyAuth(api_keys=api_keys, **kwargs)
 
 
 def create_bearer_auth(
-    tokens: Union[List[str], Dict[str, Any], str, None] = None,
-    **kwargs
+    tokens: Union[List[str], Dict[str, Any], str, None] = None, **kwargs
 ) -> BearerTokenAuth:
     """Create Bearer token authentication dependency."""
     return BearerTokenAuth(tokens=tokens, **kwargs)

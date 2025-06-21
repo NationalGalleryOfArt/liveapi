@@ -686,12 +686,9 @@ automatic specifications/users_v2.yaml
 ## Examples
 
 Working examples are available in `examples/`:
-- `examples/convention-demo/` - Shows automatic multi-API discovery
 - `examples/versioning/` - Demonstrates version-aware API handling
 - `examples/exceptions/` - Exception handling patterns
 - `examples/auth/` - Authentication examples (API key and Bearer token)
-
-Note: Some examples may still use the old `api/` directory structure and will be updated to use `specifications/` in future releases.
 
 ## Base Classes Reference
 
