@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from .liveapi_parser import LiveAPIParser
 from .default_resource_service import DefaultResourceService
-from .exceptions import BusinessException
+from .exceptions import BusinessException, NotImplementedError
 
 # Auth removed - handled at API Gateway level
 
@@ -93,13 +93,13 @@ class LiveAPIRouter:
             version=parser.spec.get("info", {}).get("version", "1.0.0"),
         )
 
-        # Add custom exception handlers for RFC 7807 compliance
-        app.add_exception_handler(
-            RequestValidationError, create_rfc7807_validation_error_handler()
-        )
-        app.add_exception_handler(
-            BusinessException, create_business_exception_handler()
-        )
+        # The exception handlers are now added in app.py
+        # app.add_exception_handler(
+        #     RequestValidationError, create_rfc7807_validation_error_handler()
+        # )
+        # app.add_exception_handler(
+        #     BusinessException, create_business_exception_handler()
+        # )
 
         # Override OpenAPI schema to use correct validation error format
         def custom_openapi():
@@ -307,6 +307,12 @@ class LiveAPIRouter:
             )
             async def list_resources(limit: int = 100, offset: int = 0):
                 return await handlers.list(limit=limit, offset=offset)
+
+        # Example of a not implemented endpoint
+        if "create" in operations: # piggy-back on create operation to add this endpoint
+            @router.post(f"/{resource_name}/some_action")
+            async def some_action():
+                raise NotImplementedError("This feature is not yet implemented.")
 
         return router
 

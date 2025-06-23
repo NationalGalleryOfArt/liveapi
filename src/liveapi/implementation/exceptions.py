@@ -58,3 +58,17 @@ class ForbiddenError(BusinessException):
 
     status_code = 403
     error_type = "forbidden"
+
+
+class NotImplementedError(BusinessException):
+    """Functionality not implemented."""
+
+    status_code = 501
+    error_type = "not_implemented"
+
+
+class InternalServerError(BusinessException):
+    """An unexpected internal error occurred."""
+
+    status_code = 500
+    error_type = "internal_server_error"
