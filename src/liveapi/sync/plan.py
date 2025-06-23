@@ -124,7 +124,10 @@ def _analyze_spec_changes(
 
 
 def _find_missing_implementations(
-    specifications_dir: Path, implementations_dir: Path, version_manager, processed_specs: set = None
+    specifications_dir: Path,
+    implementations_dir: Path,
+    version_manager,
+    processed_specs: set = None,
 ) -> List[SyncItem]:
     """Find specifications that don't have implementations."""
     items = []

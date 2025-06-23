@@ -44,14 +44,18 @@ class InteractiveGenerator:
         if existing_info and "resource_description" in existing_info:
             print(f"Current: {existing_info['resource_description']}")
         resource_description = input("> ").strip()
-        if not resource_description and existing_info and "resource_description" in existing_info:
+        if (
+            not resource_description
+            and existing_info
+            and "resource_description" in existing_info
+        ):
             resource_description = existing_info["resource_description"]
         elif not resource_description:
             resource_description = f"A {resource_name} resource"
 
         # Auto-infer API name from resource name (capitalize and add 'API')
         default_api_name = f"{resource_name.capitalize()} API"
-        
+
         # Get API name (with smart default)
         print(f"\nAPI name (default: {default_api_name}):")
         if existing_info and "name" in existing_info:
@@ -64,7 +68,7 @@ class InteractiveGenerator:
 
         # Auto-infer API description from resource description
         default_description = resource_description
-        
+
         # Get API description (with smart default)
         print(f"\nAPI description (default: {default_description}):")
         if existing_info and "description" in existing_info:
@@ -79,7 +83,7 @@ class InteractiveGenerator:
         project_name = re.sub(r"[^a-zA-Z0-9]+", "_", resource_name.lower()).strip("_")
         if existing_info and "project_name" in existing_info:
             project_name = existing_info["project_name"]
-        
+
         # Try to get base URL from existing project config first
         base_url = "https://api.example.com"  # default fallback
         if existing_info and "base_url" in existing_info:
@@ -88,6 +92,7 @@ class InteractiveGenerator:
             # Check if we're in an initialized project and get base URL from config
             try:
                 from ..metadata_manager import MetadataManager
+
                 metadata_manager = MetadataManager()
                 config = metadata_manager.load_config()
                 if config.api_base_url:
@@ -134,11 +139,11 @@ class InteractiveGenerator:
         print(f"\nProvide 2-3 example {resource_name} records as a JSON array:")
         print("Example format:")
         print("[")
-        print("  {\"name\": \"Example 1\", \"description\": \"First example\"},")
-        print("  {\"name\": \"Example 2\", \"description\": \"Second example\"}")
+        print('  {"name": "Example 1", "description": "First example"},')
+        print('  {"name": "Example 2", "description": "Second example"}')
         print("]")
         print("\nPaste your JSON array (press Enter twice when done):")
-        
+
         example_lines = []
         empty_count = 0
 
@@ -151,7 +156,7 @@ class InteractiveGenerator:
                 example_lines.append(line)
 
         examples_json = "\n".join(example_lines).strip()
-        
+
         try:
             examples = json.loads(examples_json)
             if not isinstance(examples, list):
@@ -166,11 +171,11 @@ class InteractiveGenerator:
             if "name" in resource_schema:
                 examples = [
                     {"name": f"Example {resource_name} 1"},
-                    {"name": f"Example {resource_name} 2"}
+                    {"name": f"Example {resource_name} 2"},
                 ]
             else:
                 examples = [{}, {}]
-        
+
         # Merge fields from examples into schema to ensure consistency
         # Only do this if the user provided a valid schema (not the default fallback)
         if examples and schema_was_valid:
@@ -187,8 +192,10 @@ class InteractiveGenerator:
                             resource_schema[field_name] = "number"
                         else:
                             resource_schema[field_name] = "string"
-                        print(f"📝 Added field '{field_name}' ({resource_schema[field_name]}) from examples")
-            
+                        print(
+                            f"📝 Added field '{field_name}' ({resource_schema[field_name]}) from examples"
+                        )
+
         # Always normalize examples to use 'id' instead of resource-specific id fields
         if examples:
             normalized_examples = []
@@ -196,8 +203,11 @@ class InteractiveGenerator:
                 normalized_example = {}
                 for field_name, field_value in example.items():
                     # Convert resource_id variations to 'id'
-                    if field_name.endswith('_id') and field_name == f"{resource_name[:-1]}_id":
-                        normalized_example['id'] = field_value
+                    if (
+                        field_name.endswith("_id")
+                        and field_name == f"{resource_name[:-1]}_id"
+                    ):
+                        normalized_example["id"] = field_value
                         print(f"🔄 Normalized '{field_name}' to 'id' in examples")
                     else:
                         normalized_example[field_name] = field_value
@@ -245,7 +255,7 @@ class InteractiveGenerator:
             "api_info": api_info,
             "metadata": {
                 "created_at": datetime.datetime.now().isoformat(),
-                "model": self.spec_generator.model,
+                "model": "structured-generator",
                 "generated_spec_title": spec.get("info", {}).get("title", "Unknown"),
                 "generated_spec_version": spec.get("info", {}).get("version", "1.0.0"),
             },
@@ -372,7 +382,6 @@ class InteractiveGenerator:
             api_info = self.collect_api_info()
 
         print("\n✨ Generating your OpenAPI specification...")
-        print(f"Using model: {self.spec_generator.model}")
         print("Features: RFC7807 errors, <200ms response time SLA")
 
         # Generate the spec

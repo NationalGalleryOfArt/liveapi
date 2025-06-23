@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance when working with code in this repository.
 
 ## Project Overview
 
@@ -85,7 +85,7 @@ liveapi/
 - **ChangeDetector** (`change_detector/` package): Detects and analyzes breaking vs non-breaking changes  
 - **VersionManager** (`version/` package): Handles immutable semantic versioning
 - **SyncManager** (`sync/` package): Synchronizes implementations with specification changes
-- **SpecGenerator** (`generator/` package): Generates OpenAPI specifications with AI assistance
+- **SpecGenerator** (`generator/` package): Generates OpenAPI specifications using structured templates
 - **CLI Interface** (`cli/` package): Provides command-line interface for all LiveAPI operations
 - **Implementation** (`implementation/` package): Handles implementation generation from OpenAPI specs
 
@@ -261,9 +261,8 @@ liveapi sync --force         # Skip confirmations
 pip install -e .
 ```
 
-2. No API key required! Authentication is handled at the API Gateway level:
+2. No setup required - just run the generator:
 ```bash
-# Just run the generator directly
 liveapi generate
 ```
 

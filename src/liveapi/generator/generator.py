@@ -6,40 +6,17 @@ from typing import Dict, Any, Optional, Tuple, List
 from pathlib import Path
 import re
 
-from .prompt import PromptBuilder
 from .interactive import InteractiveGenerator
 
 
 class SpecGenerator:
-    """Generate OpenAPI specifications using LLMs via OpenRouter."""
+    """Generate OpenAPI specifications using structured templates."""
 
-    def __init__(self, model: Optional[str] = None, api_key: Optional[str] = None):
-        """Initialize the spec generator.
-
-        Args:
-            model: Model identifier (for compatibility, not used)
-            api_key: API key (for compatibility, not used)
-        """
-        self.model = "structured-generator"
-        self.api_key = "not-required"
-
-        # Initialize prompt builder
-        self.prompt_builder = PromptBuilder()
+    def __init__(self):
+        """Initialize the spec generator."""
 
         # Initialize interactive generator
         self.interactive = InteractiveGenerator(self)
-
-    def _build_prompt(self, api_info: Dict[str, Any]) -> str:
-        """Build prompt for LLM based on API information (compatibility method).
-
-        Args:
-            api_info: Dictionary containing API details
-
-        Returns:
-            Formatted prompt string
-        """
-        return self.prompt_builder.build_prompt(api_info)
-
 
     def _extract_resource_name(self, endpoint_descriptions: str) -> str:
         """Extract resource name from endpoint descriptions for CRUD APIs.
@@ -139,9 +116,11 @@ class SpecGenerator:
         # Check if this is a CRUD API (from the new interactive flow)
         if api_info.get("is_crud", False):
             resource_name = api_info.get("resource_name", "resources")
-            resource_schema = api_info.get("resource_schema", {}).copy()  # Make a copy to avoid modifying original
+            resource_schema = api_info.get(
+                "resource_schema", {}
+            ).copy()  # Make a copy to avoid modifying original
             examples = api_info.get("examples", [])
-            
+
             # Merge fields from examples into schema to ensure consistency
             if examples:
                 # First pass: add missing fields from examples to schema
@@ -157,15 +136,18 @@ class SpecGenerator:
                                 resource_schema[field_name] = "number"
                             else:
                                 resource_schema[field_name] = "string"
-                
+
                 # Second pass: normalize examples to use 'id' instead of resource-specific id fields
                 normalized_examples = []
                 for example in examples:
                     normalized_example = {}
                     for field_name, field_value in example.items():
                         # Convert resource_id variations to 'id'
-                        if field_name.endswith('_id') and field_name == f"{resource_name[:-1]}_id":
-                            normalized_example['id'] = field_value
+                        if (
+                            field_name.endswith("_id")
+                            and field_name == f"{resource_name[:-1]}_id"
+                        ):
+                            normalized_example["id"] = field_value
                         else:
                             normalized_example[field_name] = field_value
                     normalized_examples.append(normalized_example)
@@ -187,7 +169,7 @@ class SpecGenerator:
 
             # Add standard fields if not present
             if "id" not in resource_object["fields"]:
-                resource_object["fields"]["id"] = "integer"
+                resource_object["fields"]["id"] = "string"
             if "created_at" not in resource_object["fields"]:
                 resource_object["fields"]["created_at"] = "string"
             if "updated_at" not in resource_object["fields"]:
@@ -198,7 +180,10 @@ class SpecGenerator:
 
             # Build the complete spec
             spec = self._build_spec_from_structured_data(
-                structured_data, api_info.get("name"), api_info.get("description"), examples
+                structured_data,
+                api_info.get("name"),
+                api_info.get("description"),
+                examples,
             )
 
             final_spec = self._add_server_environments(spec, api_info.get("base_url"))
@@ -223,7 +208,7 @@ class SpecGenerator:
                     {
                         "name": singular_name.capitalize(),
                         "fields": {
-                            "id": "integer",
+                            "id": "string",
                             "name": "string",
                             "created_at": "string",
                             "updated_at": "string",
@@ -234,7 +219,10 @@ class SpecGenerator:
 
             # Build the complete spec
             spec = self._build_spec_from_structured_data(
-                structured_data, api_info.get("name"), api_info.get("description"), api_info.get("examples")
+                structured_data,
+                api_info.get("name"),
+                api_info.get("description"),
+                api_info.get("examples"),
             )
 
             final_spec = self._add_server_environments(spec, api_info.get("base_url"))
@@ -270,17 +258,15 @@ class SpecGenerator:
         # Create parameter definitions for each path parameter
         parameters = []
         for param_name in param_matches:
-            # Use integer type for 'id' parameters, string for others
-            param_type = "integer" if param_name == "id" else "string"
-            
+            # Use string type for all parameters (including id for UUID support)
+            param_type = "string"
+
             parameters.append(
                 {
                     "name": param_name,
                     "in": "path",
                     "required": True,
-                    "schema": {
-                        "type": param_type
-                    },
+                    "schema": {"type": param_type},
                     "description": f"{param_name} parameter",
                 }
             )
@@ -288,7 +274,11 @@ class SpecGenerator:
         return parameters
 
     def _build_spec_from_structured_data(
-        self, llm_response: Dict[str, Any], name: str = None, description: str = None, examples: List[Dict[str, Any]] = None
+        self,
+        llm_response: Dict[str, Any],
+        name: str = None,
+        description: str = None,
+        examples: List[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Build complete OpenAPI spec from structured endpoint/object data.
 
@@ -319,7 +309,7 @@ class SpecGenerator:
             # Build response schema based on returns description and resource name
             returns = endpoint.get("returns", "object")
             operation_id = endpoint.get("operationId", "")
-            
+
             if "array" in returns.lower():
                 # Simple array response for all array operations (no pagination)
                 if resource_name:
@@ -467,12 +457,12 @@ class SpecGenerator:
                 "properties": properties,
                 "required": required,
             }
-            
+
             # Add examples if provided
             if examples and len(examples) > 0:
                 # Use the first example as the main example
                 schema_def["example"] = examples[0]
-            
+
             schemas[obj["name"]] = schema_def
 
         # Add standard Error schema (RFC 7807)
@@ -486,7 +476,7 @@ class SpecGenerator:
             },
             "required": ["type", "title", "status", "detail"],
         }
-        
+
         # Add RFC 7807 ValidationError schema
         schemas["ValidationError"] = {
             "type": "object",
@@ -501,22 +491,38 @@ class SpecGenerator:
                             "status": {"type": "string"},
                             "source": {
                                 "type": "object",
-                                "properties": {
-                                    "pointer": {"type": "string"}
-                                }
-                            }
+                                "properties": {"pointer": {"type": "string"}},
+                            },
                         },
-                        "required": ["title", "detail", "status"]
-                    }
+                        "required": ["title", "detail", "status"],
+                    },
                 }
             },
-            "required": ["errors"]
+            "required": ["errors"],
         }
 
-        # Use our template with the built paths and schemas
-        return self.prompt_builder.build_spec_from_template(
-            {"paths": paths, "schemas": schemas}, name, description
-        )
+        # Build the complete OpenAPI spec
+        spec = {
+            "openapi": "3.0.3",
+            "info": {
+                "title": name or "API",
+                "description": description or "",
+                "version": "1.0.0",
+            },
+            "servers": [
+                {"url": "http://localhost:8000", "description": "Development server"},
+                {"url": "https://test-api.example.com", "description": "Test server"},
+                {
+                    "url": "https://staging-api.example.com",
+                    "description": "Staging server",
+                },
+                {"url": "https://api.example.com", "description": "Production server"},
+            ],
+            "paths": paths,
+            "components": {"schemas": schemas},
+        }
+
+        return spec
 
     def _resolve_schema_refs(self, schema: Any, schemas_list: list) -> Any:
         """Resolve $ref references with inline schemas.
@@ -554,7 +560,9 @@ class SpecGenerator:
         else:
             return schema
 
-    def _add_server_environments(self, spec: Dict[str, Any], base_url: str = None) -> Dict[str, Any]:
+    def _add_server_environments(
+        self, spec: Dict[str, Any], base_url: str = None
+    ) -> Dict[str, Any]:
         """Add multiple server environments to the OpenAPI spec.
 
         Args:
@@ -569,21 +577,51 @@ class SpecGenerator:
             servers = [
                 {"url": "http://localhost:8000", "description": "Development server"}
             ]
-            
+
             # Clean base_url if it includes protocol
             clean_base_url = base_url.replace("https://", "").replace("http://", "")
-            
-            servers.extend([
-                {"url": f"https://test-{clean_base_url}", "description": "Test server"},
-                {"url": f"https://staging-{clean_base_url}", "description": "Staging server"},
-                {"url": f"https://{clean_base_url}", "description": "Production server"},
-            ])
-            
+
+            servers.extend(
+                [
+                    {
+                        "url": f"https://test-{clean_base_url}",
+                        "description": "Test server",
+                    },
+                    {
+                        "url": f"https://staging-{clean_base_url}",
+                        "description": "Staging server",
+                    },
+                    {
+                        "url": f"https://{clean_base_url}",
+                        "description": "Production server",
+                    },
+                ]
+            )
+
             spec["servers"] = servers
             return spec
         else:
-            # Fall back to the original method
-            return self.prompt_builder.add_server_environments(spec)
+            # Fall back to default servers if already not set
+            if "servers" not in spec:
+                spec["servers"] = [
+                    {
+                        "url": "http://localhost:8000",
+                        "description": "Development server",
+                    },
+                    {
+                        "url": "https://test-api.example.com",
+                        "description": "Test server",
+                    },
+                    {
+                        "url": "https://staging-api.example.com",
+                        "description": "Staging server",
+                    },
+                    {
+                        "url": "https://api.example.com",
+                        "description": "Production server",
+                    },
+                ]
+            return spec
 
     def interactive_generate(self, prompt_file: Optional[str] = None) -> Dict[str, Any]:
         """Interactively prompt user for API details and generate spec.

@@ -38,7 +38,6 @@ class TestCLIRegenerate:
                 self.prompt_file = "nonexistent.json"
                 self.output = None
                 self.format = "yaml"
-                self.model = None
 
         args = Args()
         # Test with missing file
@@ -64,7 +63,6 @@ class TestCLIRegenerate:
                 self.prompt_file = "nonexistent.json"
                 self.output = None
                 self.format = "yaml"
-                self.model = None
 
         args = Args()
         with pytest.raises(SystemExit):
@@ -123,14 +121,13 @@ class TestCLIRegenerate:
                 self.prompt_file = str(prompt_file)
                 self.output = None
                 self.format = "yaml"
-                self.model = None
 
         args = Args()
 
         cmd_regenerate(args)
 
         # Verify the generator was called correctly
-        mock_spec_generator.assert_called_once_with(model=None)
+        mock_spec_generator.assert_called_once_with()
         mock_generator_instance.interactive_generate.assert_called_once_with(
             prompt_file=str(prompt_file)
         )
@@ -169,53 +166,18 @@ class TestCLIRegenerate:
                 self.prompt_file = str(prompt_file)
                 self.output = "custom_output.json"
                 self.format = "json"
-                self.model = "custom/model"
 
         args = Args()
         cmd_regenerate(args)
 
-        # Verify custom parameters were used
-        mock_spec_generator.assert_called_once_with(model="custom/model")
+        # Verify the generator was called correctly
+        mock_spec_generator.assert_called_once_with()
 
         # Verify save_spec was called with custom output
         mock_generator_instance.save_spec.assert_called_once()
         call_args = mock_generator_instance.save_spec.call_args
         assert call_args[0][1] == "custom_output.json"  # output path
         assert call_args[0][2] == "json"  # format
-
-    # This test is no longer needed as we don't require API keys anymore
-    def test_regenerate_with_model_parameter(self, capsys):
-        """Test regenerate command with model parameter."""
-        # Create a valid prompt file
-        prompt_file = self.prompts_dir / "test_prompt.json"
-        with open(prompt_file, "w") as f:
-            json.dump({"api_info": {"name": "test"}}, f)
-
-        class Args:
-            def __init__(self):
-                self.prompt_file = str(prompt_file)
-                self.output = None
-                self.format = "yaml"
-                self.model = "custom-model"
-
-        args = Args()
-
-        with patch(
-            "liveapi.cli.commands.generate.SpecGenerator"
-        ) as mock_spec_generator:
-            mock_generator_instance = MagicMock()
-            mock_spec_generator.return_value = mock_generator_instance
-            mock_generator_instance.interactive_generate.return_value = {
-                "info": {"title": "Test API"}
-            }
-            mock_generator_instance.save_spec.return_value = (
-                "specifications/test_api.yaml"
-            )
-
-            cmd_regenerate(args)
-
-            # Verify the model parameter was passed
-            mock_spec_generator.assert_called_once_with(model="custom-model")
 
     @patch("liveapi.cli.commands.generate.SpecGenerator")
     def test_regenerate_generation_failure(self, mock_spec_generator, capsys):
@@ -237,7 +199,6 @@ class TestCLIRegenerate:
                 self.prompt_file = str(prompt_file)
                 self.output = None
                 self.format = "yaml"
-                self.model = None
 
         args = Args()
 

@@ -7,38 +7,58 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
 from .liveapi_parser import LiveAPIParser
 from .crud_handlers import CRUDHandlers
+from .exceptions import BusinessException
+
 # Auth removed - handled at API Gateway level
+
+
+def create_business_exception_handler():
+    """Create a handler for business exceptions that returns RFC 7807 format."""
+
+    async def business_exception_handler(request: Request, exc: BusinessException):
+        """Convert business exceptions to RFC 7807 format."""
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=exc.to_response(),
+            headers={"Content-Type": "application/problem+json"},
+        )
+
+    return business_exception_handler
 
 
 def create_rfc7807_validation_error_handler():
     """Create a custom validation error handler that returns RFC 7807 format."""
-    
-    async def validation_exception_handler(request: Request, exc: RequestValidationError):
+
+    async def validation_exception_handler(
+        request: Request, exc: RequestValidationError
+    ):
         """Convert FastAPI validation errors to RFC 7807 format."""
         errors = []
-        
+
         for error in exc.errors():
             # Extract location information
             loc = error.get("loc", [])
             field_path = "/".join(str(item) for item in loc if item != "body")
-            
+
             # Create RFC 7807 compliant error
             rfc_error = {
                 "title": "Unprocessable Entity",
                 "detail": error.get("msg", "Validation error"),
                 "status": "422",
                 "source": {
-                    "pointer": f"/data/attributes/{field_path}" if field_path else "/data"
-                }
+                    "pointer": (
+                        f"/data/attributes/{field_path}" if field_path else "/data"
+                    )
+                },
             }
             errors.append(rfc_error)
-        
+
         return JSONResponse(
             status_code=422,
             content={"errors": errors},
-            headers={"Content-Type": "application/problem+json"}
+            headers={"Content-Type": "application/problem+json"},
         )
-    
+
     return validation_exception_handler
 
 
@@ -72,18 +92,23 @@ class LiveAPIRouter:
             description=parser.spec.get("info", {}).get("description", ""),
             version=parser.spec.get("info", {}).get("version", "1.0.0"),
         )
-        
-        # Add custom validation error handler for RFC 7807 compliance
-        app.add_exception_handler(RequestValidationError, create_rfc7807_validation_error_handler())
-        
+
+        # Add custom exception handlers for RFC 7807 compliance
+        app.add_exception_handler(
+            RequestValidationError, create_rfc7807_validation_error_handler()
+        )
+        app.add_exception_handler(
+            BusinessException, create_business_exception_handler()
+        )
+
         # Override OpenAPI schema to use correct validation error format
         def custom_openapi():
             if app.openapi_schema:
                 return app.openapi_schema
-            
+
             # Import get_openapi to avoid recursion
             from fastapi.openapi.utils import get_openapi
-            
+
             # Get the default OpenAPI schema using FastAPI's function directly
             openapi_schema = get_openapi(
                 title=app.title,
@@ -91,13 +116,13 @@ class LiveAPIRouter:
                 description=app.description,
                 routes=app.routes,
             )
-            
+
             # Add our custom ValidationError schema
             if "components" not in openapi_schema:
                 openapi_schema["components"] = {}
             if "schemas" not in openapi_schema["components"]:
                 openapi_schema["components"]["schemas"] = {}
-            
+
             # Replace the default ValidationError with our RFC 7807 format
             openapi_schema["components"]["schemas"]["ValidationError"] = {
                 "type": "object",
@@ -112,18 +137,16 @@ class LiveAPIRouter:
                                 "status": {"type": "string"},
                                 "source": {
                                     "type": "object",
-                                    "properties": {
-                                        "pointer": {"type": "string"}
-                                    }
-                                }
+                                    "properties": {"pointer": {"type": "string"}},
+                                },
                             },
-                            "required": ["title", "detail", "status"]
-                        }
+                            "required": ["title", "detail", "status"],
+                        },
                     }
                 },
-                "required": ["errors"]
+                "required": ["errors"],
             }
-            
+
             # Override 422 responses to use our ValidationError schema
             for path_item in openapi_schema.get("paths", {}).values():
                 for operation in path_item.values():
@@ -133,14 +156,16 @@ class LiveAPIRouter:
                                 "description": "Validation Error",
                                 "content": {
                                     "application/problem+json": {
-                                        "schema": {"$ref": "#/components/schemas/ValidationError"}
+                                        "schema": {
+                                            "$ref": "#/components/schemas/ValidationError"
+                                        }
                                     }
-                                }
+                                },
                             }
-            
+
             app.openapi_schema = openapi_schema
             return app.openapi_schema
-        
+
         app.openapi = custom_openapi
 
         # Identify CRUD resources
@@ -219,7 +244,7 @@ class LiveAPIRouter:
                 response_model=model,
                 operation_id=op.get("operationId", f"get_{resource_name}"),
             )
-            async def read_resource(id: int):
+            async def read_resource(id: str):
                 return await handlers.read(id)
 
         # Update (PUT)
@@ -233,10 +258,8 @@ class LiveAPIRouter:
                 response_model=model,
                 operation_id=op.get("operationId", f"update_{resource_name}"),
             )
-            async def update_resource(id: int, data: model):
-                return await handlers.update(
-                    id, data.model_dump(), partial=False
-                )
+            async def update_resource(id: str, data: model):
+                return await handlers.update(id, data.model_dump(), partial=False)
 
         # Update (PATCH)
         if "update_partial" in operations:
@@ -249,7 +272,7 @@ class LiveAPIRouter:
                 response_model=model,
                 operation_id=op.get("operationId", f"patch_{resource_name}"),
             )
-            async def patch_resource(id: int, data: Dict[str, Any]):
+            async def patch_resource(id: str, data: Dict[str, Any]):
                 return await handlers.update(id, data, partial=True)
 
         # Delete
@@ -263,7 +286,7 @@ class LiveAPIRouter:
                 status_code=204,
                 operation_id=op.get("operationId", f"delete_{resource_name}"),
             )
-            async def delete_resource(id: int):
+            async def delete_resource(id: str):
                 await handlers.delete(id)
                 return None
 

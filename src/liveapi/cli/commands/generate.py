@@ -12,7 +12,7 @@ def cmd_generate(args):
     """Generate OpenAPI specification."""
     try:
         # Initialize generator
-        generator = SpecGenerator(model=args.model)
+        generator = SpecGenerator()
 
         # Generate interactively
         spec = generator.interactive_generate()
@@ -99,7 +99,7 @@ def cmd_regenerate(args):
 
     try:
         # Initialize generator
-        generator = SpecGenerator(model=args.model)
+        generator = SpecGenerator()
 
         # Generate using saved prompt
         spec = generator.interactive_generate(prompt_file=str(prompt_file))

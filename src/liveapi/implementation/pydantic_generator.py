@@ -65,15 +65,11 @@ class PydanticGenerator:
 
         # Create the model
         model = create_model(model_name, __base__=BaseModel, **field_definitions)
-        
+
         # Add example to the model if it exists in the schema
         if "example" in schema:
             # Create a Config class with the example (Pydantic v2 syntax)
-            config_attrs = {
-                "json_schema_extra": {
-                    "example": schema["example"]
-                }
-            }
+            config_attrs = {"json_schema_extra": {"example": schema["example"]}}
             # Add Config to model
             model.model_config = config_attrs
 

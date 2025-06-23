@@ -5,6 +5,44 @@ All notable changes to the LiveAPI project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2025-06-23
+
+### 🏗️ Implementation Generation Overhaul - Database-Ready Service Classes
+
+#### Added
+- **Database-Ready Implementation Generation**: `liveapi sync` now generates customizable service classes by default
+- **CRUD Method Overrides**: Individual async methods (`create_resource`, `get_resource`, `list_resources`, `update_resource`, `delete_resource`) for database integration
+- **Database Integration Points**: Clear TODOs and examples for connecting PostgreSQL, MongoDB, or any database
+- **Business Logic Hooks**: Built-in spots for validation, logging, caching, and event publishing
+- **Professional Error Handling**: RFC 7807 compliant error responses with proper exception handling examples
+- **Auto-Discovery Main App**: Generated `main.py` automatically loads and mounts custom service implementations
+- **Dual Mode Support**: `--crud` flag available for legacy dynamic CRUD+ behavior
+
+#### Changed
+- **Default Sync Behavior**: `liveapi sync` now generates `implementations/` directory with service classes
+- **Project Structure**: Added `implementations/` directory to standard project layout
+- **Service Architecture**: Moved from pure dynamic handlers to customizable class-based approach
+- **Error Handling**: Enhanced with ValidationError, ConflictError, and HTTPException examples
+- **Documentation**: Updated README, ARCHITECTURE, and examples to reflect new approach
+
+#### Technical Details
+- Modified `src/liveapi/sync/executor.py` to generate implementation files by default
+- Added comprehensive error handling examples in generated service classes
+- Updated CLI help text and argument handling for new `--crud` flag
+- Enhanced documentation with database integration examples
+- Maintained backward compatibility with existing CRUD+ infrastructure
+
+#### Migration
+- Existing projects: Run `liveapi sync` to generate new implementation files
+- Legacy behavior: Use `liveapi sync --crud` for old dynamic mode
+- No breaking changes to existing functionality
+
+### Benefits
+- **Production Ready**: Generated code ready for real database connections
+- **Clear Extension Points**: Obvious places to add business logic and database calls
+- **Professional Error Handling**: Industry-standard error responses and exception management
+- **Maintainable Architecture**: Service classes that can be version controlled and customized
+
 ## [0.5.0] - 2025-06-23
 
 ### 🎨 Major UX Improvements - Interactive Workflow Overhaul

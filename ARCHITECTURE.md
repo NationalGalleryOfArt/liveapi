@@ -26,8 +26,8 @@ graph TB
     end
     
     subgraph "Synchronization Layer"
-        SYNC[SyncManager<br/>- Prepares project for runtime<br/>- Creates main.py]
-        IMPLEMENTATION[Implementation Engine<br/>- Dynamic CRUD+ handlers<br/>- Pydantic model generation<br/>- Real-time API server]
+        SYNC[SyncManager<br/>- Generates implementation files<br/>- Creates main.py<br/>- Database integration ready]
+        IMPLEMENTATION[Implementation Engine<br/>- Customizable service classes<br/>- CRUD method overrides<br/>- Dynamic CRUD+ foundation]
     end
     
     subgraph "Specification Generation Layer"
@@ -143,17 +143,20 @@ graph TB
 - **Storage**: `specifications/` directory with versioned files and `latest/` symlinks
 
 ### SyncManager (`sync/` package)
-- **Purpose**: Prepare the project to be run by the dynamic implementation engine.
+- **Purpose**: Generate customizable implementation files and prepare project for production
 - **Key Components**:
   - `manager.py`: Main SyncManager class
   - `plan.py`: SyncPlan and planning logic
-  - `executor.py`: Implementation of sync actions
-  - `crud_sync.py`: Logic for creating `main.py`
+  - `executor.py`: Implementation file generation (scaffold mode)
+  - `crud_sync.py`: Dynamic CRUD+ mode (legacy)
 - **Key Features**:
-  - Creates a `main.py` file that uses the `liveapi.implementation` engine to serve the APIs.
-  - Handles both single and multiple API specifications.
-  - No longer generates implementation code.
-- **Integration**: Prepares the project for the `liveapi.implementation` engine.
+  - **Default Mode**: Generates customizable service classes in `implementations/` directory
+  - **Database Integration**: CRUD method overrides with clear database integration points
+  - **Business Logic Hooks**: Built-in spots for validation, logging, caching, events
+  - **Error Handling**: RFC 7807 compliant error responses with proper exception handling
+  - **Auto-discovery**: Creates main.py that auto-loads custom service implementations
+  - **Fallback Mode**: `--crud` flag for legacy dynamic CRUD+ behavior
+- **Integration**: Generates production-ready implementation files while maintaining LiveAPI infrastructure
 
 ### SpecGenerator (`generator/` package)
 - **Purpose**: Generate OpenAPI specifications with streamlined interactive workflow
@@ -220,7 +223,7 @@ sequenceDiagram
     CLI->>Sync: Analyze sync requirements
     Sync->>Change: Get change analysis
     Sync->>Sync: Plan sync actions
-    Sync->>Sync: Generate/update implementations
+    Sync->>Sync: Generate implementation files with database hooks
     Sync->>Sync: Create backups & migration guides
     Sync->>CLI: Sync complete
     
@@ -298,7 +301,10 @@ liveapi/
 │   ├── prompts/                  # Saved prompts and schemas
 │   └── backups/                  # Implementation backups
 ├── specifications/               # Versioned OpenAPI specs
-├── main.py                      # Dynamically runs the API
+├── implementations/             # Generated service classes (NEW!)
+│   ├── users_service.py         # Database-ready CRUD implementations
+│   └── products_service.py      # Customizable business logic
+├── main.py                      # Auto-loads custom implementations
 ├── tests/
 └── pyproject.toml
 ```
@@ -322,7 +328,9 @@ liveapi/
 
 ### Development Workflow
 - **Specification-First**: Start with OpenAPI spec design
-- **Dynamic Implementation**: APIs are served dynamically from the spec.
+- **Implementation Generation**: Generate customizable service classes with database hooks
+- **Database Integration**: Clear CRUD method overrides for production database connections
+- **Business Logic Extension**: Built-in hooks for validation, logging, caching, events
 - **Change Management**: Track changes and manage versions seamlessly
 - **Preview Mode**: Safe operations with --preview flag
 
@@ -352,7 +360,8 @@ liveapi/
 - `liveapi version create` - Create new immutable version
 - `liveapi version list` - List all versions
 - `liveapi version compare` - Compare version differences
-- `liveapi sync` - Synchronize implementations with specs
+- `liveapi sync` - Generate customizable implementation files (default)
+- `liveapi sync --crud` - Use dynamic CRUD+ mode (legacy)
 - `liveapi run` - Start development server
 
 ### Workflow Example

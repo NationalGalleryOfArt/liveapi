@@ -20,7 +20,7 @@ test-verbose:
 	python -m pytest tests/ -vv
 
 coverage:
-	python -m pytest tests/ --cov=src/automatic --cov=src/postomatic --cov-report=html --cov-report=term-missing
+	python -m pytest tests/ --cov=src/liveapi --cov-report=html --cov-report=term-missing
 
 install:
 	pip install -e .

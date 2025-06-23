@@ -18,13 +18,13 @@ class TestInteractiveMode:
         # Create a temporary directory for the test
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
-            
+
             # Create mock .liveapi directory
             liveapi_dir = temp_path / ".liveapi"
             liveapi_dir.mkdir()
             prompts_dir = liveapi_dir / "prompts"
             prompts_dir.mkdir()
-            
+
             # Mock user inputs for the simplified workflow
             user_inputs = [
                 "products",  # object name (now first)
@@ -40,15 +40,15 @@ class TestInteractiveMode:
                 "",  # first empty line
                 "",  # second empty line to end examples
             ]
-            
-            with patch('builtins.input', side_effect=user_inputs):
+
+            with patch("builtins.input", side_effect=user_inputs):
                 # Create spec generator and interactive generator
                 spec_generator = SpecGenerator()
                 interactive_gen = InteractiveGenerator(spec_generator)
-                
+
                 # Collect API info using the simplified workflow
                 api_info = interactive_gen.collect_api_info()
-                
+
                 # Verify the collected information
                 expected_api_info = {
                     "name": "Product Catalog API",
@@ -60,33 +60,33 @@ class TestInteractiveMode:
                     "resource_description": "Product inventory items",
                     "resource_schema": {
                         "name": "string",
-                        "price": "number", 
+                        "price": "number",
                         "category": "string",
-                        "inStock": "boolean"
+                        "inStock": "boolean",
                     },
                     "examples": [
                         {
                             "name": "Gaming Laptop",
                             "price": 1299.99,
                             "category": "Electronics",
-                            "inStock": True
+                            "inStock": True,
                         },
                         {
-                            "name": "Office Chair", 
+                            "name": "Office Chair",
                             "price": 249.99,
                             "category": "Furniture",
-                            "inStock": False
-                        }
-                    ]
+                            "inStock": False,
+                        },
+                    ],
                 }
-                
+
                 assert api_info == expected_api_info
 
     def test_api_info_validation(self):
         """Test that API info contains all required fields."""
         spec_generator = SpecGenerator()
         interactive_gen = InteractiveGenerator(spec_generator)
-        
+
         # Mock minimal inputs (new workflow order)
         user_inputs = [
             "items",  # object name (now first)
@@ -100,23 +100,29 @@ class TestInteractiveMode:
             "",  # first empty line
             "",  # second empty line
         ]
-        
-        with patch('builtins.input', side_effect=user_inputs):
+
+        with patch("builtins.input", side_effect=user_inputs):
             api_info = interactive_gen.collect_api_info()
-            
+
             # Check all required fields are present
             required_fields = [
-                "name", "description", "project_name", "base_url", 
-                "is_crud", "resource_name", "resource_description",
-                "resource_schema", "examples"
+                "name",
+                "description",
+                "project_name",
+                "base_url",
+                "is_crud",
+                "resource_name",
+                "resource_description",
+                "resource_schema",
+                "examples",
             ]
-            
+
             for field in required_fields:
                 assert field in api_info, f"Missing required field: {field}"
-            
+
             # Check CRUD is always True in simplified mode
             assert api_info["is_crud"] is True
-            
+
             # Check examples are properly parsed
             assert len(api_info["examples"]) == 2
             assert api_info["examples"][0]["name"] == "Item 1"
@@ -126,7 +132,7 @@ class TestInteractiveMode:
         """Test that default values are applied when user provides empty input."""
         spec_generator = SpecGenerator()
         interactive_gen = InteractiveGenerator(spec_generator)
-        
+
         # Mock empty inputs to test defaults (new workflow order)
         user_inputs = [
             "",  # Empty object name -> "items"
@@ -140,46 +146,56 @@ class TestInteractiveMode:
             "",  # first empty line
             "",  # second empty line
         ]
-        
-        with patch('builtins.input', side_effect=user_inputs):
+
+        with patch("builtins.input", side_effect=user_inputs):
             api_info = interactive_gen.collect_api_info()
-            
+
             # Check defaults are applied (new smart defaults)
             assert api_info["name"] == "Items API"  # Auto-inferred from resource name
-            assert api_info["description"] == "A items resource"  # Auto-inferred from resource description
-            assert api_info["project_name"] == "items"  # Auto-inferred from resource name
+            assert (
+                api_info["description"] == "A items resource"
+            )  # Auto-inferred from resource description
+            assert (
+                api_info["project_name"] == "items"
+            )  # Auto-inferred from resource name
             assert api_info["base_url"] == "https://api.example.com"
             assert api_info["resource_name"] == "items"
             assert api_info["resource_description"] == "A items resource"
-            assert api_info["resource_schema"] == {"name": "string", "description": "string"}
+            assert api_info["resource_schema"] == {
+                "name": "string",
+                "description": "string",
+            }
             assert len(api_info["examples"]) == 2  # Default examples created
 
     def test_json_parsing_error_handling(self):
         """Test handling of invalid JSON input."""
         spec_generator = SpecGenerator()
         interactive_gen = InteractiveGenerator(spec_generator)
-        
+
         # Mock inputs with invalid JSON (new workflow order)
         user_inputs = [
             "items",  # object name (now first)
             "Test items",  # object description
             "Test API",  # API name (with default shown)
             "Test description",  # API description (with default shown)
-            'invalid json {',  # Invalid JSON attributes
+            "invalid json {",  # Invalid JSON attributes
             "",  # first empty line
             "",  # second empty line
             '[{"valid": "json"}]',  # Valid JSON array example
             "",  # first empty line
             "",  # second empty line
         ]
-        
-        with patch('builtins.input', side_effect=user_inputs):
-            with patch('builtins.print'):  # Suppress warning prints
+
+        with patch("builtins.input", side_effect=user_inputs):
+            with patch("builtins.print"):  # Suppress warning prints
                 api_info = interactive_gen.collect_api_info()
-                
+
                 # Should fall back to default schema for invalid JSON
-                assert api_info["resource_schema"] == {"name": "string", "description": "string"}
-                
+                assert api_info["resource_schema"] == {
+                    "name": "string",
+                    "description": "string",
+                }
+
                 # Should have one valid example from the JSON array
                 assert len(api_info["examples"]) == 1
                 assert api_info["examples"][0] == {"valid": "json"}
@@ -188,18 +204,18 @@ class TestInteractiveMode:
         """Test saving and loading prompt data."""
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
-            
+
             # Create mock .liveapi directory
             liveapi_dir = temp_path / ".liveapi"
             liveapi_dir.mkdir()
-            
+
             spec_generator = SpecGenerator()
             interactive_gen = InteractiveGenerator(spec_generator)
-            
+
             # Mock the metadata manager to use our temp directory
-            with patch('liveapi.metadata_manager.MetadataManager') as mock_metadata:
+            with patch("liveapi.metadata_manager.MetadataManager") as mock_metadata:
                 mock_metadata.return_value.project_root = temp_path
-                
+
                 # Test data
                 api_info = {
                     "name": "Test API",
@@ -210,27 +226,27 @@ class TestInteractiveMode:
                     "resource_name": "items",
                     "resource_description": "Test items",
                     "resource_schema": {"name": "string"},
-                    "examples": [{"name": "Item 1"}]
+                    "examples": [{"name": "Item 1"}],
                 }
-                
+
                 spec = {"info": {"title": "Test API", "version": "1.0.0"}}
                 llm_json = {"endpoints": [], "objects": []}
-                
+
                 # Save prompt and schema
                 interactive_gen.save_prompt_and_json(api_info, spec, llm_json)
-                
+
                 # Check files were created
                 prompts_dir = temp_path / ".liveapi" / "prompts"
                 prompt_file = prompts_dir / "test_api_prompt.json"
                 schema_file = prompts_dir / "test_api_schema.json"
-                
+
                 assert prompt_file.exists()
                 assert schema_file.exists()
-                
+
                 # Load and verify prompt data
                 loaded_api_info = interactive_gen.load_prompt(str(prompt_file))
                 assert loaded_api_info == api_info
-                
+
                 # Verify schema file content
                 with open(schema_file) as f:
                     loaded_schema = json.load(f)
@@ -240,7 +256,7 @@ class TestInteractiveMode:
         """Test handling of existing API info for regeneration."""
         spec_generator = SpecGenerator()
         interactive_gen = InteractiveGenerator(spec_generator)
-        
+
         existing_info = {
             "name": "Existing API",
             "description": "Existing description",
@@ -249,15 +265,15 @@ class TestInteractiveMode:
             "resource_name": "items",
             "resource_description": "Existing items",
             "resource_schema": {"name": "string", "id": "integer"},
-            "examples": [{"name": "Existing Item"}]
+            "examples": [{"name": "Existing Item"}],
         }
-        
+
         # User just presses enter to accept existing values
         user_inputs = [""] * 20  # Enough empty inputs
-        
-        with patch('builtins.input', side_effect=user_inputs):
+
+        with patch("builtins.input", side_effect=user_inputs):
             api_info = interactive_gen.collect_api_info(existing_info)
-            
+
             # Should keep existing values when user provides empty input
             assert api_info["name"] == "Existing API"
             assert api_info["description"] == "Existing description"

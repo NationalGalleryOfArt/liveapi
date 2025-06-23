@@ -13,12 +13,12 @@ LiveAPI combines interactive spec generation, immutable versioning, change detec
 - **Smart Regeneration**: Automatically rebuilds specs from edited schemas.
 - **Standards Compliant**: Generates OpenAPI 3.0 specs with professional error handling (RFC 7807).
 
-### 🚀 Dynamic CRUD+ Runtime
-- **Zero Code Generation**: APIs are served dynamically from OpenAPI specs without generating handler code.
-- **Dynamic Pydantic Models**: Runtime model generation from OpenAPI schemas ensures type safety.
-- **Built-in Features**: Filtering, validation, and professional error handling out of the box.
-- **Correct by Default**: Handles parameters, schemas, and responses according to best practices.
-- **Instant Deployment**: No compilation or build steps required.
+### 🚀 Database-Ready Implementation Generation
+- **Customizable Service Classes**: Generates implementation files with CRUD method overrides for database integration.
+- **Database Integration Points**: Clear hooks for connecting PostgreSQL, MongoDB, or any database.
+- **Business Logic Hooks**: Built-in spots for validation, logging, caching, and event publishing.
+- **Dynamic CRUD+ Fallback**: Uses LiveAPI's dynamic handlers as a foundation while allowing full customization.
+- **Professional Error Handling**: RFC 7807 compliant error responses with proper exception handling.
 
 ### 🔄 API Lifecycle Management
 - **Immutable Versioning**: Specs are versioned and become read-only (e.g., `users.yaml` → `users_v1.0.0.yaml`).
@@ -52,8 +52,9 @@ liveapi regenerate .liveapi/prompts/users_prompt.json
 liveapi status
 # ✅ Users API: ready for sync
 
-# 4. Sync to create the main application file
+# 4. Sync to generate customizable implementation files
 liveapi sync
+# ✅ Created: implementations/users_service.py (with database hooks)
 # ✅ Created: main.py
 
 # 5. Run your API immediately
@@ -92,8 +93,9 @@ Follow the interactive prompts to define your API resource.
 ### 4. Sync
 ```bash
 liveapi sync
-# ✅ Created: main.py
-# 🎯 Run 'liveapi run' or 'python main.py' to start your API server
+# ✅ Created: implementations/users_service.py (customizable database service)
+# ✅ Created: main.py (FastAPI app using your service)
+# 🎯 Customize implementations/users_service.py for real data stores
 ```
 
 ### 5. Run Your API
@@ -146,61 +148,105 @@ curl -X POST http://localhost:8000/users \
 # Returns: {"title": "Unprocessable Entity", "detail": "...", "status": "422"}
 ```
 
-## Generated `main.py` Example
+## Generated Implementation Files
 
-### Single API
+### Custom Service Class (Database-Ready)
 ```python
-# main.py (auto-generated)
-"""FastAPI application using LiveAPI CRUD+ handlers."""
+# implementations/users_service.py (auto-generated)
+"""UserService - Database-connected implementation for users API."""
 
-import uvicorn
 from liveapi.implementation import create_app
+from liveapi.implementation.crud_handlers import BaseCRUDRouter
+from typing import Dict, List, Any, Optional
+import uuid
 
-# Create the app from OpenAPI specification
-app = create_app("specifications/users_v1.0.0.yaml")
+class UserService(BaseCRUDRouter):
+    """Custom users service with database integration."""
+    
+    def __init__(self):
+        # TODO: Initialize your database connection
+        # self.db = PostgreSQLConnection()
+        # self.logger = YourLogger()
+        self._storage: Dict[str, Dict[str, Any]] = {}
+    
+    async def create_user(self, user_data: dict) -> dict:
+        """Create a new user in your database."""
+        from fastapi import HTTPException
+        from liveapi.implementation.exceptions import ValidationError, ConflictError
+        
+        try:
+            # Business validation
+            if not user_data.get("email"):
+                raise ValidationError(
+                    message="Email is required",
+                    details={"field": "email", "error": "missing_required_field"}
+                )
+            
+            # TODO: Replace with your database insert
+            # result = await self.db.insert_one("users", {
+            #     "id": str(uuid.uuid4()),
+            #     **user_data,
+            #     "created_at": datetime.utcnow()
+            # })
+            
+            # In-memory implementation (replace with database)
+            user_id = str(uuid.uuid4())
+            user_record = {"id": user_id, **user_data}
+            self._storage[user_id] = user_record
+            
+            # TODO: Add business logic here
+            # - Logging, caching, event publishing
+            
+            return user_record
+            
+        except (ValidationError, ConflictError):
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail="Internal server error")
+    
+    # Other CRUD methods: get_user, list_users, update_user, delete_user...
 
-if __name__ == "__main__":
-    # Run the development server
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True
-    )
+# Create the FastAPI app
+def create_custom_app():
+    """Create FastAPI app with database-connected users service."""
+    app = create_app("specifications/users.yaml", custom_handlers={"users": UserService()})
+    return app
 ```
 
-### Multiple APIs
+### Main Application
 ```python
-# main.py (auto-generated for multiple specs)
-"""FastAPI application combining multiple APIs using LiveAPI CRUD+ handlers."""
+# main.py (auto-generated)
+"""FastAPI application using custom LiveAPI implementations."""
 
-import uvicorn
+import importlib.util
+from pathlib import Path
 from fastapi import FastAPI
-from liveapi.implementation import create_app as create_app_1
-from liveapi.implementation import create_app as create_app_2
 
-# Create individual apps
-app_1 = create_app_1("specifications/users_v1.0.0.yaml")
-app_2 = create_app_2("specifications/products_v1.0.0.yaml")
+# Auto-discover and load custom service implementations
+app = FastAPI(title="Custom LiveAPI Services")
 
-# Main app that combines all APIs
-app = FastAPI(
-    title="Combined LiveAPI Services",
-    description="Multiple CRUD+ APIs combined into one service"
-)
+def discover_and_mount_services():
+    """Discover service files and mount their apps."""
+    implementations_dir = Path(__file__).parent / "implementations"
+    service_files = list(implementations_dir.glob("*_service.py"))
+    
+    for service_file in service_files:
+        # Import the service module
+        spec = importlib.util.spec_from_file_location(service_file.stem, service_file)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        
+        # Mount the custom app
+        if hasattr(module, 'create_custom_app'):
+            custom_app = module.create_custom_app()
+            resource_name = service_file.stem.replace('_service', '')
+            app.mount(f"/{resource_name}s", custom_app)
 
-# Mount each API under its own prefix
-app.mount("/users", app_1)
-app.mount("/products", app_2)
+discover_and_mount_services()
 
 if __name__ == "__main__":
-    # Run the development server
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True
-    )
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
 ```
 
 ## Command Reference
@@ -235,9 +281,10 @@ liveapi version compare v1 v2  # Compare two versions
 
 ### Synchronization
 ```bash
-liveapi sync                  # Synchronize main.py with specs
+liveapi sync                  # Generate implementation files (default)
 liveapi sync --preview        # Preview changes without applying
 liveapi sync --force          # Force sync without confirmation
+liveapi sync --crud           # Use dynamic CRUD+ mode instead of files
 ```
 
 ## Project Structure
@@ -256,6 +303,9 @@ my-api-project/
 │   ├── users_v1.1.0.yaml
 │   └── latest/                  # Symlink to the current version
 │       └── users.yaml -> ../users_v1.1.0.yaml
+├── implementations/             # Generated service classes
+│   ├── users_service.py         # Database-ready CRUD implementations
+│   └── products_service.py      # Customizable business logic
 └── main.py                      # FastAPI application
 ```
 

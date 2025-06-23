@@ -89,7 +89,9 @@ class LiveAPIParser:
                     if not resources[resource_name]["model"]:
                         # For resource model, prioritize operations that have request bodies
                         if method in ["post", "put", "patch"]:
-                            model = self._extract_model_from_operation(operation, method)
+                            model = self._extract_model_from_operation(
+                                operation, method
+                            )
                             if model:
                                 resources[resource_name]["model"] = model
 
@@ -199,4 +201,3 @@ class LiveAPIParser:
                             )
 
         return None
-

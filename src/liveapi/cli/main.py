@@ -25,7 +25,8 @@ Examples:
   liveapi validate                # Validate all specifications
   liveapi version users --major   # Create major version of users API
   liveapi version list users      # List all versions of users API
-  liveapi sync                    # Sync implementations with specs
+  liveapi sync                    # Generate individual implementation files (default)
+  liveapi sync --crud             # Use CRUD+ mode (dynamic handlers)
   liveapi run                     # Run FastAPI app with uvicorn --reload
   liveapi run --background        # Run in background with PID file
   liveapi kill                    # Stop background FastAPI app
@@ -142,10 +143,6 @@ Examples:
         default="yaml",
         help="Output format (default: yaml)",
     )
-    generate_parser.add_argument(
-        "--model",
-        help="Model to use for generation (optional)",
-    )
 
     # Regenerate command
     regenerate_parser = subparsers.add_parser(
@@ -162,10 +159,6 @@ Examples:
         choices=["yaml", "json"],
         default="yaml",
         help="Output format (default: yaml)",
-    )
-    regenerate_parser.add_argument(
-        "--model",
-        help="Model to use for generation (optional)",
     )
 
     # Run command

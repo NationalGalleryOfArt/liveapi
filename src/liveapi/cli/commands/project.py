@@ -48,7 +48,6 @@ def handle_no_command():
                 class GenArgs:
                     output = None
                     format = "yaml"
-                    model = None
 
                 from .generate import cmd_generate
 
@@ -69,7 +68,7 @@ def handle_no_command():
         print()
         print("Quick actions:")
         print("  liveapi status    - Check for API changes")
-        print("  liveapi generate  - Generate a new API spec with AI")
+        print("  liveapi generate  - Generate a new API spec")
         print("  ls .liveapi/prompts/ - View saved prompts and schemas")
         print("  liveapi sync      - Sync implementations with specs")
         print("  liveapi run       - Start development server")

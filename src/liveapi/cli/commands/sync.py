@@ -46,7 +46,9 @@ def cmd_sync(args):
 
         # Execute the sync plan
         print(f"\n🚀 Executing sync plan ({len(sync_plan.items)} items)...")
-        success = sync_manager.execute_sync_plan(sync_plan, preview_only=False)
+        success = sync_manager.execute_sync_plan(
+            sync_plan, preview_only=False, use_scaffold=False  # Default to CRUD+ mode
+        )
 
         if success:
             print("✨ Synchronization completed successfully!")
