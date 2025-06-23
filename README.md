@@ -259,13 +259,26 @@ my-api-project/
 └── main.py                      # FastAPI application
 ```
 
-## Testing
+## Development
+
+### Testing
+You can run the test suite using `make`:
 
 ```bash
 # Run all tests
-python -m pytest tests/ -v
+make test
+
+# Generate a coverage report
+make coverage
 ```
 
-## License
+### Formatting and Linting
+This project uses `black` for formatting and `flake8` for linting.
 
-[Your License]
+```bash
+# Format the code
+make format
+
+# Run the linter
+make lint
+```
