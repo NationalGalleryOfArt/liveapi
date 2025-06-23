@@ -82,11 +82,44 @@ def _create_direct_app(
     }
     app_kwargs.update(kwargs)
 
-    app = FastAPI(**app_kwargs)
-
     # Parse OpenAPI spec
     parser = OpenAPIParser(spec_path)
     parser.load_spec()
+
+    # Extract components from the original spec
+    components = parser.spec.get("components", {})
+
+    # Create FastAPI app with components
+    app = FastAPI(**app_kwargs)
+
+    # Add components to the app's OpenAPI schema
+    if components:
+        # Override the openapi function to include components
+        original_openapi = app.openapi
+
+        def custom_openapi():
+            if app.openapi_schema:
+                return app.openapi_schema
+
+            openapi_schema = original_openapi()
+
+            # Add components to the schema
+            if "components" not in openapi_schema:
+                openapi_schema["components"] = components
+            else:
+                # Merge components
+                for component_type, component_items in components.items():
+                    if component_type not in openapi_schema["components"]:
+                        openapi_schema["components"][component_type] = component_items
+                    else:
+                        openapi_schema["components"][component_type].update(
+                            component_items
+                        )
+
+            app.openapi_schema = openapi_schema
+            return app.openapi_schema
+
+        app.openapi = custom_openapi
 
     # Generate routes with auth
     route_generator = RouteGenerator(implementation, auth_dependency=auth_dependency)
@@ -129,6 +162,9 @@ def _create_automatic_app(
             f"No matching spec/implementation pairs found in {api_path} and {impl_path}"
         )
 
+    # Collect all components from all specs
+    all_components = {}
+
     # Process each pair
     for spec_file, impl_file, prefix in spec_impl_pairs:
         # Load implementation
@@ -138,6 +174,16 @@ def _create_automatic_app(
         parser = OpenAPIParser(spec_file)
         parser.load_spec()
 
+        # Extract components from the spec
+        components = parser.spec.get("components", {})
+
+        # Merge components
+        for component_type, component_items in components.items():
+            if component_type not in all_components:
+                all_components[component_type] = component_items
+            else:
+                all_components[component_type].update(component_items)
+
         # Generate routes with prefix and auth
         route_generator = RouteGenerator(
             implementation, path_prefix=prefix, auth_dependency=auth_dependency
@@ -146,6 +192,35 @@ def _create_automatic_app(
 
         for route in routes:
             app.router.routes.append(route)
+
+    # Add components to the app's OpenAPI schema
+    if all_components:
+        # Override the openapi function to include components
+        original_openapi = app.openapi
+
+        def custom_openapi():
+            if app.openapi_schema:
+                return app.openapi_schema
+
+            openapi_schema = original_openapi()
+
+            # Add components to the schema
+            if "components" not in openapi_schema:
+                openapi_schema["components"] = all_components
+            else:
+                # Merge components
+                for component_type, component_items in all_components.items():
+                    if component_type not in openapi_schema["components"]:
+                        openapi_schema["components"][component_type] = component_items
+                    else:
+                        openapi_schema["components"][component_type].update(
+                            component_items
+                        )
+
+            app.openapi_schema = openapi_schema
+            return app.openapi_schema
+
+        app.openapi = custom_openapi
 
     # Add health check endpoint
     _add_health_check_endpoint(app)

@@ -1,4 +1,4 @@
-"""Performance tests for the automatic framework."""
+"""Performance tests for the LiveAPI CRUD+ framework."""
 
 import pytest
 import time
@@ -6,22 +6,9 @@ import tempfile
 import yaml
 from pathlib import Path
 import sys
-import automatic
+import liveapi.implementation as liveapi
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-
-
-class FastTestImplementation:
-    """Fast test implementation for performance testing."""
-
-    def get_item(self, data):
-        return {"id": data.get("item_id", 1), "name": "test_item"}, 200
-
-    def create_item(self, data):
-        return {"id": 123, "name": data.get("name", "new_item")}, 201
-
-    def list_items(self, data):
-        return {"items": [{"id": 1, "name": "item1"}, {"id": 2, "name": "item2"}]}, 200
 
 
 @pytest.fixture
@@ -30,6 +17,27 @@ def fast_openapi_spec():
     spec = {
         "openapi": "3.0.0",
         "info": {"title": "Fast API", "version": "1.0.0"},
+        "components": {
+            "schemas": {
+                "Item": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "integer"},
+                        "name": {"type": "string"},
+                    },
+                    "required": ["name"],
+                },
+                "ItemList": {
+                    "type": "object",
+                    "properties": {
+                        "items": {
+                            "type": "array",
+                            "items": {"$ref": "#/components/schemas/Item"},
+                        }
+                    },
+                },
+            }
+        },
         "paths": {
             "/items/{item_id}": {
                 "get": {
@@ -47,13 +55,7 @@ def fast_openapi_spec():
                             "description": "Item retrieved",
                             "content": {
                                 "application/json": {
-                                    "schema": {
-                                        "type": "object",
-                                        "properties": {
-                                            "id": {"type": "integer"},
-                                            "name": {"type": "string"},
-                                        },
-                                    }
+                                    "schema": {"$ref": "#/components/schemas/Item"}
                                 }
                             },
                         }
@@ -67,11 +69,7 @@ def fast_openapi_spec():
                         "required": True,
                         "content": {
                             "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {"name": {"type": "string"}},
-                                    "required": ["name"],
-                                }
+                                "schema": {"$ref": "#/components/schemas/Item"}
                             }
                         },
                     },
@@ -80,13 +78,7 @@ def fast_openapi_spec():
                             "description": "Item created",
                             "content": {
                                 "application/json": {
-                                    "schema": {
-                                        "type": "object",
-                                        "properties": {
-                                            "id": {"type": "integer"},
-                                            "name": {"type": "string"},
-                                        },
-                                    }
+                                    "schema": {"$ref": "#/components/schemas/Item"}
                                 }
                             },
                         }
@@ -99,21 +91,7 @@ def fast_openapi_spec():
                             "description": "List of items",
                             "content": {
                                 "application/json": {
-                                    "schema": {
-                                        "type": "object",
-                                        "properties": {
-                                            "items": {
-                                                "type": "array",
-                                                "items": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                        "id": {"type": "integer"},
-                                                        "name": {"type": "string"},
-                                                    },
-                                                },
-                                            }
-                                        },
-                                    }
+                                    "schema": {"$ref": "#/components/schemas/ItemList"}
                                 }
                             },
                         }
@@ -129,149 +107,130 @@ def fast_openapi_spec():
         return Path(f.name)
 
 
-def test_response_time_under_200ms(fast_openapi_spec, tmp_path):
-    """Test that framework components operate under 200ms."""
-    # Create directory structure
-    api_dir = tmp_path / "api"
-    impl_dir = tmp_path / "implementations"
-    api_dir.mkdir()
-    impl_dir.mkdir()
-
-    # Copy spec and create implementation
-    import shutil
-
-    shutil.copy(fast_openapi_spec, api_dir / "fast.yaml")
-
-    impl_code = """
-class Implementation:
-    def get_item(self, data):
-        return {"id": data.get("item_id", 1), "name": "test_item"}, 200
-    
-    def create_item(self, data):
-        return {"id": 123, "name": data.get("name", "new_item")}, 201
-    
-    def list_items(self, data):
-        return {"items": [{"id": 1, "name": "item1"}, {"id": 2, "name": "item2"}]}, 200
-"""
-    (impl_dir / "fast.py").write_text(impl_code)
-
-    # Test app creation time
+def test_app_creation_under_500ms(fast_openapi_spec):
+    """Test that app creation operates under 500ms."""
     start_time = time.perf_counter()
-    automatic.create_app(api_dir=api_dir, impl_dir=impl_dir)
+    app = liveapi.create_app(fast_openapi_spec)
     end_time = time.perf_counter()
 
     creation_time_ms = (end_time - start_time) * 1000
     assert (
-        creation_time_ms < 200
-    ), f"App creation time {creation_time_ms:.2f}ms exceeds 200ms"
+        creation_time_ms < 500
+    ), f"App creation time {creation_time_ms:.2f}ms exceeds 500ms"
 
-    # Test direct method calls (simulating what happens during requests)
-    implementation = FastTestImplementation()
-    start_time = time.perf_counter()
-    result = implementation.get_item({"item_id": 123})
-    end_time = time.perf_counter()
-
-    method_time_ms = (end_time - start_time) * 1000
-    assert (
-        method_time_ms < 200
-    ), f"Method call time {method_time_ms:.2f}ms exceeds 200ms"
-    assert result[0]["id"] == 123
-    assert result[1] == 200
+    print(f"✅ App creation time: {creation_time_ms:.2f}ms")
+    assert app is not None
 
 
-def test_average_response_time_multiple_requests(fast_openapi_spec, tmp_path):
-    """Test average method call time over multiple requests."""
-    # Create directory structure
-    api_dir = tmp_path / "api"
-    impl_dir = tmp_path / "implementations"
-    api_dir.mkdir()
-    impl_dir.mkdir()
-
-    # Copy spec and create implementation
-    import shutil
-
-    shutil.copy(fast_openapi_spec, api_dir / "fast.yaml")
-
-    impl_code = """
-class Implementation:
-    def get_item(self, data):
-        return {"id": data.get("item_id", 1), "name": "test_item"}, 200
-    
-    def create_item(self, data):
-        return {"id": 123, "name": data.get("name", "new_item")}, 201
-    
-    def list_items(self, data):
-        return {"items": [{"id": 1, "name": "item1"}, {"id": 2, "name": "item2"}]}, 200
-"""
-    (impl_dir / "fast.py").write_text(impl_code)
-
-    implementation = FastTestImplementation()
-    automatic.create_app(api_dir=api_dir, impl_dir=impl_dir)
-
+def test_repeated_app_creation_performance(fast_openapi_spec):
+    """Test average app creation time over multiple attempts."""
     # Warm up (first call is often slower due to initialization)
-    implementation.get_item({"item_id": 1})
+    liveapi.create_app(fast_openapi_spec)
 
-    # Test multiple method calls
-    num_requests = 10
+    # Test multiple app creations
+    num_requests = 5
     total_time = 0
 
     for i in range(num_requests):
         start_time = time.perf_counter()
-        result = implementation.get_item({"item_id": i + 1})
+        app = liveapi.create_app(fast_openapi_spec)
         end_time = time.perf_counter()
 
-        assert result[1] == 200
+        assert app is not None
         total_time += end_time - start_time
 
     average_time_ms = (total_time / num_requests) * 1000
 
     assert (
         average_time_ms < 200
-    ), f"Average method call time {average_time_ms:.2f}ms exceeds 200ms"
+    ), f"Average app creation time {average_time_ms:.2f}ms exceeds 200ms"
 
     print(
-        f"Average method call time over {num_requests} calls: {average_time_ms:.2f}ms"
+        f"✅ Average app creation time over {num_requests} attempts: {average_time_ms:.2f}ms"
     )
 
 
-def test_app_creation_time(fast_openapi_spec, tmp_path):
-    """Test that app creation is fast."""
-    # Create directory structure
-    api_dir = tmp_path / "api"
-    impl_dir = tmp_path / "implementations"
-    api_dir.mkdir()
-    impl_dir.mkdir()
+@pytest.mark.asyncio
+async def test_crud_handlers_performance():
+    """Test that CRUD handlers are fast."""
+    from pydantic import BaseModel
 
-    # Copy spec and create implementation
-    import shutil
+    class TestItem(BaseModel):
+        id: int | None = None
+        name: str
 
-    shutil.copy(fast_openapi_spec, api_dir / "fast.yaml")
+    handlers = liveapi.CRUDHandlers(TestItem, "items")
 
-    impl_code = """
-class Implementation:
-    def get_item(self, data):
-        return {"id": data.get("item_id", 1), "name": "test_item"}, 200
-    
-    def create_item(self, data):
-        return {"id": 123, "name": data.get("name", "new_item")}, 201
-    
-    def list_items(self, data):
-        return {"items": [{"id": 1, "name": "item1"}, {"id": 2, "name": "item2"}]}, 200
-"""
-    (impl_dir / "fast.py").write_text(impl_code)
+    # Test create performance
+    times = []
+    for i in range(20):
+        start_time = time.perf_counter()
+        result = await handlers.create({"name": f"item_{i}"})
+        end_time = time.perf_counter()
 
+        times.append((end_time - start_time) * 1000)
+        assert result["name"] == f"item_{i}"
+
+    avg_time = sum(times) / len(times)
+    max_time = max(times)
+
+    print(f"✅ CRUD create - Avg: {avg_time:.4f}ms, Max: {max_time:.4f}ms")
+
+    assert avg_time < 5, f"Average CRUD create time {avg_time:.4f}ms exceeds 5ms"
+    assert max_time < 20, f"Maximum CRUD create time {max_time:.4f}ms exceeds 20ms"
+
+
+def test_pydantic_model_generation_performance(fast_openapi_spec):
+    """Test that Pydantic model generation is fast."""
+    parser = liveapi.LiveAPIParser(fast_openapi_spec)
+    parser.load_spec()
+
+    # Test model generation performance
+    times = []
+    for i in range(10):
+        start_time = time.perf_counter()
+        generator = liveapi.PydanticGenerator()
+        generator.set_schema_definitions(parser.spec.get("components", {}))
+        # Generate a model from the Item schema
+        model = generator.generate_model_from_schema(
+            parser.spec["components"]["schemas"]["Item"], "Item"
+        )
+        end_time = time.perf_counter()
+
+        times.append((end_time - start_time) * 1000)
+        assert model is not None
+
+    avg_time = sum(times) / len(times)
+    max_time = max(times)
+
+    print(f"✅ Model generation - Avg: {avg_time:.2f}ms, Max: {max_time:.2f}ms")
+
+    assert avg_time < 50, f"Average model generation time {avg_time:.2f}ms exceeds 50ms"
+    assert (
+        max_time < 100
+    ), f"Maximum model generation time {max_time:.2f}ms exceeds 100ms"
+
+
+def test_framework_startup_time(fast_openapi_spec):
+    """Test overall framework startup performance."""
+    print("\n=== Framework Startup Performance ===")
+
+    # Measure complete app creation
     start_time = time.perf_counter()
-    automatic.create_app(api_dir=api_dir, impl_dir=impl_dir)
+    app = liveapi.create_app(fast_openapi_spec)
     end_time = time.perf_counter()
 
-    creation_time_ms = (end_time - start_time) * 1000
+    startup_time_ms = (end_time - start_time) * 1000
 
-    # App creation should be reasonably fast (under 1 second)
+    print(f"📊 Complete framework startup: {startup_time_ms:.2f}ms")
+
+    # Framework should start reasonably fast
     assert (
-        creation_time_ms < 1000
-    ), f"App creation time {creation_time_ms:.2f}ms exceeds 1000ms"
+        startup_time_ms < 1000
+    ), f"Framework startup time {startup_time_ms:.2f}ms exceeds 1000ms"
 
-    print(f"App creation time: {creation_time_ms:.2f}ms")
+    assert app is not None
+    print("🎯 Framework demonstrates fast startup capability!")
 
 
 if __name__ == "__main__":

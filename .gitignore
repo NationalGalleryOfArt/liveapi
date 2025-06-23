@@ -55,3 +55,6 @@ dmypy.json
 
 # Linux
 *~
+
+# LiveAPI - ignore any .liveapi directories created during testing/development
+.liveapi/

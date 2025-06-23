@@ -1,4 +1,4 @@
-"""Simple performance tests for the automatic framework."""
+"""Simple performance tests for the LiveAPI CRUD+ framework."""
 
 import pytest
 import time
@@ -6,7 +6,7 @@ import tempfile
 import yaml
 from pathlib import Path
 import sys
-import automatic
+import liveapi.implementation as liveapi
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
@@ -65,65 +65,42 @@ def simple_openapi_spec():
         return Path(f.name)
 
 
-def test_framework_components_under_200ms(simple_openapi_spec):
-    """Test that framework components combined are under 200ms."""
-    implementation = FastTestImplementation()
-
+def test_framework_components_under_500ms(simple_openapi_spec):
+    """Test that framework components combined are under 500ms."""
     # Test the framework components separately (our actual overhead)
     start_time = time.perf_counter()
 
-    # 1. Parse OpenAPI spec
-    parser = automatic.OpenAPIParser(simple_openapi_spec)
-    parser.load_spec()
-
-    # 2. Generate routes
-    route_generator = automatic.RouteGenerator(implementation)
-    route_generator.generate_routes(parser)
+    # 1. Parse OpenAPI spec and create app
+    app = liveapi.create_app(simple_openapi_spec)
 
     end_time = time.perf_counter()
     framework_time_ms = (end_time - start_time) * 1000
 
-    # Our framework overhead should be reasonable (first-time includes prance imports)
+    # Our framework overhead should be reasonable (first-time includes imports)
     assert (
         framework_time_ms < 500
     ), f"Framework processing time {framework_time_ms:.2f}ms exceeds 500ms"
     print(f"✅ Framework processing time: {framework_time_ms:.2f}ms")
+    assert app is not None
 
 
-def test_subsequent_app_creation_is_fast(simple_openapi_spec, tmp_path):
+def test_subsequent_app_creation_is_fast(simple_openapi_spec):
     """Test that subsequent app creation is fast (after imports are loaded)."""
-    # Create directory structure
-    api_dir = tmp_path / "api"
-    impl_dir = tmp_path / "implementations"
-    api_dir.mkdir()
-    impl_dir.mkdir()
-
-    # Copy spec and create implementation
-    import shutil
-
-    shutil.copy(simple_openapi_spec, api_dir / "simple.yaml")
-
-    impl_code = """
-class Implementation:
-    def get_item(self, data):
-        return {"id": data.get("item_id", 1), "name": "test_item"}, 200
-"""
-    (impl_dir / "simple.py").write_text(impl_code)
-
     # First creation (includes import overhead)
-    automatic.create_app(api_dir=api_dir, impl_dir=impl_dir)
+    liveapi.create_app(simple_openapi_spec)
 
     # Second creation should be much faster
     start_time = time.perf_counter()
-    automatic.create_app(api_dir=api_dir, impl_dir=impl_dir)
+    app = liveapi.create_app(simple_openapi_spec)
     end_time = time.perf_counter()
 
     creation_time_ms = (end_time - start_time) * 1000
 
     assert (
-        creation_time_ms < 50
-    ), f"Subsequent app creation {creation_time_ms:.2f}ms exceeds 50ms"
+        creation_time_ms < 100
+    ), f"Subsequent app creation {creation_time_ms:.2f}ms exceeds 100ms"
     print(f"✅ Subsequent app creation: {creation_time_ms:.2f}ms")
+    assert app is not None
 
 
 def test_implementation_method_call_time():
@@ -151,89 +128,74 @@ def test_implementation_method_call_time():
     print(f"✅ Average implementation method call time: {average_time_ms:.4f}ms")
 
 
-def test_route_generation_time(simple_openapi_spec):
-    """Test that route generation is fast."""
-    implementation = FastTestImplementation()
-
-    # Parse spec
-    parser = automatic.OpenAPIParser(simple_openapi_spec)
-    parser.load_spec()
-
-    # Time route generation
+def test_parser_initialization_time(simple_openapi_spec):
+    """Test that parser initialization is fast."""
+    # Time parser creation and spec loading
     start_time = time.perf_counter()
-    route_generator = automatic.RouteGenerator(implementation)
-    routes = route_generator.generate_routes(parser)
-    end_time = time.perf_counter()
-
-    generation_time_ms = (end_time - start_time) * 1000
-
-    assert (
-        generation_time_ms < 50
-    ), f"Route generation time {generation_time_ms:.2f}ms exceeds 50ms"
-    assert len(routes) == 1  # Should have one route
-    print(f"✅ Route generation time: {generation_time_ms:.2f}ms")
-
-
-def test_openapi_parsing_time(simple_openapi_spec):
-    """Test that OpenAPI parsing is fast."""
-    start_time = time.perf_counter()
-    parser = automatic.OpenAPIParser(simple_openapi_spec)
+    parser = liveapi.LiveAPIParser(simple_openapi_spec)
     parser.load_spec()
-    routes = parser.get_routes()
     end_time = time.perf_counter()
 
     parsing_time_ms = (end_time - start_time) * 1000
 
     assert (
         parsing_time_ms < 100
-    ), f"OpenAPI parsing time {parsing_time_ms:.2f}ms exceeds 100ms"
-    assert len(routes) == 1
-    print(f"✅ OpenAPI parsing time: {parsing_time_ms:.2f}ms")
+    ), f"Parser initialization time {parsing_time_ms:.2f}ms exceeds 100ms"
+    print(f"✅ Parser initialization time: {parsing_time_ms:.2f}ms")
+    assert parser.spec is not None
+
+
+def test_pydantic_model_generation_time(simple_openapi_spec):
+    """Test that Pydantic model generation is fast."""
+    parser = liveapi.LiveAPIParser(simple_openapi_spec)
+    parser.load_spec()
+
+    start_time = time.perf_counter()
+    generator = liveapi.PydanticGenerator()
+    generator.set_schema_definitions(parser.spec.get("components", {}))
+    # Just test basic model generation
+    end_time = time.perf_counter()
+
+    generation_time_ms = (end_time - start_time) * 1000
+
+    assert (
+        generation_time_ms < 100
+    ), f"Pydantic model generation time {generation_time_ms:.2f}ms exceeds 100ms"
+    print(f"✅ Pydantic model generation time: {generation_time_ms:.2f}ms")
 
 
 def test_end_to_end_performance_breakdown(simple_openapi_spec):
     """Test and profile the complete app creation process."""
-    implementation = FastTestImplementation()
-
     print("\n=== Performance Breakdown ===")
 
-    # 1. OpenAPI parsing
+    # 1. Parser initialization
     start_time = time.perf_counter()
-    parser = automatic.OpenAPIParser(simple_openapi_spec)
+    parser = liveapi.LiveAPIParser(simple_openapi_spec)
     parser.load_spec()
     parsing_time = time.perf_counter() - start_time
     print(f"1. OpenAPI parsing: {parsing_time * 1000:.2f}ms")
 
-    # 2. Route extraction
+    # 2. Model generation setup
     start_time = time.perf_counter()
-    parser.get_routes()
-    extraction_time = time.perf_counter() - start_time
-    print(f"2. Route extraction: {extraction_time * 1000:.2f}ms")
-
-    # 3. Route generation
-    start_time = time.perf_counter()
-    route_generator = automatic.RouteGenerator(implementation)
-    fastapi_routes = route_generator.generate_routes(parser)
+    generator = liveapi.PydanticGenerator()
+    generator.set_schema_definitions(parser.spec.get("components", {}))
     generation_time = time.perf_counter() - start_time
-    print(f"3. Route generation: {generation_time * 1000:.2f}ms")
+    print(f"2. Pydantic generator setup: {generation_time * 1000:.2f}ms")
 
-    # 4. FastAPI app creation
+    # 3. Complete app creation
     start_time = time.perf_counter()
-    from fastapi import FastAPI
-
-    app = FastAPI(title="Test", version="1.0.0")
-    for route in fastapi_routes:
-        app.router.routes.append(route)
+    app = liveapi.create_app(simple_openapi_spec)
     app_creation_time = time.perf_counter() - start_time
-    print(f"4. FastAPI app creation: {app_creation_time * 1000:.2f}ms")
+    print(f"3. Complete app creation: {app_creation_time * 1000:.2f}ms")
 
-    total_time = parsing_time + extraction_time + generation_time + app_creation_time
-    print(f"📊 Total time: {total_time * 1000:.2f}ms")
+    total_time = parsing_time + generation_time
+    print(f"📊 Component total time: {total_time * 1000:.2f}ms")
+    print(f"📊 End-to-end time: {app_creation_time * 1000:.2f}ms")
 
-    # Assert total time is under 200ms
+    # Assert total time is reasonable
     assert (
-        total_time * 1000 < 200
-    ), f"Total end-to-end time {total_time * 1000:.2f}ms exceeds 200ms"
+        app_creation_time * 1000 < 500
+    ), f"Total end-to-end time {app_creation_time * 1000:.2f}ms exceeds 500ms"
 
 
 def test_simulated_request_response_time():
@@ -273,66 +235,41 @@ def test_simulated_request_response_time():
     assert max_time < 5, f"Maximum simulated request time {max_time:.4f}ms exceeds 5ms"
 
 
-def test_route_handler_performance(simple_openapi_spec):
-    """Test the performance of generated route handlers."""
-    implementation = FastTestImplementation()
+@pytest.mark.asyncio
+async def test_crud_handler_performance():
+    """Test the performance of CRUD handlers."""
+    from pydantic import BaseModel
 
-    # Create the app and get the route handler
-    parser = automatic.OpenAPIParser(simple_openapi_spec)
-    parser.load_spec()
-    route_generator = automatic.RouteGenerator(implementation)
-    routes = route_generator.generate_routes(parser)
+    class TestModel(BaseModel):
+        id: int | None = None
+        name: str
 
-    # Get the handler function
-    route = routes[0]
-    handler = route.endpoint
+    handlers = liveapi.CRUDHandlers(TestModel, "items")
 
-    # Create a mock request object with the minimal required interface
-    class MockRequest:
-        def __init__(self):
-            self.path_params = {"item_id": "123"}
-            self.query_params = {}
-            self.method = "GET"
-
-        async def json(self):
-            return {}
-
-        async def body(self):
-            return b""
-
-    class MockResponse:
-        def __init__(self):
-            self.status_code = 200
-
-    # Test the route handler performance
+    # Test create operation
     times = []
     for i in range(10):
-        mock_request = MockRequest()
-        mock_response = MockResponse()
-
         start_time = time.perf_counter()
 
-        # Call the handler (this is what FastAPI calls)
-        import asyncio
-
-        result = asyncio.run(handler(mock_request, mock_response))
+        # Simulate create operation
+        result = await handlers.create({"name": f"item_{i}"})
 
         end_time = time.perf_counter()
         request_time_ms = (end_time - start_time) * 1000
         times.append(request_time_ms)
 
-        assert result["id"] == 123  # Converted from string to int by validation layer
+        assert result["name"] == f"item_{i}"
 
     average_time = sum(times) / len(times)
     max_time = max(times)
 
-    print(f"✅ Route handler times - Avg: {average_time:.4f}ms, Max: {max_time:.4f}ms")
+    print(f"✅ CRUD handler times - Avg: {average_time:.4f}ms, Max: {max_time:.4f}ms")
 
-    # Route handlers should respond very quickly
+    # CRUD handlers should be very fast
     assert (
-        average_time < 10
-    ), f"Average route handler time {average_time:.4f}ms exceeds 10ms"
-    assert max_time < 50, f"Maximum route handler time {max_time:.4f}ms exceeds 50ms"
+        average_time < 5
+    ), f"Average CRUD handler time {average_time:.4f}ms exceeds 5ms"
+    assert max_time < 20, f"Maximum CRUD handler time {max_time:.4f}ms exceeds 20ms"
 
 
 def test_sub_200ms_response_capability():

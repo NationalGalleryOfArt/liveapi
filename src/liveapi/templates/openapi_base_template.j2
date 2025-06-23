@@ -1,0 +1,30 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "{{ title }}",
+    "description": "{{ description }}",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000",
+      "description": "Development server"
+    },
+    {
+      "url": "https://test-{{ api_base_url }}",
+      "description": "Test server"
+    },
+    {
+      "url": "https://staging-{{ api_base_url }}",
+      "description": "Staging server"
+    },
+    {
+      "url": "https://{{ api_base_url }}",
+      "description": "Production server"
+    }
+  ],
+  "paths": {{ paths | tojson }},
+  "components": {
+    "schemas": {{ schemas | tojson }}
+  }
+}

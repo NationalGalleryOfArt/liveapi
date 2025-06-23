@@ -1,0 +1,38 @@
+Based on the API requirements below, generate simple endpoint and object definitions.
+
+API: {{ name }}
+Description: {{ description }}
+Requirements: {{ endpoint_descriptions }}
+
+Examples:
+
+Single endpoint (non-CRUD):
+{
+  "endpoints": [
+    {"method": "GET", "path": "/users", "description": "Get all users", "returns": "array of User objects", "operationId": "get_users"}
+  ],
+  "objects": [
+    {"name": "User", "fields": {"id": "integer", "name": "string", "email": "string"}}
+  ]
+}
+
+CRUD endpoints:
+{
+  "endpoints": [
+    {"method": "GET", "path": "/products", "description": "List products", "returns": "array of Product objects", "operationId": "list_products"},
+    {"method": "POST", "path": "/products", "description": "Create product", "returns": "Product object", "operationId": "create_product"},
+    {"method": "GET", "path": "/products/{id}", "description": "Get product", "returns": "Product object", "operationId": "get_product"},
+    {"method": "PUT", "path": "/products/{id}", "description": "Update product", "returns": "Product object", "operationId": "update_product"},
+    {"method": "DELETE", "path": "/products/{id}", "description": "Delete product", "returns": "empty", "operationId": "delete_product"}
+  ],
+  "objects": [
+    {"name": "Product", "fields": {"id": "integer", "name": "string", "price": "number"}}
+  ]
+}
+
+Generate for the requirements above. Return only JSON.
+
+IMPORTANT RULES:
+- Include operationId for every endpoint using snake_case (e.g., get_locations, create_user)
+- Use snake_case for all field names (e.g., location_id instead of locationID)
+- Follow the exact JSON structure shown in examples

@@ -1,9 +1,100 @@
 # Changelog
 
-All notable changes to the automatic project will be documented in this file.
+All notable changes to the LiveAPI project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.5.0] - 2025-06-23
+
+### 🎨 Major UX Improvements - Interactive Workflow Overhaul
+
+#### Added
+- **Streamlined Interactive Workflow**: Object-first approach eliminates duplicate questions
+- **Smart Auto-Inference**: API name/description automatically suggested from resource information
+- **JSON Array Examples**: Clean format for providing multiple example objects in a single input
+- **Professional FastAPI Implementation**: Proper parameter naming and schema handling
+- **RFC 7807 Validation Errors**: Industry-standard error format with correct Content-Type headers
+
+#### Changed
+- **Interactive Prompts**: Reordered workflow to ask for object name first, then auto-infer API details
+- **Parameter Naming**: Fixed DELETE/PUT/PATCH endpoints to use 'id' instead of 'resource_id'
+- **Request/Response Schemas**: Use typed Pydantic models instead of generic objects
+- **List Responses**: Return proper array types instead of string responses
+- **Examples Integration**: Examples from user input now appear correctly in Swagger documentation
+- **Project Name Inference**: Auto-generate project name from resource name (no duplicate prompts)
+- **Base URL Handling**: Automatically use existing project configuration when available
+
+#### Fixed
+- **Duplicate Questions**: Eliminated asking for project name and base URL multiple times
+- **FastAPI Parameter Issues**: All endpoints now use correct parameter names and types
+- **Swagger Documentation**: Examples provided by users now display properly in API docs
+- **Validation Error Format**: Professional RFC 7807 compliant error responses with proper headers
+- **Test Compatibility**: Updated all 67 tests to work with improved workflow
+
+#### Technical Details
+- Modified `src/liveapi/generator/interactive.py` to implement object-first workflow
+- Updated `src/liveapi/implementation/liveapi_router.py` with RFC 7807 error handling
+- Fixed parameter extraction in `src/liveapi/generator/generator.py` to use integer types for 'id'
+- Enhanced Pydantic model generation with example support
+- Updated all test files to match new workflow expectations
+
+### Migration
+- Existing projects continue to work without changes
+- New interactive workflow provides better UX for new API generation
+- All existing prompts and schemas remain compatible
+
+## [0.4.0] - 2025-06-23
+
+### Changed
+- **Authentication Simplified**: Removed API key authentication from the core system - now handled at API Gateway level
+- **CRUD-Only Focus**: Simplified codebase by removing conditional CRUD detection logic since all APIs are now CRUD-based
+- **Test Reliability**: Fixed cloud development environment test issues by eliminating authentication complexity
+- **No Pagination**: Simplified list endpoints to return arrays instead of pagination objects for easier integration
+
+### Removed
+- **API Key Authentication**: Removed `verify_api_key`, `get_api_key_dependency`, and related auth logic
+- **Auth Files**: Deleted `src/liveapi/implementation/auth.py` and `examples/api_key_demo.py`
+- **CRUD Detection**: Removed `_is_crud_scenario()` and `_is_crud_resource()` methods - all resources are treated as CRUD
+- **Pagination Complexity**: Removed pagination wrappers from list responses
+
+### Fixed
+- **End-to-End Tests**: All tests now pass (67 passed, 0 failed) including complete workflow validation
+- **Cloud Environment Compatibility**: Tests work reliably in cloud dev environments with URL forwarding
+- **Test Naming**: Renamed `test_api_key_authentication` to `test_basic_api_functionality`
+
+## [0.3.0] - 2025-06-22
+
+### Changed
+- **Major Refactoring**: Replaced the `automatic` code generation package with a new, dynamic `liveapi.implementation` engine.
+- **CRUD+ Runtime**: APIs are now served dynamically from OpenAPI specifications using a standardized set of CRUD+ handlers. No code is generated for implementations.
+- **Pydantic Integration**: Replaced custom `TypedDict` generation with dynamic Pydantic model creation.
+- **Simplified `sync` command**: The `liveapi sync` command no longer generates implementation files. It now creates a simple `main.py` file that runs the dynamic API server.
+
+### Removed
+- **Code Generation**: Removed the entire `automatic` package and all related code generation logic.
+
+## [0.2.0] - 2025-06-22
+
+### Changed
+
+#### 🔄 Simplified Spec Generator
+- **Removed LLM dependency**: No longer requires OpenRouter API or API keys
+- **Structured CRUD approach**: Direct generation of CRUD APIs with JSON schema input
+- **Simplified workflow**: More predictable and consistent output
+- **Faster generation**: No waiting for API responses
+- **Improved developer experience**: Direct control over generated specs
+
+### Technical Improvements
+- **Removed API key handling**: Simplified codebase with no external API dependencies
+- **Streamlined interactive flow**: Focused questions for CRUD API generation
+- **Maintained schema editing**: Still supports editing JSON schemas for regeneration
+- **Backward compatible**: Existing prompts and schemas still work
+
+### Migration
+- No migration needed - existing projects continue to work
+- API keys are no longer required
+- OPENROUTER_MODEL environment variable is no longer used
 
 ## [0.1.0] - 2025-06-20
 

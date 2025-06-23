@@ -4,279 +4,424 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is "automatic" - a Python framework that dynamically creates FastAPI routes from OpenAPI specifications at runtime, eliminating code generation. The core concept is to parse OpenAPI specs and generate FastAPI routes dynamically, while providing **Rails-style base classes** and **zero-configuration project setup** for maximum developer productivity.
+This is **LiveAPI** - a comprehensive API lifecycle management system that handles OpenAPI specification evolution, version control, change detection, and implementation synchronization. LiveAPI ensures safe API evolution with immutable versioning, automated change detection, and intelligent migration planning.
 
-**Current Status**: Work in progress with intelligent auto-discovery, CRUD base classes, authentication, and comprehensive testing.
+**Current Status**: Production-ready with complete lifecycle management features implemented and tested.
 
 ## Architecture
 
-The project follows this planned structure:
+LiveAPI follows this modular package structure:
 ```
-automatic/
+liveapi/
 ├── src/
-│   └── automatic/
+│   └── liveapi/
 │       ├── __init__.py
-│       ├── parser.py     # OpenAPI parsing logic
-│       ├── router.py     # Dynamic route generation
-│       └── app.py        # Main application interface
-├── specifications/      # OpenAPI specs directory
-├── implementations/     # Business logic implementations
+│       ├── metadata_manager.py    # Facade for metadata package
+│       ├── metadata/              # Metadata management package
+│       │   ├── __init__.py        # Re-exports
+│       │   ├── manager.py         # Main MetadataManager class
+│       │   ├── models.py          # Data models
+│       │   └── utils.py           # Helper functions
+│       ├── change_detector.py     # Facade for change_detector package
+│       ├── change_detector/       # Change detection package
+│       │   ├── __init__.py        # Re-exports
+│       │   ├── models.py          # Data models
+│       │   ├── detector.py        # Main detector class
+│       │   ├── analyzer.py        # Analysis logic
+│       │   └── utils.py           # Helper functions
+│       ├── version_manager.py     # Facade for version package
+│       ├── version/               # Version management package
+│       │   ├── __init__.py        # Re-exports
+│       │   ├── manager.py         # Main VersionManager class
+│       │   ├── models.py          # Version models
+│       │   ├── comparator.py      # Version comparison
+│       │   └── migration.py       # Migration planning
+│       ├── sync_manager.py        # Facade for sync package
+│       ├── sync/                  # Synchronization package
+│       │   ├── __init__.py        # Re-exports
+│       │   ├── manager.py         # Main SyncManager class
+│       │   ├── plan.py            # Sync planning
+│       │   ├── executor.py        # Sync execution
+│       │   ├── models.py          # Sync models
+│       │   └── migration.py       # Migration guides
+│       ├── spec_generator.py      # Facade for generator package
+│       ├── generator/             # Specification generation package
+│       │   ├── __init__.py        # Re-exports
+│       │   ├── generator.py       # Main SpecGenerator class
+│       │   ├── prompt.py          # Prompt building
+│       │   ├── interactive.py     # Interactive workflow
+│       │   └── utils.py           # Helper functions
+│       ├── cli.py                 # Facade for CLI package
+│       ├── cli/                   # CLI package
+│       │   ├── __init__.py        # Re-exports
+│       │   ├── main.py            # Main entry point
+│       │   ├── utils.py           # CLI utilities
+│       │   └── commands/          # Command implementations
+│       │       ├── __init__.py
+│       │       ├── project.py
+│       │       ├── version.py
+│       │       ├── sync.py
+│       │       ├── generate.py
+│       │       └── server.py
+│       └── implementation/        # Implementation generation (formerly automatic)
+│           ├── __init__.py        # Re-exports
+│           ├── app.py             # FastAPI app creation
+│           ├── parser.py          # OpenAPI parsing
+│           ├── router.py          # Route generation
+│           ├── scaffold.py        # Code scaffolding
+│           └── templates/         # Code templates
+├── .liveapi/                      # Project metadata
+│   ├── config.json               # Project configuration
+│   ├── specs.json                # Specification tracking
+│   └── backups/                  # Implementation backups
+├── specifications/               # Versioned OpenAPI specs
+├── implementations/              # Generated FastAPI code
 ├── tests/
-├── examples/
 └── pyproject.toml
 ```
 
 ### Core Components
-- **Parser**: Loads and parses OpenAPI YAML/JSON specifications
-- **Router**: Generates FastAPI routes dynamically from parsed specs
-- **App Interface**: Main entry point (`automatic.create_app()`) that ties everything together
+- **MetadataManager** (`metadata/` package): Manages project state and spec tracking with checksums
+- **ChangeDetector** (`change_detector/` package): Detects and analyzes breaking vs non-breaking changes  
+- **VersionManager** (`version/` package): Handles immutable semantic versioning
+- **SyncManager** (`sync/` package): Synchronizes implementations with specification changes
+- **SpecGenerator** (`generator/` package): Generates OpenAPI specifications with AI assistance
+- **CLI Interface** (`cli/` package): Provides command-line interface for all LiveAPI operations
+- **Implementation** (`implementation/` package): Handles implementation generation from OpenAPI specs
 
-### Business Logic Interface
+## Refactoring Plan
 
-Automatic provides **Rails-style base classes** to simplify implementation development. Choose the appropriate base class for your API pattern:
+We've started refactoring large files into modular packages to improve maintainability. The pattern is:
 
-#### **CRUD APIs (Recommended for REST resources)**
+1. Create a package directory with the same name as the original file
+2. Split the code into logical modules:
+   - `__init__.py` - Re-exports public components
+   - `models.py` - Data models and classes
+   - Core functionality in appropriately named modules
+   - `utils.py` - Helper functions
+3. Convert the original file to a facade that imports from the new structure
 
-For standard CRUD operations, inherit from `BaseCrudImplementation`:
+### Completed Refactorings:
+- ✅ `cli.py` → `cli/` package
+- ✅ `change_detector.py` → `change_detector/` package
+- ✅ `version_manager.py` → `version/` package
+- ✅ `sync_manager.py` → `sync/` package
+- ✅ `spec_generator.py` → `generator/` package
+- ✅ `metadata_manager.py` → `metadata/` package
 
-```python
-from automatic import BaseCrudImplementation
+All planned refactorings have been completed! The codebase now follows a modular package structure for improved maintainability.
 
-class UserService(BaseCrudImplementation):
-    """CRUD implementation for user resources."""
-    
-    resource_name = "user"  # Used for error messages and resource identification
-    
-    def get_data_store(self) -> Dict[str, Any]:
-        """Return your data storage mechanism."""
-        # Replace with actual database/cache/service connection
-        return self.database.get_collection("users")
-    
-    # Optional: Override CRUD methods for custom logic
-    def validate_create(self, data: Dict) -> None:
-        """Add custom validation for creating users."""
-        super().validate_create(data)
-        if len(data.get('name', '')) < 2:
-            raise ValidationError("Name must be at least 2 characters")
-    
-    def build_resource(self, data: Dict, resource_id: str) -> Dict:
-        """Customize how users are created."""
-        return {
-            "id": resource_id,
-            "name": data.get('name'),
-            "email": data.get('email'),
-            "status": "active",
-            "created_at": "2023-01-01T00:00:00Z",
-            **data
-        }
+## Core Workflow
+
+LiveAPI manages the complete API lifecycle through these key phases:
+
+### 0. Interactive Spec Generation (IMPROVED!)
+```bash
+# Run with no arguments for interactive mode
+liveapi
+
+# Or use the generate command directly
+liveapi generate
+
+# Regenerate from saved prompt (NEW!)
+liveapi regenerate .liveapi/prompts/my_api_prompt.json
+```
+- **Streamlined UX** - no duplicate questions, smart auto-inference
+- **Object-first workflow** - start with your resource, API details follow
+- **Smart defaults** - API name/description auto-inferred from resource info
+- **JSON array examples** - provide multiple examples in clean JSON format
+- **Professional error handling** - RFC 7807 compliant validation errors
+- **Saves schemas for regeneration** - easily iterate on API designs
+- **Schema editing workflow** - edit clean JSON instead of complex OpenAPI YAML
+
+### 1. Project Initialization
+```bash
+liveapi init
+```
+- Creates `.liveapi/` metadata directory
+- Discovers existing OpenAPI specifications
+- Tracks initial checksums for change detection
+
+### 2. Change Detection
+```bash
+liveapi status
+```
+- Compares current specs against tracked checksums
+- Classifies changes as breaking vs non-breaking
+- Provides impact analysis and version recommendations
+
+### 3. Version Management
+```bash
+# Create version automatically based on changes
+liveapi version create
+
+# Create specific version types
+liveapi version create --major    # Breaking changes
+liveapi version create --minor    # New features
+liveapi version create --patch    # Bug fixes
+
+# List all versions
+liveapi version list
+
+# Compare versions
+liveapi version compare v1.0.0 v1.1.0
+```
+- Creates immutable version files (e.g., `users_v1.0.0.yaml`)
+- Updates symlinks to latest versions
+- Preserves full version history
+
+### 4. Implementation Synchronization
+```bash
+# Preview sync changes
+liveapi sync --preview
+
+# Execute synchronization
+liveapi sync
+
+# Force sync (skip confirmations)
+liveapi sync --force
+```
+- Automatically generates FastAPI implementations
+- Creates backups before making changes
+- Generates migration guides for breaking changes
+- Handles implementation updates safely
+
+## Key Features
+
+### Immutable Versioning
+- Never overwrites existing specifications
+- Semantic versioning (major.minor.patch)
+- Symlinks to latest versions for easy access
+- Complete version history preservation
+
+### Smart Change Detection
+- SHA256 checksums for fast change identification
+- Breaking vs non-breaking change classification
+- Detailed analysis of paths, schemas, parameters, and responses
+- Automatic version impact assessment
+
+### Safe Migration Planning
+- Backup creation before any changes
+- Migration guides for breaking changes
+- Effort estimation (low/medium/high)
+- Preview mode for safe operations
+
+### Team Collaboration
+- Shared metadata via `.liveapi/` directory
+- Git-compatible version control integration
+- Clear change visibility and impact analysis
+- Synchronized project state across team members
+
+### CRUD+ Implementation Generation
+- **Opinionated CRUD+ mode** for standardized APIs
+- Automatic detection of CRUD+ resources in OpenAPI specs
+- Dynamic Pydantic model generation using create_model
+- Standard handlers for Create, Read, Update, Delete, List operations
+- **Correct parameter naming** - uses 'id' instead of 'resource_id'
+- **Proper request/response schemas** - typed models instead of generic objects
+- **Array responses** - list endpoints return proper array types
+- **RFC 7807 validation errors** - professional error format with proper Content-Type
+- Simple list responses (no pagination complexity)
+- In-memory storage (easily replaceable with database)
+- **No authentication** - handled at API Gateway level
+
+## Command Reference
+
+### Project Management
+```bash
+liveapi                        # Interactive mode (new!)
+liveapi init                   # Initialize project
+liveapi generate               # Generate OpenAPI spec with AI
+liveapi regenerate <prompt>    # Regenerate from saved prompt (NEW!)
+liveapi status                 # Show changes and sync status
+liveapi validate               # Validate OpenAPI specs
 ```
 
-**Built-in CRUD Operations**:
-- `index(filters, auth_info)` - List resources (GET /users)
-- `show(resource_id, auth_info)` - Get single resource (GET /users/{id})
-- `create(data, auth_info)` - Create resource (POST /users)
-- `update(resource_id, data, auth_info)` - Update resource (PUT/PATCH /users/{id})
-- `destroy(resource_id, auth_info)` - Delete resource (DELETE /users/{id})
-
-
-#### **Non-CRUD APIs (Custom business logic)**
-
-For APIs that don't follow standard CRUD patterns, inherit from `BaseImplementation`:
-
-```python
-from automatic import BaseImplementation
-
-class ReportService(BaseImplementation):
-    """Implementation for custom business operations."""
-    
-    def __init__(self):
-        super().__init__()
-        # Add your custom initialization here
-        self.report_generator = ReportGenerator()
-    
-    def generate_report(self, data: dict):
-        # Custom business logic
-        auth_info = data.get('auth')
-        body = data.get('body', {})
-        
-        # Use inherited get_data() method for external data fetching
-        try:
-            external_data = await self.get_data("analytics", "daily", auth_info)
-            report = self.report_generator.create(body, external_data)
-            return {"report_id": report.id, "status": "generated"}, 201
-        except Exception as e:
-            raise ServiceUnavailableError("Report service temporarily unavailable")
+### Version Control
+```bash
+liveapi version create         # Auto-version based on changes
+liveapi version create --major # Create major version
+liveapi version create --minor # Create minor version
+liveapi version create --patch # Create patch version
+liveapi version list          # List all versions
+liveapi version compare v1 v2 # Compare versions
 ```
 
-#### **Manual Implementation (Full control)**
-
-For complete control, implement methods directly without inheritance:
-
-**Automatic Status Code Inference**: Non-CRUD implementation methods can return just the response data. HTTP status codes are automatically inferred from the HTTP method:
-- GET → 200 (OK)
-- POST → 201 (Created)  
-- PUT → 200 (OK)
-- PATCH → 200 (OK)
-- DELETE → 204 (No Content)
-
-You can still return `(data, status_code)` tuples for custom status codes.
-
-```python
-from automatic import NotFoundError, ValidationError, ConflictError
-
-class MyImplementation:
-    def create_art_object(self, data: dict) -> dict:
-        # Returns response data - status code automatically inferred (POST=201)
-        return {"id": 1, "title": data["title"]}
-    
-    def get_art_object(self, data: dict):
-        # Auth info is available in data['auth'] if authentication is configured
-        auth_info = data.get('auth')
-        
-        art_id = data["art_id"]
-        if art_id not in self.objects:
-            raise NotFoundError(f"Art object {art_id} not found")
-        return self.objects[art_id]  # Status code automatically inferred (GET=200)
+### Synchronization
+```bash
+liveapi sync                  # Sync implementations
+liveapi sync --preview        # Preview changes only
+liveapi sync --force         # Skip confirmations
 ```
-
-## Development Setup
-
-This project uses Poetry for dependency management with these core dependencies:
-- FastAPI ^0.100.0
-- Pydantic ^2.0.0
-- PyYAML ^6.0
-- Python ^3.9
-- Prance ^25.0.0 (for OpenAPI parsing)
 
 ## Installation and Usage
 
-1. Install in development mode:
+1. Install liveapi:
 ```bash
 pip install -e .
 ```
 
-2. **Automatic project setup** (recommended):
+2. No API key required! Authentication is handled at the API Gateway level:
 ```bash
-# 🚀 Ultimate simplicity - just run automatic!
-automatic
-# First run: Discovers all specs in current directory, sets up everything
-# Subsequent runs: Adds implementations for any new specs
-
-# Or specify a single spec file
-automatic my_api.yaml
-# Creates: implementations/my_api_service.py (+ project setup if first run)
-
-# Custom output path for single specs
-automatic my_api.yaml -o services/user_handler.py```
-
-3. Use the framework:
-
-**Automatic discovery** (default):
-```python
-import automatic
-# Automatically finds specifications/ and implementations/ directories
-app = automatic.create_app()
+# Just run the generator directly
+liveapi generate
 ```
 
-**Explicit specification**:
-```python
-from automatic import create_app
-
-# With CRUD service
-from implementations.user_service import UserService
-app = create_app(spec_path="specifications/users.yaml", implementation=UserService())
-
-# With authentication
-from automatic import create_api_key_auth
-auth = create_api_key_auth(api_keys=['secret-key-123', 'secret-key-456'])
-app = create_app(spec_path="specifications/api.yaml", implementation=UserService(), auth_dependency=auth)
-```
-
-## Automatic Setup
-
-Automatic includes intelligent project setup that discovers and processes your OpenAPI specifications automatically:
-
-### **Smart Discovery Modes**
-
-#### **🚀 First Run Mode** (empty directory)
-When you run `automatic` in a directory without existing `specifications/` or `implementations/` directories:
-
-1. **Discovery**: Scans current directory for all OpenAPI specification files (`.yaml`, `.yml`, `.json`)
-2. **Validation**: Checks each file to ensure it's a valid OpenAPI spec
-3. **Generation**: Creates implementation for each spec using intelligent base class selection
-4. **Organization**: Moves specs to `specifications/` directory for clean project structure
-5. **Setup**: Creates `main.py` with proper imports and FastAPI configuration
-6. **Structure**: Generates `.gitignore` for Python projects
-
-
-#### **🔄 Incremental Mode** (existing project)
-When you run `automatic` in a directory with existing `specifications/` and `implementations/` directories:
-
-1. **Scan**: Checks `specifications/` directory for all spec files
-2. **Compare**: Identifies specs that don't have corresponding implementations
-3. **Generate**: Creates missing implementations only
-4. **Preserve**: Leaves existing files and structure unchanged
-
-
-#### **📋 Single Spec Mode**
-When you provide a specific spec file path:
-
-1. **Process**: Generates implementation for the specified file only
-2. **Auto-setup**: If first file in empty project, also creates project structure
-3. **Custom path**: Supports `-o` flag for custom output location
-
-
-### **Automatic Base Class Selection**
-
-The generator analyzes your API patterns and chooses the best base class:
-
-- **CRUD APIs** (3+ of: list, show, create, update, delete) → `BaseCrudImplementation`
-- **Custom APIs** (non-standard operations) → `BaseImplementation`
-- **Manual control** → No base class inheritance
-
-### **CLI Usage**
-
+3. Initialize your project:
 ```bash
-# Automatic discovery and setup
-automatic                                # Auto-discover all specs
+# Navigate to your project directory
+cd my-api-project
 
-# Single specification processing  
-automatic <spec_path> [-o <output_path>]
+# Interactive mode - will offer to generate a spec
+liveapi
+
+# Or initialize directly
+liveapi init
 ```
 
+4. Typical workflow (improved UX):
+```bash
+# Generate a new API spec with streamlined workflow
+liveapi generate
+# Interactive prompts:
+# 1. Object name (e.g., "products") 
+# 2. Object description (e.g., "Product inventory items")
+# 3. API name (auto-suggested: "Products API")
+# 4. API description (auto-suggested from object description)
+# 5. JSON schema for fields
+# 6. JSON array of examples
+# 
+# 🎯 Next steps:
+#   1. Review the generated spec: specifications/products.yaml
+#   2. Edit the schema JSON for quick changes: .liveapi/prompts/products_schema.json
+#   3. Run 'liveapi sync' to generate implementation
+#   4. Run 'liveapi run' to test the API
+#   5. Test with proper schemas: curl http://localhost:8000/products
+#   6. Run 'liveapi version create' when ready to version
 
+# Edit your OpenAPI specs or regenerate with modifications
+liveapi regenerate .liveapi/prompts/products_prompt.json
 
-### **Generated CRUD Service Example**
+# Sync implementations and test (with improved FastAPI)
+liveapi sync           # Generate FastAPI code with correct parameters
+liveapi run            # Start development server
+# Test with properly typed responses and RFC 7807 error handling
 
-For a users API with standard CRUD operations:
-
-```python
-class UserService(BaseCrudImplementation):
-    """CRUD implementation for user resources."""
-    
-    resource_name = "user"
-    
-    def get_data_store(self) -> Dict[str, Any]:
-        """Return the data storage mechanism."""
-        # TODO: Replace with actual database/cache/service connection
-        if not hasattr(self, '_data_store'):
-            self._data_store = {}
-        return self._data_store
-
-    def get_user(self, data: Dict[str, Any]) -> Tuple[Dict[str, Any], int]:
-        """Get a user by ID - delegates to self.show()"""
-        resource_id = data.get('user_id')
-        if not resource_id:
-            raise ValidationError('Resource ID is required')
-        return self.show(resource_id, auth_info=data.get('auth'))
-
-    def create_user(self, data: Dict[str, Any]) -> Tuple[Dict[str, Any], int]:
-        """Create a new user - delegates to self.create()"""
-        body = data.get('body', {})
-        return self.create(data=body, auth_info=data.get('auth'))
-    
+# Version when ready
+liveapi version create --minor
 ```
 
+## Workflow Examples
+
+### Starting a New Project
+```bash
+# Option 1: Interactive mode (recommended)
+liveapi
+# Follow prompts to initialize and generate your first spec
+
+# Option 2: Manual approach
+liveapi init
+liveapi generate  # Generate spec with AI
+liveapi status    # Check status
+liveapi sync      # Generate implementations
+```
+
+### Evolving an Existing API
+```bash
+# 1. Edit your OpenAPI specification
+# Or regenerate with modifications:
+liveapi regenerate .liveapi/prompts/my_api_prompt.json
+
+# 2. Check what changed
+liveapi status
+
+# 3. Create version if breaking changes
+liveapi version create --major
+
+# 4. Sync implementations
+liveapi sync --preview
+liveapi sync
+```
+
+### Working with Multiple APIs
+```bash
+# LiveAPI handles multiple specs automatically
+ls specifications/
+# users_v1.0.0.yaml
+# products_v1.1.0.yaml  
+# orders_v2.0.0.yaml
+
+# Status shows all APIs
+liveapi status
+
+# Sync handles all at once
+liveapi sync
+```
+
+### Iterating on API Design with Saved Prompts & Schema Editing
+```bash
+# Generate initial spec (automatically saves prompt AND intermediate JSON)
+liveapi generate
+# 💾 Prompt saved to: .liveapi/prompts/my_api_prompt.json
+# 📋 Schema saved to: .liveapi/prompts/my_api_schema.json
+#    Edit the schema JSON to modify endpoints/objects, then:
+#    liveapi regenerate .liveapi/prompts/my_api_prompt.json
+
+# Method 1: Edit the intermediate JSON schema (EASIER!)
+vim .liveapi/prompts/my_api_schema.json
+# Edit endpoints, add/remove objects, modify fields
+liveapi regenerate .liveapi/prompts/my_api_prompt.json
+# 🔧 Schema has been modified - using edited schema
+
+# Method 2: Edit the original prompt and regenerate
+liveapi regenerate .liveapi/prompts/my_api_prompt.json
+# Choose to edit prompt, then regenerates with LLM
+
+# List available saved prompts and schemas
+ls .liveapi/prompts/
+# my_api_prompt.json       <- Original prompt
+# my_api_schema.json       <- Intermediate JSON (easy to edit!)
+# user_service_prompt.json
+# user_service_schema.json
+
+# The regenerate workflow gives you TWO ways to iterate:
+# 1. Edit the structured JSON schema (recommended for precise changes)
+# 2. Edit the original prompt (good for major redesigns)
+# 3. Use the exact same prompt to get different LLM output
+# 4. Change models (--model flag)
+```
+
+### Creating CRUD APIs with Custom Schemas (Improved)
+```bash
+# Generate a CRUD API with streamlined workflow
+liveapi generate
+# New improved prompts:
+# 1. Object name: "locations"
+# 2. Description: "Gallery location records"  
+# 3. API name: (auto-suggested: "Locations API")
+# 4. API description: (auto-suggested: "Gallery location records")
+# 5. JSON schema:
+#    {
+#      "site": "string",
+#      "room": "string", 
+#      "active": "integer",
+#      "description": "string",
+#      "unitPosition": "string"
+#    }
+# 6. JSON array examples:
+#    [
+#      {"site": "Main Gallery", "room": "101", "active": 1, "description": "Main entrance", "unitPosition": "A1"},
+#      {"site": "Annex", "room": "202", "active": 1, "description": "Storage area", "unitPosition": "B2"}
+#    ]
+
+# Sync to generate implementation (with proper FastAPI)
+liveapi sync
+
+# Run the API (with RFC 7807 errors and correct parameters)
+liveapi run
+# Test: curl http://localhost:8000/locations
+# DELETE: curl -X DELETE http://localhost:8000/locations/1  (uses 'id', not 'locationID')
+```
 
 ## Testing
 
@@ -285,234 +430,32 @@ Run tests with:
 python -m pytest tests/ -v
 ```
 
-## Authentication
-
-Automatic provides built-in authentication support for securing API endpoints:
-
-### API Key Authentication
-
-Header-based API key authentication using `X-API-Key` header:
-
-```python
-from automatic import create_api_key_auth
-
-# Configuration options:
-auth = create_api_key_auth(api_keys=['key1', 'key2'])  # List of keys
-auth = create_api_key_auth()  # From env var API_KEY
-
-# Apply to app
-app = create_app(spec_path="specifications/api.yaml", implementation=MyImpl(), auth_dependency=auth)
-```
-
-**Usage**: `curl -H "X-API-Key: your-key" http://localhost:8000/endpoint`
-
-### Bearer Token Authentication
-
-Standard Authorization header with Bearer tokens:
-
-```python
-from automatic import create_bearer_auth
-
-# Configuration options:
-auth = create_bearer_auth(tokens=['token1', 'token2'])  # List of tokens
-auth = create_bearer_auth()  # From env var BEARER_TOKEN
-
-# Apply to app
-app = create_app(spec_path="specifications/api.yaml", implementation=MyImpl(), auth_dependency=auth)
-```
-
-**Usage**: `curl -H "Authorization: Bearer your-token" http://localhost:8000/endpoint`
-
-### Authentication in Implementation Methods
-
-When authentication is configured, auth information is passed to implementation methods:
-
-```python
-class MyImplementation:
-    def get_protected_resource(self, data: dict):
-        # Authentication info is available in data['auth']
-        auth_info = data.get('auth')
-        
-        if not auth_info:
-            raise UnauthorizedError("Authentication required")
-        
-        # Access auth metadata
-        api_key = auth_info.get('api_key')  # For API key auth
-        token = auth_info.get('token')      # For Bearer token auth
-        metadata = auth_info.get('metadata')  # User-defined metadata
-        
-        # Your business logic here
-        return {"message": "Access granted", "user": metadata}, 200
-```
-
-### Security Features
-
-- ✅ **Header-only authentication** - No query parameters or cookies (security best practice)
-- ✅ **RFC 9457 compliant error responses** - Standardized error format
-- ✅ **Flexible token storage** - Lists, dicts, env vars, single values
-- ✅ **Metadata support** - Associate additional data with keys/tokens
-- ✅ **Global or per-route** - Apply to entire app or specific routes
-
-## Exception Handling
-
-Automatic provides built-in business exceptions that map to HTTP status codes:
-
-```python
-from automatic import (
-    NotFoundError,        # 404
-    ValidationError,      # 400
-    ConflictError,        # 409
-    UnauthorizedError,    # 401
-    ForbiddenError,       # 403
-    RateLimitError,       # 429
-    ServiceUnavailableError  # 503
-)
-```
-
-**Features**:
-- Automatic RFC 9457 error responses
-- Extra context data can be included
-- Generic exceptions become safe 500 responses
-
-**Example Response**:
-```json
-{
-  "type": "/errors/not_found",
-  "title": "NotFound",
-  "status": 404,
-  "detail": "User 123 not found",
-  "user_id": "123"
-}
-```
-
-## Health Check
-
-Automatic automatically adds a `/health` endpoint to every application that provides basic service status:
-
-```json
-{
-  "status": "healthy",
-  "timestamp": "2025-06-20T12:34:56.789Z",
-  "service": "automatic"
-}
-```
-
-**Features**:
-- Always returns HTTP 200 with "healthy" status
-- Includes current timestamp in ISO format
-- No data source dependencies (pure service health)
-- Automatically added to all apps
-
-**Usage**: `GET /health`
-
-## Version-Aware Routing
-
-Automatic provides intelligent version handling that allows one implementation to serve multiple API versions. The framework automatically extracts version information and passes it to your handlers.
-
-### **Version Detection**
-
-Versions are automatically extracted from:
-
-1. **Filename patterns**: `users_v1.yaml`, `products_v2.yaml` → versions 1, 2
-2. **Operation IDs**: `get_user_v2`, `create_user_v3` → versions 2, 3
-3. **Default**: Version 1 if no version pattern is found
-
-### **Version-Aware Implementation**
-
-Generated implementations automatically include `version` parameters:
-
-```python
-class UserService(BaseCrudImplementation):
-    def get_user(self, data: Dict[str, Any], version: int = 1) -> Tuple[Dict[str, Any], int]:
-        """Handle multiple API versions in one method."""
-        user_id = data.get('user_id')
-        
-        # Version-specific logic
-        if version == 1:
-            # Legacy v1 format
-            return {"id": user_id, "name": "John"}, 200
-        elif version == 2:
-            # Enhanced v2 format  
-            return {"id": user_id, "full_name": "John Doe", "metadata": {...}}, 200
-        elif version >= 3:
-            # Latest format with additional fields
-            return {"id": user_id, "profile": {...}, "preferences": {...}}, 200
-        else:
-            raise ValidationError(f"Unsupported version: {version}")
-
-```
-
-### **Automatic Version Detection and Routing**
-
-The framework automatically:
-
-- **Detects method signatures** - Checks if methods accept `version` parameter
-- **Extracts version from routes** - Uses filename and operation ID patterns
-- **Passes version to handlers** - Calls `method(data, version=X)` if supported
-- **Backward compatibility** - Calls `method(data)` for methods without version parameter
-
-
-
-
-
-## Examples
-
-Working examples are available in `examples/`:
-- `examples/versioning/` - Demonstrates version-aware API handling
-- `examples/exceptions/` - Exception handling patterns
-- `examples/auth/` - Authentication examples (API key and Bearer token)
-
-## Base Classes Reference
-
-### **BaseCrudImplementation**
-
-Rails-style CRUD base class for standard REST resources:
-
-**Required Methods:**
-- `get_data_store()` - Return your data storage mechanism
-
-**Built-in CRUD Methods:**
-- `index(filters, auth_info)` - List resources  
-- `show(resource_id, auth_info)` - Get single resource
-- `create(data, auth_info)` - Create resource
-- `update(resource_id, data, auth_info)` - Update resource  
-- `destroy(resource_id, auth_info)` - Delete resource
-
-**Customization Hooks:**
-- `validate_create(data)` - Custom create validation
-- `validate_update(data)` - Custom update validation
-- `validate_destroy(resource_id)` - Custom delete validation
-- `generate_id(data)` - Custom ID generation
-- `build_resource(data, resource_id)` - Custom resource creation
-- `merge_updates(existing, updates)` - Custom update merging
-
-### **BaseImplementation**
-
-For non-CRUD APIs with custom business logic:
-
-**Built-in Helper Methods:**
-- `get_data(resource_type, resource_id, auth_info)` - External data fetching with error handling
-
-**Usage Pattern:**
-- Inherit and implement your custom operation methods
-- Use `get_data()` for external service calls
-- Follow automatic's exception patterns
-
 ## Status
 
-✅ **Core Features Implemented**:
-- **Rails-style CRUD base classes** with automatic method delegation
-- **Intelligent project setup** with pattern detection and smart class naming
-- **Zero-configuration auto-discovery** for seamless multi-API projects
-- OpenAPI spec parsing with prance
-- Dynamic FastAPI route generation
-- Dict-based business logic interface
-- Request validation with Pydantic models
-- Path, query, and body parameter handling
-- **Business exception mapping to HTTP responses**
-- **Authentication (API Key & Bearer Token)**
-- Automatic multi-API discovery
-- Version-aware routing (v1, v2, etc.)
-- RFC 9457 error responses
-- Working examples demonstrating all features
-- Comprehensive test coverage
+✅ **LiveAPI Features Implemented**:
+- **Streamlined UX workflow** - no duplicate questions, object-first approach
+- **Smart auto-inference** - API name/description inferred from resource info  
+- **JSON array examples** - clean format for providing multiple examples
+- **Professional FastAPI implementation** - correct parameter names ('id' not 'resource_id')
+- **RFC 7807 validation errors** - proper Content-Type and error structure
+- **Typed request/response schemas** - real Pydantic models, not generic objects
+- **Proper array responses** - list endpoints return correct array types
+- **Dual persistence system** - saves prompts AND intermediate JSON schemas
+- **Schema editing workflow** - edit clean JSON instead of complex OpenAPI YAML
+- **Smart regeneration** - detects schema modifications and rebuilds automatically
+- **Interactive mode** when running `liveapi` with no arguments
+- **Immutable versioning system** with semantic versioning support
+- **Change detection** with breaking/non-breaking analysis using SHA256 checksums
+- **Implementation synchronization** with automatic FastAPI code generation  
+- **Migration planning** with effort estimation and manual intervention detection
+- **Version comparison** with detailed change breakdowns
+- **Backup and recovery** for safe implementation updates
+- **Preview mode** for all destructive operations
+- **Complete CLI interface** with all essential commands
+- **67 comprehensive tests** covering all functionality with 100% pass rate
+- **Team collaboration** via shared `.liveapi/` metadata
+- **Git integration** ready for version control workflows
+- **CRUD+ implementation generation** with automatic resource detection
+- **Dynamic Pydantic model generation** for robust type validation
+- **Simplified CRUD-only architecture** with streamlined handlers
+- **Cloud-friendly testing** that works reliably in all development environments

@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict, List, Any, Tuple, Optional
 from jinja2 import Environment, FileSystemLoader
 from .parser import OpenAPIParser
+from .typegen import TypedDictGenerator
 
 
 class ScaffoldGenerator:
@@ -95,6 +96,11 @@ class ScaffoldGenerator:
         routes = self.parser.get_routes()
         template_data = self._prepare_template_data(routes)
 
+        # Generate TypedDict definitions
+        typegen = TypedDictGenerator()
+        type_definitions = typegen.generate_types_for_routes(routes)
+        template_data["type_definitions"] = type_definitions
+
         # Choose template based on API type
         template_name = (
             "crud_implementation.py.j2"
@@ -120,6 +126,9 @@ class ScaffoldGenerator:
         # Determine if this looks like a CRUD API
         use_crud_base, resource_name = self._analyze_crud_patterns(routes)
 
+        # Extract schema information from the OpenAPI spec
+        schema_info = self._extract_schema_info()
+
         # Process routes for template
         processed_routes = []
         for route in routes:
@@ -139,6 +148,7 @@ class ScaffoldGenerator:
                     for code in route.get("responses", {}).keys()
                     if not code.startswith("2")
                 ],
+                "request_body": route.get("request_body", {}),
             }
 
             # Add CRUD mapping for CRUD APIs
@@ -154,7 +164,30 @@ class ScaffoldGenerator:
             "resource_name": resource_name,
             "use_crud_base": use_crud_base,
             "routes": processed_routes,
+            "schema_info": schema_info,
         }
+
+    def _extract_schema_info(self) -> Dict[str, Any]:
+        """Extract schema information from the OpenAPI spec."""
+        # Load the spec if not already loaded
+        if not hasattr(self.parser, "spec") or self.parser.spec is None:
+            self.parser.load_spec()
+
+        # Extract schemas from components
+        schemas = self.parser.spec.get("components", {}).get("schemas", {})
+
+        # Process each schema to extract properties and required fields
+        schema_info = {}
+        for schema_name, schema in schemas.items():
+            properties = schema.get("properties", {})
+            required = schema.get("required", [])
+
+            schema_info[schema_name] = {
+                "properties": properties,
+                "required": required,
+            }
+
+        return schema_info
 
     def _analyze_crud_patterns(self, routes: List[Dict[str, Any]]) -> Tuple[bool, str]:
         """
@@ -197,6 +230,15 @@ class ScaffoldGenerator:
             ]
         )
 
+        # Check for common CRUD operation IDs directly
+        common_crud_ids = {"index", "create", "show", "update", "destroy"}
+        has_common_crud_ids = any(op_id in common_crud_ids for op_id in operation_ids)
+
+        # Count how many common CRUD operation IDs we have
+        common_crud_count = sum(
+            1 for op_id in operation_ids if op_id in common_crud_ids
+        )
+
         # Must have both collection-style paths AND CRUD operation names to be considered CRUD
         # Also need at least one basic collection endpoint (list or create on base path)
         base_collection_operations = any(
@@ -207,12 +249,13 @@ class ScaffoldGenerator:
             for method, path in route_combinations
         )
 
-        # If we have 3+ CRUD operations AND CRUD operation names AND collection-style endpoints
+        # If we have 3+ CRUD operations AND (CRUD operation names OR common CRUD IDs) AND collection-style endpoints
+        # OR if we have 3+ common CRUD IDs directly
         use_crud_base = (
             crud_score >= 3
-            and crud_operation_patterns >= 2
+            and (crud_operation_patterns >= 2 or has_common_crud_ids)
             and base_collection_operations
-        )
+        ) or common_crud_count >= 3
 
         # Extract resource name from paths or operation IDs
         resource_name = self._extract_resource_name(paths, operation_ids)
@@ -265,7 +308,7 @@ class ScaffoldGenerator:
             return {
                 "crud_method": "index(filters=filters)",
                 "param_extraction": "# List operation - pass query parameters as filters\n            filters = {k: v for k, v in data.items() if k not in ['auth', 'body']}",
-                "operation_name": "list"
+                "operation_name": "list",
             }
 
         # Detect if this is a show operation (GET with ID parameter)
@@ -274,15 +317,15 @@ class ScaffoldGenerator:
             return {
                 "crud_method": "show(resource_id)",
                 "param_extraction": f"# Show operation - extract resource ID\n            resource_id = data.get('{param_name}')\n            if not resource_id:\n                raise ValidationError('Resource ID is required')",
-                "operation_name": "read"
+                "operation_name": "read",
             }
 
         # Create operation (POST)
         elif method == "POST":
             return {
                 "crud_method": "create(data=body)",
-                "param_extraction": "# Create operation - extract request body\n            body = data.get('body', {})",
-                "operation_name": "create"
+                "param_extraction": "# Create operation - extract request body\n            body = data.get('body', {})\n            if not body:\n                raise ValidationError('Request body is required')",
+                "operation_name": "create",
             }
 
         # Update operation (PUT/PATCH)
@@ -290,8 +333,8 @@ class ScaffoldGenerator:
             param_name = self._extract_id_param_name(path)
             return {
                 "crud_method": "update(resource_id, data=body)",
-                "param_extraction": f"# Update operation - extract resource ID and body\n            resource_id = data.get('{param_name}')\n            if not resource_id:\n                raise ValidationError('Resource ID is required')\n            body = data.get('body', {{}})",
-                "operation_name": "update"
+                "param_extraction": f"# Update operation - extract resource ID and body\n            resource_id = data.get('{param_name}')\n            if not resource_id:\n                raise ValidationError('Resource ID is required')\n            body = data.get('body', {{}})\n            if not body:\n                raise ValidationError('Request body is required')",
+                "operation_name": "update",
             }
 
         # Delete operation (DELETE)
@@ -300,7 +343,7 @@ class ScaffoldGenerator:
             return {
                 "crud_method": "destroy(resource_id)",
                 "param_extraction": f"# Delete operation - extract resource ID\n            resource_id = data.get('{param_name}')\n            if not resource_id:\n                raise ValidationError('Resource ID is required')",
-                "operation_name": "delete"
+                "operation_name": "delete",
             }
 
         return None
@@ -315,8 +358,13 @@ class ScaffoldGenerator:
     def _get_class_name(self, resource_name: str = None) -> str:
         """Generate class name from resource name or spec file name."""
         if resource_name and resource_name != "resource":
-            # Use resource-based naming: user -> UserService
-            return f"{resource_name.capitalize()}Service"
+            # Use resource-based naming: user -> UserService, locations -> LocationService
+            singular_name = (
+                resource_name.rstrip("s")
+                if resource_name.endswith("s")
+                else resource_name
+            )
+            return f"{singular_name.capitalize()}Service"
 
         # Fallback to file-based naming for non-CRUD APIs
         stem = self.spec_path.stem
@@ -374,9 +422,19 @@ class ScaffoldGenerator:
 
         # Determine import path for the implementation
         # implementations/user_service.py -> implementations.user_service.UserService
-        impl_module = str(implementation_file.with_suffix("").as_posix()).replace(
-            "/", "."
-        )
+        try:
+            # Try to get relative path from current working directory
+            rel_path = implementation_file.relative_to(Path.cwd())
+            impl_module = str(rel_path.with_suffix("")).replace("/", ".")
+        except ValueError:
+            # If file is not relative to cwd, use just the filename parts we need
+            # Extract the last two parts: implementations/service_name
+            parts = implementation_file.parts
+            if len(parts) >= 2 and parts[-2] == "implementations":
+                impl_module = f"implementations.{implementation_file.stem}"
+            else:
+                # Fallback: just use the stem
+                impl_module = implementation_file.stem
 
         # Determine API spec path (use organized path if we moved it)
         api_spec_path = (
