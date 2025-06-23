@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import List
 
 from ..change_detector import ChangeAnalysis
-from ..version_manager import VersionManager
 from .models import SyncAction, SyncItem, SyncPlan
 
 

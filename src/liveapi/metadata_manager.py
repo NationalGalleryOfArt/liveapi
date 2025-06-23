@@ -5,7 +5,6 @@
 
 from .metadata.models import ProjectConfig, SpecMetadata, ProjectStatus
 from .metadata.manager import MetadataManager
-from .metadata.utils import calculate_checksum, update_gitignore
 
 __all__ = [
     "MetadataManager",

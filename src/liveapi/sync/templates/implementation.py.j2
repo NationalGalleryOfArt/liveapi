@@ -1,11 +1,11 @@
 """
 Stub implementation for {{ resource_name }} service.
 
-This file allows you to override the default CRUD+ handlers with custom database logic.
+This file allows you to override the default resource handlers with custom database logic.
 Simply uncomment and modify the methods you want to customize.
 """
 
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 from liveapi.implementation.default_resource_service import DefaultResourceService
 from liveapi.implementation.exceptions import (
     NotFoundError,
@@ -18,7 +18,7 @@ from liveapi.implementation.exceptions import (
 class {{ class_name }}(DefaultResourceService):
     """Custom {{ resource_name }} service implementation.
     
-    Uncomment any method below to override the default in-memory behavior
+    Update any method below to override the default in-memory behavior
     with your own database logic.
 
     Available exceptions to raise:

@@ -45,7 +45,7 @@ def cmd_generate(args):
             print("📋 Specification tracked in project")
             print("\n🎯 Next steps:")
             print(f"  1. Review the generated spec: {saved_path}")
-            print(f"  2. Or edit the schema JSON for quick API changes")
+            print("  2. Or edit the schema JSON for quick API changes")
             print("  3. Run 'liveapi sync' to generate implementation")
             print("  4. Run 'liveapi run' to test out the API")
 

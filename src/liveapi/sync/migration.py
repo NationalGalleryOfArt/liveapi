@@ -54,7 +54,7 @@ To: v{to_version}
             with open(guide_path, "w") as f:
                 f.write(guide_content)
 
-    except Exception as e:
+    except Exception:
         # Fallback generic guide
         guide_content = f"""# Migration Guide: {item.spec_name}
 

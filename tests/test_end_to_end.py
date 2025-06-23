@@ -1,16 +1,12 @@
 """End-to-end integration test for complete LiveAPI workflow."""
 
 import tempfile
-import json
 import time
 import requests
 import subprocess
-import signal
 import os
-import pytest
 from pathlib import Path
 from unittest.mock import patch
-from multiprocessing import Process
 
 from liveapi.cli.main import main as cli_main
 from liveapi.generator.generator import SpecGenerator
@@ -106,7 +102,8 @@ class TestEndToEndFlow:
         from liveapi.metadata_manager import MetadataManager
         from liveapi.change_detector import ChangeDetector
 
-        metadata_manager = MetadataManager()
+        # Initialize managers for spec generation
+        MetadataManager()
         change_detector = ChangeDetector()
         change_detector.update_spec_tracking(output_path)
 
@@ -244,9 +241,9 @@ class TestEndToEndFlow:
                     f"Runtime OpenAPI spec info: title='{openapi_spec.get('info', {}).get('title')}', paths_count={len(openapi_spec.get('paths', {}))}"
                 )
                 # Print first 200 chars of the runtime spec for debugging
-                import json
+                import json as json_module
 
-                spec_str = json.dumps(openapi_spec, indent=2)
+                spec_str = json_module.dumps(openapi_spec, indent=2)
                 print(f"Runtime spec preview: {spec_str[:300]}...")
             else:
                 print(f"OpenAPI endpoint returned: {openapi_response.status_code}")
@@ -302,7 +299,7 @@ class TestEndToEndFlow:
                 ):
                     error_details = response.json()
                     print(f"Error details: {error_details}")
-            except:
+            except Exception:
                 pass
         # Skip POST test for now due to model validation complexity
         # The core workflow (generate -> sync -> run) is validated by server startup
@@ -499,7 +496,6 @@ class TestEndToEndFlow:
         spec_generator.save_spec(spec, output_path, "yaml")
 
         # Track the spec
-        from liveapi.metadata_manager import MetadataManager
         from liveapi.change_detector import ChangeDetector
 
         change_detector = ChangeDetector()

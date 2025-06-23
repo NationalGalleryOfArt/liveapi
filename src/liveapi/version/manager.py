@@ -1,9 +1,8 @@
 """Version management for OpenAPI specifications."""
 
-import re
 import shutil
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from datetime import datetime, UTC
 
 from ..metadata_manager import MetadataManager

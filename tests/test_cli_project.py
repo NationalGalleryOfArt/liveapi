@@ -1,10 +1,7 @@
 """Tests for cli/commands/project.py module."""
 
-import sys
-import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-import pytest
+from unittest.mock import Mock, patch
 
 from src.liveapi.cli.commands.project import (
     handle_no_command,

@@ -3,8 +3,6 @@
 # This file is now a facade that re-exports from the version package
 # The implementation has been refactored into a modular package structure
 
-from pathlib import Path
-from typing import Dict, Any, List, Optional
 
 from .version import (
     Version,

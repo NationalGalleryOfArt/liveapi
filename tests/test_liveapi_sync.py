@@ -4,9 +4,7 @@ import pytest
 import tempfile
 import yaml
 from pathlib import Path
-from unittest.mock import patch, MagicMock
-
-from liveapi.sync_manager import SyncManager, SyncAction
+from liveapi.sync_manager import SyncManager
 from liveapi.metadata_manager import MetadataManager
 
 
@@ -271,7 +269,8 @@ class TestSyncManager:
 
             os.chdir(temp_project)
 
-            sync_manager = SyncManager()
+            # Create SyncManager for testing
+            SyncManager()
 
             # Create specifications directory with specs
             specs_dir = temp_project / "specifications"
@@ -460,7 +459,8 @@ class TestSyncManager:
 
             os.chdir(temp_project)
 
-            sync_manager = SyncManager()
+            # Create SyncManager for testing
+            SyncManager()
 
             # In CRUD+ mode, most sync operations are low effort
             from liveapi.sync.plan import _estimate_sync_effort

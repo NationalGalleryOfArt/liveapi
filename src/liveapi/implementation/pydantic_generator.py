@@ -1,8 +1,7 @@
 """Dynamic Pydantic model generation from OpenAPI schemas."""
 
-from typing import Dict, List, Any, Optional, Type, Union, get_args
+from typing import Dict, List, Any, Optional, Type
 from pydantic import BaseModel, create_model, Field
-from pydantic.fields import FieldInfo
 
 
 class PydanticGenerator:

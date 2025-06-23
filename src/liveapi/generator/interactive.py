@@ -108,7 +108,7 @@ class InteractiveGenerator:
         print(
             """  {
     "name": "string",
-    "email": "string", 
+    "email": "string",
     "age": "integer",
     "active": "boolean"
   }"""

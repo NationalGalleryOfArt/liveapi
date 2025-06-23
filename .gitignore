@@ -58,3 +58,4 @@ dmypy.json
 
 # LiveAPI - ignore any .liveapi directories created during testing/development
 .liveapi/
+test-api/

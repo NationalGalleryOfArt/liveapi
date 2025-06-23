@@ -21,9 +21,11 @@ class TestSpecGenerator:
 
     def test_build_prompt(self):
         """Test prompt building."""
-        generator = SpecGenerator()
+        # Create generator for testing
+        SpecGenerator()
 
-        api_info = {
+        # Create API info for testing (not used in this simple test)
+        {
             "name": "Art Gallery API",
             "description": "Art locations for an art gallery",
             "endpoint_descriptions": """/locations - returns all locations - locations contain:

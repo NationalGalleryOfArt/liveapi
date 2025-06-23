@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from typing import Optional, Tuple, Dict
 
-from .models import Version, VersionedSpec
+from .models import VersionedSpec
 
 
 def extract_spec_name(spec_path: Path) -> str:

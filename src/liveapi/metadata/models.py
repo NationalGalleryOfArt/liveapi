@@ -1,7 +1,6 @@
 """Data models for liveapi project metadata."""
 
-from typing import Dict, Optional, List
-from datetime import datetime, UTC
+from typing import Optional, List
 from dataclasses import dataclass
 from enum import Enum
 

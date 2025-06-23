@@ -1,7 +1,7 @@
 """Analysis logic for OpenAPI specification changes."""
 
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, List
 
 from .models import Change, ChangeAnalysis, ChangeType
 from .utils import is_major_version_bump, generate_change_summary
