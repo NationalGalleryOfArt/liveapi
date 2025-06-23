@@ -1,12 +1,11 @@
 """Execution logic for synchronization operations - CRUD mode."""
 
 from pathlib import Path
-from typing import Optional, Dict, Any, List
-import sys
+from typing import Dict, Any
+from jinja2 import Environment, FileSystemLoader
 
-from .models import SyncAction, SyncItem, SyncPlan
+from .models import SyncPlan
 from .plan import preview_sync_plan
-from .crud_sync import create_crud_main_py, sync_crud_implementation
 
 
 def execute_sync_plan(
@@ -16,9 +15,9 @@ def execute_sync_plan(
     metadata_manager,
     change_detector,
     project_root: Path,
-    use_scaffold: bool = False,
+    use_scaffold: bool = True,
 ) -> bool:
-    """Execute a synchronization plan for both CRUD+ and scaffold modes."""
+    """Execute a synchronization plan for scaffold mode."""
     if preview_only:
         preview_sync_plan(plan)
         return True
@@ -27,49 +26,10 @@ def execute_sync_plan(
         print("✅ Everything is already synchronized")
         return True
 
-    # Choose execution mode
-    if use_scaffold:
-        return _execute_scaffold_mode(
-            plan, project_root, metadata_manager, change_detector
-        )
-    else:
-        return _execute_crud_mode(plan, project_root, metadata_manager, change_detector)
+    return _execute_sync(plan, project_root, metadata_manager, change_detector)
 
 
-def _execute_crud_mode(
-    plan: SyncPlan, project_root: Path, metadata_manager, change_detector
-) -> bool:
-    """Execute sync plan using CRUD+ mode."""
-    print("🚀 LiveAPI CRUD+ Mode - No code generation needed!")
-    print("   Your APIs will be served dynamically from OpenAPI specs")
-
-    success_count = 0
-    spec_files = []
-
-    for item in plan.items:
-        try:
-            # For CRUD mode, we just validate the spec exists
-            if sync_crud_implementation(item.source_path, project_root):
-                success_count += 1
-                spec_files.append(item.source_path)
-            else:
-                print(f"❌ Failed to sync: {item.description}")
-        except Exception as e:
-            print(f"❌ Error syncing {item.description}: {e}")
-
-    # Create main.py for CRUD mode
-    if success_count > 0 and spec_files:
-        create_crud_main_py(spec_files, project_root)
-        _update_sync_metadata(metadata_manager, change_detector)
-        print(f"✅ Successfully prepared {success_count} CRUD+ APIs")
-        print("🎯 Run 'liveapi run' or 'python main.py' to start your API server")
-        return True
-    else:
-        print(f"⚠️  Prepared {success_count} of {len(plan.items)} APIs")
-        return False
-
-
-def _execute_scaffold_mode(
+def _execute_sync(
     plan: SyncPlan, project_root: Path, metadata_manager, change_detector
 ) -> bool:
     """Execute sync plan using scaffold generation mode."""
@@ -119,50 +79,13 @@ def _generate_implementation_file(
         resource_name = _extract_resource_name_from_spec(spec, spec_path)
         class_name = f"{resource_name.capitalize()}Service"
 
-        # Create a simple stub implementation file
-        content = f'''"""
-Stub implementation for {resource_name} service.
+        # Set up Jinja2 environment
+        template_dir = Path(__file__).parent / "templates"
+        env = Environment(loader=FileSystemLoader(template_dir))
+        template = env.get_template("implementation.py.j2")
 
-This file allows you to override the default CRUD+ handlers with custom database logic.
-Simply uncomment and modify the methods you want to customize.
-"""
-
-from typing import Dict, List, Any, Optional
-from liveapi.implementation.crud_handlers import CRUDHandlers
-
-
-class {class_name}(CRUDHandlers):
-    """Custom {resource_name} service implementation.
-    
-    Uncomment any method below to override the default in-memory behavior
-    with your own database logic.
-    """
-    
-    # async def create(self, data: Dict[str, Any]) -> Dict[str, Any]:
-    #     """Create a new {resource_name} in your database."""
-    #     # Add your database logic here
-    #     return await super().create(data)
-    
-    # async def read(self, resource_id: str) -> Dict[str, Any]:
-    #     """Get a {resource_name} by ID from your database."""
-    #     # Add your database logic here  
-    #     return await super().read(resource_id)
-    
-    # async def update(self, resource_id: str, data: Dict[str, Any], partial: bool = False) -> Dict[str, Any]:
-    #     """Update a {resource_name} in your database."""
-    #     # Add your database logic here
-    #     return await super().update(resource_id, data, partial)
-    
-    # async def delete(self, resource_id: str) -> None:
-    #     """Delete a {resource_name} from your database."""
-    #     # Add your database logic here
-    #     await super().delete(resource_id)
-    
-    # async def list(self, limit: int = 100, offset: int = 0, **filters) -> List[Dict[str, Any]]:
-    #     """List {resource_name}s with pagination and filtering."""
-    #     # Add your database logic here
-    #     return await super().list(limit=limit, offset=offset, **filters)
-'''
+        # Render the template
+        content = template.render(resource_name=resource_name, class_name=class_name)
 
         # Write the implementation file
         impl_file = implementations_dir / f"{resource_name}_service.py"
@@ -202,11 +125,11 @@ def _create_main_py_for_implementations(project_root: Path) -> None:
     """Create main.py using the same approach as CRUD+ mode."""
     # Just use the standard CRUD+ main.py generation
     from .crud_sync import create_crud_main_py
-    
-    # Get all specification files  
+
+    # Get all specification files
     spec_files = list((project_root / "specifications").glob("*.yaml"))
     spec_files.extend(list((project_root / "specifications").glob("*.yml")))
-    
+
     if spec_files:
         create_crud_main_py(spec_files, project_root)
 

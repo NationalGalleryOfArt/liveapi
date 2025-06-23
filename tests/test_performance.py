@@ -159,7 +159,7 @@ async def test_crud_handlers_performance():
         id: int | None = None
         name: str
 
-    handlers = liveapi.CRUDHandlers(TestItem, "items")
+    handlers = liveapi.DefaultResourceService(TestItem, "items")
 
     # Test create performance
     times = []

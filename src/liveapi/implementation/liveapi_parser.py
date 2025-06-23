@@ -1,11 +1,9 @@
 """LiveAPI-specific OpenAPI parser that identifies CRUD+ patterns."""
 
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple
 from pathlib import Path
 import prance
-from .crud_handlers import create_crud_router
 from .pydantic_generator import PydanticGenerator
-from fastapi import FastAPI
 
 
 class LiveAPIParser:
@@ -18,7 +16,6 @@ class LiveAPIParser:
     def __init__(self, spec_path: str):
         self.spec_path = Path(spec_path)
         self.spec = None
-        self.crud_resources: Dict[str, Dict[str, Any]] = {}
         self.pydantic_generator = PydanticGenerator()
 
     def load_spec(self):
@@ -47,7 +44,6 @@ class LiveAPIParser:
         resources = {}
 
         for path, path_item in paths.items():
-            # Try to extract resource name from path
             resource_info = self._extract_resource_from_path(path)
             if not resource_info:
                 continue
@@ -62,7 +58,6 @@ class LiveAPIParser:
                     "paths": {"collection": None, "item": None},
                 }
 
-            # Categorize operations
             for method in ["get", "post", "put", "patch", "delete"]:
                 operation = path_item.get(method)
                 if not operation:
@@ -79,37 +74,13 @@ class LiveAPIParser:
                         "operation": operation,
                     }
 
-                    # Store paths
-                    if is_item_path:
-                        resources[resource_name]["paths"]["item"] = path
-                    else:
-                        resources[resource_name]["paths"]["collection"] = path
-
-                    # Try to extract model from operation - prioritize POST/PUT operations
-                    if not resources[resource_name]["model"]:
-                        # For resource model, prioritize operations that have request bodies
-                        if method in ["post", "put", "patch"]:
-                            model = self._extract_model_from_operation(
-                                operation, method
-                            )
-                            if model:
-                                resources[resource_name]["model"] = model
-
-            # If no model found from request operations, try response operations
-            if not resources[resource_name]["model"]:
-                for method in ["get", "post", "put", "patch", "delete"]:
-                    operation = path_item.get(method)
-                    if not operation:
-                        continue
+                # Since all resources are CRUD, we just need to find the model
+                if not resources[resource_name]["model"]:
                     model = self._extract_model_from_operation(operation, method)
                     if model:
                         resources[resource_name]["model"] = model
-                        break
 
-        # All resources are considered CRUD resources
-        self.crud_resources = resources
-
-        return self.crud_resources
+        return resources
 
     def _extract_resource_from_path(self, path: str) -> Optional[Tuple[str, bool]]:
         """Extract resource name from an API path.

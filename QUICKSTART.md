@@ -100,7 +100,6 @@ liveapi kill
 - `liveapi version list` - List all API versions
 - `liveapi version compare v1.0.0 v1.1.0` - Compare version changes
 - `liveapi sync --preview` - Preview sync changes without applying them
-- `liveapi sync --crud` - Use legacy dynamic CRUD+ mode
 
 ### Customize Your Implementation
 - **Database Integration**: Replace in-memory storage with PostgreSQL, MongoDB, etc.

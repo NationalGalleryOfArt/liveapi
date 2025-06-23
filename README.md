@@ -2,7 +2,7 @@
 
 **A Python framework for generating and serving REST APIs from OpenAPI specifications.**
 
-LiveAPI combines interactive spec generation, immutable versioning, change detection, and dynamic CRUD+ handlers to provide instant, standardized APIs from OpenAPI specifications.
+LiveAPI combines interactive spec generation, immutable versioning, change detection, and a default resource service to provide instant, standardized APIs from OpenAPI specifications.
 
 ## Key Features
 
@@ -17,7 +17,7 @@ LiveAPI combines interactive spec generation, immutable versioning, change detec
 - **Customizable Service Classes**: Generates implementation files with CRUD method overrides for database integration.
 - **Database Integration Points**: Clear hooks for connecting PostgreSQL, MongoDB, or any database.
 - **Business Logic Hooks**: Built-in spots for validation, logging, caching, and event publishing.
-- **Dynamic CRUD+ Fallback**: Uses LiveAPI's dynamic handlers as a foundation while allowing full customization.
+- **Dynamic Resource Service Fallback**: Uses LiveAPI's dynamic resource service as a foundation while allowing full customization.
 - **Professional Error Handling**: RFC 7807 compliant error responses with proper exception handling.
 
 ### 🔄 API Lifecycle Management
@@ -156,11 +156,11 @@ curl -X POST http://localhost:8000/users \
 """UserService - Database-connected implementation for users API."""
 
 from liveapi.implementation import create_app
-from liveapi.implementation.crud_handlers import BaseCRUDRouter
+from liveapi.implementation.default_resource_service import DefaultResourceService
 from typing import Dict, List, Any, Optional
 import uuid
 
-class UserService(BaseCRUDRouter):
+class UserService(DefaultResourceService):
     """Custom users service with database integration."""
     
     def __init__(self):
@@ -281,10 +281,9 @@ liveapi version compare v1 v2  # Compare two versions
 
 ### Synchronization
 ```bash
-liveapi sync                  # Generate implementation files (default)
+liveapi sync                  # Generate implementation files
 liveapi sync --preview        # Preview changes without applying
 liveapi sync --force          # Force sync without confirmation
-liveapi sync --crud           # Use dynamic CRUD+ mode instead of files
 ```
 
 ## Project Structure

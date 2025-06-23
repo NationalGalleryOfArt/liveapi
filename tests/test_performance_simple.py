@@ -184,7 +184,7 @@ def test_end_to_end_performance_breakdown(simple_openapi_spec):
 
     # 3. Complete app creation
     start_time = time.perf_counter()
-    app = liveapi.create_app(simple_openapi_spec)
+    liveapi.create_app(simple_openapi_spec)
     app_creation_time = time.perf_counter() - start_time
     print(f"3. Complete app creation: {app_creation_time * 1000:.2f}ms")
 
@@ -244,7 +244,7 @@ async def test_crud_handler_performance():
         id: int | None = None
         name: str
 
-    handlers = liveapi.CRUDHandlers(TestModel, "items")
+    handlers = liveapi.DefaultResourceService(TestModel, "items")
 
     # Test create operation
     times = []

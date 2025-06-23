@@ -1,15 +1,15 @@
-"""Standard CRUD+ handlers for LiveAPI."""
+"""Standard default handlers for LiveAPI resources."""
 
-from typing import Dict, Any, List, Optional, Type
-from fastapi import HTTPException, Query, Path
+from typing import Dict, Any, List, Type
+from fastapi import Query, Path
 from pydantic import BaseModel
 from .exceptions import NotFoundError, ValidationError, ConflictError
 
 
-class CRUDHandlers:
-    """Standard handlers for CRUD+ operations.
+class DefaultResourceService:
+    """Standard handlers for resource operations.
 
-    This class provides reusable handlers for the standard CRUD+ interface:
+    This class provides reusable handlers for a standard resource interface:
     - Create: POST /resources
     - Read: GET /resources/{id}
     - Update: PUT/PATCH /resources/{id}
@@ -19,7 +19,7 @@ class CRUDHandlers:
     """
 
     def __init__(self, model: Type[BaseModel], resource_name: str):
-        """Initialize CRUD handlers.
+        """Initialize the resource service.
 
         Args:
             model: Pydantic model for the resource
@@ -159,8 +159,8 @@ class CRUDHandlers:
 
     async def list(
         self,
-        limit: int = Query(100, ge=1, le=1000),
-        offset: int = Query(0, ge=0),
+        limit: int = 100,
+        offset: int = 0,
         **filters: Any,
     ) -> List[Dict[str, Any]]:
         """List resources (simplified - no pagination).
@@ -236,45 +236,45 @@ class CRUDHandlers:
         return filtered
 
 
-def create_crud_router(resource_name: str, model: Type[BaseModel]):
-    """Create a FastAPI router with CRUD+ endpoints for a resource.
+def create_resource_router(resource_name: str, model: Type[BaseModel]):
+    """Create a FastAPI router with endpoints for a resource.
 
     Args:
         resource_name: Name of the resource (e.g., "users")
         model: Pydantic model for the resource
 
     Returns:
-        FastAPI APIRouter with CRUD+ endpoints
+        FastAPI APIRouter with endpoints
     """
     from fastapi import APIRouter
 
     router = APIRouter()
-    handlers = CRUDHandlers(model, resource_name)
+    service = DefaultResourceService(model, resource_name)
 
     # Create
     @router.post(f"/{resource_name}", response_model=model)
     async def create_resource(data: model):
-        return await handlers.create(data.model_dump())
+        return await service.create(data.model_dump())
 
     # Read
     @router.get(f"/{resource_name}/{{resource_id}}", response_model=model)
     async def read_resource(resource_id: str = Path(...)):
-        return await handlers.read(resource_id)
+        return await service.read(resource_id)
 
     # Update (PUT)
     @router.put(f"/{resource_name}/{{resource_id}}", response_model=model)
     async def update_resource(resource_id: str = Path(...), data: model = ...):
-        return await handlers.update(resource_id, data.model_dump(), partial=False)
+        return await service.update(resource_id, data.model_dump(), partial=False)
 
     # Update (PATCH)
     @router.patch(f"/{resource_name}/{{resource_id}}", response_model=model)
     async def patch_resource(resource_id: str = Path(...), data: Dict[str, Any] = ...):
-        return await handlers.update(resource_id, data, partial=True)
+        return await service.update(resource_id, data, partial=True)
 
     # Delete
     @router.delete(f"/{resource_name}/{{resource_id}}", status_code=204)
     async def delete_resource(resource_id: str = Path(...)):
-        await handlers.delete(resource_id)
+        await service.delete(resource_id)
         return None
 
     # List
@@ -282,6 +282,6 @@ def create_crud_router(resource_name: str, model: Type[BaseModel]):
     async def list_resources(
         limit: int = Query(100, ge=1, le=1000), offset: int = Query(0, ge=0)
     ):
-        return await handlers.list(limit=limit, offset=offset)
+        return await service.list(limit=limit, offset=offset)
 
     return router

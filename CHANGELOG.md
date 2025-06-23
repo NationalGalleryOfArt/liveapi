@@ -5,6 +5,27 @@ All notable changes to the LiveAPI project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2025-06-23
+
+### Refactoring
+- Renamed `CRUDHandlers` to `DefaultResourceService` to better reflect its purpose as a default, in-memory implementation.
+- Renamed `create_crud_router` to `create_resource_router`.
+- Updated all internal references and documentation to use the new names.
+
+## [0.7.0] - 2025-06-23
+
+### 🧹 Code Cleanup and Simplification
+
+#### Changed
+- **Removed Vestigial CRUD Logic**: Removed all remaining conditional logic related to the old "CRUD vs. non-CRUD" distinction. The entire system now assumes a consistent CRUD-based architecture.
+- **Simplified `liveapi_parser.py`**: The `identify_crud_resources` method is now much simpler, as it no longer needs to categorize operations.
+- **Simplified `generator.py`**: Removed the old logic for generating specs from natural language descriptions and simplified the `generate_spec_with_json` method.
+- **Simplified CLI**: Removed the `--crud` flag from the `sync` command, as it is no longer needed.
+- **Simplified `executor.py`**: Removed the `_execute_crud_mode` function and simplified the `execute_sync_plan` function.
+
+#### Fixed
+- **End-to-End Tests**: Fixed the failing end-to-end tests by restoring the `_categorize_operation` method and the logic in `identify_crud_resources` to populate the `operations` dictionary.
+
 ## [0.6.0] - 2025-06-23
 
 ### 🏗️ Implementation Generation Overhaul - Database-Ready Service Classes

@@ -25,8 +25,7 @@ Examples:
   liveapi validate                # Validate all specifications
   liveapi version users --major   # Create major version of users API
   liveapi version list users      # List all versions of users API
-  liveapi sync                    # Generate individual implementation files (default)
-  liveapi sync --crud             # Use CRUD+ mode (dynamic handlers)
+  liveapi sync                    # Generate individual implementation files
   liveapi run                     # Run FastAPI app with uvicorn --reload
   liveapi run --background        # Run in background with PID file
   liveapi kill                    # Stop background FastAPI app
@@ -125,9 +124,6 @@ Examples:
     )
     sync_parser.add_argument(
         "--force", action="store_true", help="Force sync even with breaking changes"
-    )
-    sync_parser.add_argument(
-        "--crud", action="store_true", help="Use CRUD+ mode (dynamic handlers)"
     )
     sync_parser.add_argument(
         "spec", nargs="?", help="Sync specific specification (optional)"

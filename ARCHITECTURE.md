@@ -271,7 +271,7 @@ liveapi/
 │       ├── implementation/        # Dynamic implementation engine (IMPROVED!)
 │       │   ├── __init__.py
 │       │   ├── app.py
-│       │   ├── crud_handlers.py
+│       │   ├── default_resource_service.py
 │       │   ├── exceptions.py
 │       │   ├── liveapi_parser.py
 │       │   ├── liveapi_router.py  # RFC 7807 errors, correct parameters

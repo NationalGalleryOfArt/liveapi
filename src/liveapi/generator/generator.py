@@ -18,40 +18,6 @@ class SpecGenerator:
         # Initialize interactive generator
         self.interactive = InteractiveGenerator(self)
 
-    def _extract_resource_name(self, endpoint_descriptions: str) -> str:
-        """Extract resource name from endpoint descriptions for CRUD APIs.
-
-        Args:
-            endpoint_descriptions: User's description of endpoints
-
-        Returns:
-            Resource name (e.g., 'locations' from 'full crud api for locations')
-        """
-        # Try to find resource name after CRUD indicators
-        patterns = [
-            r"crud\s+api\s+for\s+(\w+)",
-            r"full\s+crud\s+(?:api\s+)?for\s+(\w+)",
-            r"crud\s+operations\s+for\s+(\w+)",
-        ]
-
-        for pattern in patterns:
-            match = re.search(pattern, endpoint_descriptions, re.IGNORECASE)
-            if match:
-                return match.group(1).lower()
-
-        # If no match, look for any plural noun that might be a resource
-        words = endpoint_descriptions.split()
-        for word in words:
-            # Simple heuristic: look for plural words (ending with 's')
-            if word.lower().endswith("s") and len(word) > 3:
-                # Remove punctuation
-                clean_word = re.sub(r"[^\w]", "", word.lower())
-                if clean_word:
-                    return clean_word
-
-        # Default fallback
-        return "resources"
-
     def _generate_crud_endpoints(self, resource_name: str) -> List[Dict[str, Any]]:
         """Generate standard CRUD endpoints for a resource.
 
@@ -113,123 +79,79 @@ class SpecGenerator:
         Returns:
             Tuple of (OpenAPI specification dict, intermediate JSON)
         """
-        # Check if this is a CRUD API (from the new interactive flow)
-        if api_info.get("is_crud", False):
-            resource_name = api_info.get("resource_name", "resources")
-            resource_schema = api_info.get(
-                "resource_schema", {}
-            ).copy()  # Make a copy to avoid modifying original
+        resource_name = api_info.get("resource_name", "resources")
+        resource_schema = api_info.get(
+            "resource_schema", {}
+        ).copy()  # Make a copy to avoid modifying original
+        examples = api_info.get("examples", [])
+
+        # Merge fields from examples into schema to ensure consistency
+        if examples:
+            # First pass: add missing fields from examples to schema
+            for example in examples:
+                for field_name, field_value in example.items():
+                    if field_name not in resource_schema:
+                        # Infer type from the example value
+                        if isinstance(field_value, int):
+                            resource_schema[field_name] = "integer"
+                        elif isinstance(field_value, bool):
+                            resource_schema[field_name] = "boolean"
+                        elif isinstance(field_value, float):
+                            resource_schema[field_name] = "number"
+                        else:
+                            resource_schema[field_name] = "string"
+
+            # Second pass: normalize examples to use 'id' instead of resource-specific id fields
+            normalized_examples = []
+            for example in examples:
+                normalized_example = {}
+                for field_name, field_value in example.items():
+                    # Convert resource_id variations to 'id'
+                    if (
+                        field_name.endswith("_id")
+                        and field_name == f"{resource_name[:-1]}_id"
+                    ):
+                        normalized_example["id"] = field_value
+                    else:
+                        normalized_example[field_name] = field_value
+                normalized_examples.append(normalized_example)
+            examples = normalized_examples
+        else:
             examples = api_info.get("examples", [])
 
-            # Merge fields from examples into schema to ensure consistency
-            if examples:
-                # First pass: add missing fields from examples to schema
-                for example in examples:
-                    for field_name, field_value in example.items():
-                        if field_name not in resource_schema:
-                            # Infer type from the example value
-                            if isinstance(field_value, int):
-                                resource_schema[field_name] = "integer"
-                            elif isinstance(field_value, bool):
-                                resource_schema[field_name] = "boolean"
-                            elif isinstance(field_value, float):
-                                resource_schema[field_name] = "number"
-                            else:
-                                resource_schema[field_name] = "string"
+        # Generate standard CRUD endpoints
+        endpoints = self._generate_crud_endpoints(resource_name)
 
-                # Second pass: normalize examples to use 'id' instead of resource-specific id fields
-                normalized_examples = []
-                for example in examples:
-                    normalized_example = {}
-                    for field_name, field_value in example.items():
-                        # Convert resource_id variations to 'id'
-                        if (
-                            field_name.endswith("_id")
-                            and field_name == f"{resource_name[:-1]}_id"
-                        ):
-                            normalized_example["id"] = field_value
-                        else:
-                            normalized_example[field_name] = field_value
-                    normalized_examples.append(normalized_example)
-                examples = normalized_examples
-            else:
-                examples = api_info.get("examples", [])
+        # Create the object definition
+        singular_name = (
+            resource_name[:-1] if resource_name.endswith("s") else resource_name
+        )
+        resource_object = {
+            "name": singular_name.capitalize(),
+            "fields": resource_schema,
+        }
 
-            # Generate standard CRUD endpoints
-            endpoints = self._generate_crud_endpoints(resource_name)
+        # Add standard fields if not present
+        if "id" not in resource_object["fields"]:
+            resource_object["fields"]["id"] = "string"
+        if "created_at" not in resource_object["fields"]:
+            resource_object["fields"]["created_at"] = "string"
+        if "updated_at" not in resource_object["fields"]:
+            resource_object["fields"]["updated_at"] = "string"
 
-            # Create the object definition
-            singular_name = (
-                resource_name[:-1] if resource_name.endswith("s") else resource_name
-            )
-            resource_object = {
-                "name": singular_name.capitalize(),
-                "fields": resource_schema,
-            }
+        # Build the structured data
+        structured_data = {"endpoints": endpoints, "objects": [resource_object]}
 
-            # Add standard fields if not present
-            if "id" not in resource_object["fields"]:
-                resource_object["fields"]["id"] = "string"
-            if "created_at" not in resource_object["fields"]:
-                resource_object["fields"]["created_at"] = "string"
-            if "updated_at" not in resource_object["fields"]:
-                resource_object["fields"]["updated_at"] = "string"
+        # Build the complete spec
+        spec = self._build_spec_from_structured_data(
+            structured_data,
+            api_info.get("name"),
+            api_info.get("description"),
+            examples,
+        )
 
-            # Build the structured data
-            structured_data = {"endpoints": endpoints, "objects": [resource_object]}
-
-            # Build the complete spec
-            spec = self._build_spec_from_structured_data(
-                structured_data,
-                api_info.get("name"),
-                api_info.get("description"),
-                examples,
-            )
-
-            final_spec = self._add_server_environments(spec, api_info.get("base_url"))
-            return final_spec, structured_data
-
-        # Generate CRUD API from endpoint descriptions
-        elif "endpoint_descriptions" in api_info:
-            endpoint_descriptions = api_info.get("endpoint_descriptions", "")
-            # Extract resource name from the description
-            resource_name = self._extract_resource_name(endpoint_descriptions)
-
-            # Generate standard CRUD endpoints
-            endpoints = self._generate_crud_endpoints(resource_name)
-
-            # Create a minimal object schema
-            singular_name = (
-                resource_name[:-1] if resource_name.endswith("s") else resource_name
-            )
-            structured_data = {
-                "endpoints": endpoints,
-                "objects": [
-                    {
-                        "name": singular_name.capitalize(),
-                        "fields": {
-                            "id": "string",
-                            "name": "string",
-                            "created_at": "string",
-                            "updated_at": "string",
-                        },
-                    }
-                ],
-            }
-
-            # Build the complete spec
-            spec = self._build_spec_from_structured_data(
-                structured_data,
-                api_info.get("name"),
-                api_info.get("description"),
-                api_info.get("examples"),
-            )
-
-            final_spec = self._add_server_environments(spec, api_info.get("base_url"))
-            return final_spec, structured_data
-
-        # If we get here, the API info format is not supported
-        raise ValueError("Invalid API info format - missing required fields")
+        final_spec = self._add_server_environments(spec, api_info.get("base_url"))
+        return final_spec, structured_data
 
     def generate_spec(self, api_info: Dict[str, Any]) -> Dict[str, Any]:
         """Generate OpenAPI specification from API information.
@@ -308,7 +230,6 @@ class SpecGenerator:
 
             # Build response schema based on returns description and resource name
             returns = endpoint.get("returns", "object")
-            operation_id = endpoint.get("operationId", "")
 
             if "array" in returns.lower():
                 # Simple array response for all array operations (no pagination)

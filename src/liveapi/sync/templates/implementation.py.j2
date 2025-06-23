@@ -1,0 +1,139 @@
+"""
+Stub implementation for {{ resource_name }} service.
+
+This file allows you to override the default CRUD+ handlers with custom database logic.
+Simply uncomment and modify the methods you want to customize.
+"""
+
+from typing import Dict, List, Any, Optional
+from liveapi.implementation.default_resource_service import DefaultResourceService
+from liveapi.implementation.exceptions import (
+    NotFoundError,
+    ValidationError,
+    ConflictError,
+    ForbiddenError,
+)
+
+
+class {{ class_name }}(DefaultResourceService):
+    """Custom {{ resource_name }} service implementation.
+    
+    Uncomment any method below to override the default in-memory behavior
+    with your own database logic.
+
+    Available exceptions to raise:
+    - NotFoundError: Resource not found (404)
+    - ValidationError: Invalid input data (400)
+    - ConflictError: Resource conflict (409)
+    - ForbiddenError: Insufficient permissions (403)
+
+    Example:
+        from liveapi.implementation.exceptions import NotFoundError
+        
+        async def read(self, resource_id: str):
+            user = await get_user_from_db(resource_id)
+            if not user:
+                raise NotFoundError(f"User {resource_id} not found")
+            return user
+    """
+    
+    async def create(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Create a new {{ resource_name }} in your database.
+    
+        Args:
+            data: Dictionary of validated data from the request body
+    
+        Returns:
+            The created resource dictionary, e.g., {"id": "123", "name": "New Item"}
+        """
+        # Your database logic here to create the item
+        # For example, using an ORM:
+        # new_item = await YourModel.create(**data)
+        # return new_item.to_dict()
+    
+        print(f"Creating {{ resource_name }} with data: {data}")
+        return await super().create(data)
+    
+    async def read(self, resource_id: str) -> Dict[str, Any]:
+        """
+        Get a {{ resource_name }} by ID from your database.
+    
+        Args:
+            resource_id: The ID of the resource to retrieve
+    
+        Returns:
+            The resource dictionary, e.g., {"id": "123", "name": "Existing Item"}
+        """
+        # Your database logic here to fetch the item by ID
+        # For example:
+        # item = await YourModel.get(id=resource_id)
+        # if not item:
+        #     raise NotFoundError(f"{{ resource_name }} {resource_id} not found")
+        # return item.to_dict()
+    
+        print(f"Reading {{ resource_name }} with ID: {resource_id}")
+        return await super().read(resource_id)
+    
+    async def update(self, resource_id: str, data: Dict[str, Any], partial: bool = False) -> Dict[str, Any]:
+        """
+        Update a {{ resource_name }} in your database.
+    
+        Args:
+            resource_id: The ID of the resource to update
+            data: Dictionary of validated data for the update
+            partial: True for PATCH, False for PUT
+    
+        Returns:
+            The updated resource dictionary
+        """
+        # Your database logic here
+        # For example:
+        # item = await YourModel.get(id=resource_id)
+        # if not item:
+        #     raise NotFoundError(f"{{ resource_name }} {resource_id} not found")
+        # item.update_from_dict(data)
+        # await item.save()
+        # return item.to_dict()
+    
+        print(f"Updating {{ resource_name }} {resource_id} with data: {data}")
+        return await super().update(resource_id, data, partial)
+    
+    async def delete(self, resource_id: str) -> None:
+        """
+        Delete a {{ resource_name }} from your database.
+    
+        Args:
+            resource_id: The ID of the resource to delete
+        """
+        # Your database logic here
+        # For example:
+        # result = await YourModel.delete.where(YourModel.id == resource_id)
+        # if result == 0:
+        #     raise NotFoundError(f"{{ resource_name }} {resource_id} not found")
+    
+        print(f"Deleting {{ resource_name }} with ID: {resource_id}")
+        await super().delete(resource_id)
+    
+    async def list(self, limit: int = 100, offset: int = 0, **filters: Any) -> List[Dict[str, Any]]:
+        """
+        List {{ resource_name }}s with pagination and filtering.
+    
+        Args:
+            limit: Max number of items to return
+            offset: Number of items to skip
+            **filters: Additional query parameters for filtering
+    
+        Returns:
+            A list of resource dictionaries
+        """
+        # Your database logic here
+        # For example:
+        # query = YourModel.select()
+        # if filters:
+        #     query = query.where(**filters)
+        # items = await query.limit(limit).offset(offset)
+        # return [item.to_dict() for item in items]
+    
+        print(f"Listing {{ resource_name }}s with limit={limit}, offset={offset}, filters={filters}")
+        return await super().list(limit=limit, offset=offset, **filters)

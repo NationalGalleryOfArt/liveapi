@@ -1,12 +1,12 @@
 """LiveAPI router that maps CRUD+ resources to standard handlers."""
 
-from typing import Dict, Any, List, Optional, Type
+from typing import Dict, Any, List, Type
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 from .liveapi_parser import LiveAPIParser
-from .crud_handlers import CRUDHandlers
+from .default_resource_service import DefaultResourceService
 from .exceptions import BusinessException
 
 # Auth removed - handled at API Gateway level
@@ -66,12 +66,12 @@ class LiveAPIRouter:
     """Router that creates CRUD+ endpoints using standard handlers.
 
     This router identifies CRUD+ resources in OpenAPI specs and automatically
-    creates endpoints using the standard CRUDHandlers.
+    creates endpoints using the standard DefaultResourceService.
     """
 
     def __init__(self):
         self.routers: Dict[str, APIRouter] = {}
-        self.handlers: Dict[str, CRUDHandlers] = {}
+        self.handlers: Dict[str, DefaultResourceService] = {}
 
     def create_app_from_spec(self, spec_path: str) -> FastAPI:
         """Create a FastAPI app from an OpenAPI spec using CRUD+ handlers.
@@ -206,7 +206,7 @@ class LiveAPIRouter:
             APIRouter with CRUD+ endpoints
         """
         router = APIRouter()
-        handlers = CRUDHandlers(model, resource_name)
+        handlers = DefaultResourceService(model, resource_name)
         self.handlers[resource_name] = handlers
 
         # Get paths
@@ -295,8 +295,8 @@ class LiveAPIRouter:
             op = operations["list"]["operation"]
 
             # Extract query parameters from operation
-            parameters = op.get("parameters", [])
-            query_params = {p["name"]: p for p in parameters if p.get("in") == "query"}
+            # parameters = op.get("parameters", [])
+            # query_params = {p["name"]: p for p in parameters if p.get("in") == "query"}
 
             @router.get(
                 collection_path,
