@@ -127,6 +127,9 @@ Examples:
         "--force", action="store_true", help="Force sync even with breaking changes"
     )
     sync_parser.add_argument(
+        "--crud", action="store_true", help="Use CRUD+ mode (dynamic handlers)"
+    )
+    sync_parser.add_argument(
         "spec", nargs="?", help="Sync specific specification (optional)"
     )
 
