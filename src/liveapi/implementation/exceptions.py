@@ -15,7 +15,7 @@ class BusinessException(Exception):
         super().__init__(detail)
 
     def to_response(self) -> Dict[str, Any]:
-        """Convert to RFC 9457 error response."""
+        """Convert to RFC 7807 error response."""
         return {
             "type": f"/errors/{self.error_type}",
             "title": self.__class__.__name__.replace("Error", ""),

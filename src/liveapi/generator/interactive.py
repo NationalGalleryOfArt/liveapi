@@ -323,7 +323,7 @@ class InteractiveGenerator:
         print("  • Full CRUD operations (Create, Read, Update, Delete, List)")
         print("  • Search and filtering")
         print("  • API key authentication")
-        print("  • RFC9457 error handling")
+        print("  • RFC7807 error handling")
         print("  • <200ms response time SLA\n")
 
         # No longer need API key validation
@@ -373,7 +373,7 @@ class InteractiveGenerator:
 
         print("\n✨ Generating your OpenAPI specification...")
         print(f"Using model: {self.spec_generator.model}")
-        print("Features: RFC9457 errors, <200ms response time SLA")
+        print("Features: RFC7807 errors, <200ms response time SLA")
 
         # Generate the spec
         spec, llm_json = self.spec_generator.generate_spec_with_json(api_info)

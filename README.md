@@ -268,7 +268,7 @@ You can run the test suite using `make`:
 # Run all tests
 make test
 
-# Generate a coverage report
+f# Generate a coverage report
 make coverage
 ```
 

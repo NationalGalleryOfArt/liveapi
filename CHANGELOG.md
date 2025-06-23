@@ -129,7 +129,7 @@ Significant improvements to the CLI for maximum simplicity and developer product
 
 #### 🛡️ Comprehensive Error Handling
 - **Business exceptions**: `NotFoundError`, `ValidationError`, `ConflictError`, etc.
-- **RFC 9457 compliance**: Standardized error response format
+- **RFC 7807 compliance**: Standardized error response format
 - **Automatic mapping**: Business exceptions → appropriate HTTP status codes
 - **Context preservation**: Include additional data in error responses
 
@@ -213,7 +213,7 @@ class UserService(BaseCrudImplementation):
 ✅ **Zero-configuration auto-discovery** for seamless multi-API projects  
 ✅ **Intelligent project setup** with pattern detection and smart class naming  
 ✅ **Built-in authentication** (API Key & Bearer Token)  
-✅ **Comprehensive error handling** with RFC 9457 compliance  
+✅ **Comprehensive error handling** with RFC 7807 compliance
 ✅ **Built-in health monitoring** with automatic `/health` endpoint  
 ✅ **Dynamic FastAPI route generation** from OpenAPI specifications  
 ✅ **Request validation** with Pydantic models  
