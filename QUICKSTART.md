@@ -1,6 +1,6 @@
 # LiveAPI Quick Start Guide
 
-Get up and running with LiveAPI in 5 minutes!
+Get up and running with LiveAPI in 5 minutes.
 
 ## Prerequisites
 
@@ -25,9 +25,9 @@ liveapi init
 ```
 
 ### Step 2: Generate an API Specification
-You can either generate a spec with AI, or create one manually.
+You can either generate a spec interactively, or create one manually.
 
-**Option A: AI Generation (Recommended)**
+**Option A: Interactive Generation (Recommended)**
 ```bash
 liveapi generate
 ```
@@ -50,41 +50,25 @@ liveapi run
 ### Step 5: Test Your API
 ```bash
 curl http://localhost:8000/health
+# Assuming you created a 'users' API
 curl http://localhost:8000/users
 ```
 
 ### Step 6: View Interactive Docs
-Open your browser to http://localhost:8000/docs to see the Swagger UI.
+Open your browser to `http://localhost:8000/docs` to see the Swagger UI.
 
 ## Making Changes
 
-### Add a New Endpoint
+1.  **Edit your spec**: Modify your `users.yaml` file to add a new endpoint or change an existing one.
+2.  **Check what changed**: Run `liveapi status` to see a summary of your changes.
+3.  **Create a new version**: Run `liveapi version create --minor` to create a new, versioned spec file.
+4.  **Update your application**: Run `liveapi sync` to make your running API aware of the changes.
 
-Edit `users.yaml` and add a new endpoint.
+Your API now reflects the new changes!
 
-### Check What Changed
+## Stop the Development Server
 
-```bash
-liveapi status
-```
-
-### Create New Version
-
-```bash
-liveapi version create --minor
-```
-
-### Update Implementation
-
-```bash
-liveapi sync
-```
-
-Your API now has the new endpoint!
-
-### Stop Development Server
-
-When you're done:
+When you're done, you can stop the server with:
 ```bash
 liveapi kill
 ```

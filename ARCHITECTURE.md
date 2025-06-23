@@ -31,7 +31,7 @@ graph TB
     end
     
     subgraph "Specification Generation Layer"
-        GENERATOR[SpecGenerator<br/>- AI-powered generation<br/>- Interactive prompts<br/>- Schema editing]
+        GENERATOR[SpecGenerator<br/>- Interactive generation<br/>- Interactive prompts<br/>- Schema editing]
         PROMPT[Prompt Building<br/>- Template rendering<br/>- Schema extraction]
     end
     
@@ -61,7 +61,7 @@ graph TB
 ```mermaid
 graph TB
     subgraph "Specification Generation Phase"
-        GEN[Generate Spec with AI] --> PROMPT[Interactive Prompts]
+        GEN[Generate Spec Interactively] --> PROMPT[Interactive Prompts]
         PROMPT --> SCHEMA[Schema Editing]
         SCHEMA --> REGEN[Regenerate Spec]
     end
@@ -197,7 +197,7 @@ sequenceDiagram
     
     Dev->>CLI: liveapi
     CLI->>Gen: Interactive mode
-    Gen->>Gen: Generate OpenAPI spec with AI
+    Gen->>Gen: Generate OpenAPI spec interactively
     Gen->>Meta: Track generated spec
     
     Dev->>CLI: liveapi init
@@ -305,14 +305,14 @@ liveapi/
 
 ## Key Benefits
 
-### AI-Powered Specification Generation
-- **Streamlined Interactive Workflow**: Object-first approach with smart auto-inference
-- **No Duplicate Questions**: API name/description auto-suggested from resource info
-- **JSON Array Examples**: Clean format for providing multiple example objects
-- **Professional FastAPI Implementation**: Correct parameter names, typed schemas, RFC 7807 errors
-- **Saved Prompts**: Iterate on API designs with saved prompts
-- **Schema Editing**: Edit clean JSON instead of complex OpenAPI YAML
-- **Regeneration**: Easily regenerate specs from modified prompts or schemas
+### Interactive Specification Generation
+- **Streamlined Interactive Workflow**: Object-first approach with smart auto-inference.
+- **No Duplicate Questions**: API name/description auto-suggested from resource info.
+- **JSON Array Examples**: Clean format for providing multiple example objects.
+- **Professional FastAPI Implementation**: Correct parameter names, typed schemas, RFC 7807 errors.
+- **Saved Prompts**: Iterate on API designs with saved prompts.
+- **Schema Editing**: Edit clean JSON instead of complex OpenAPI YAML.
+- **Regeneration**: Easily regenerate specs from modified prompts or schemas.
 
 ### Safe API Evolution
 - **Immutable Versioning**: Never overwrite existing specs
@@ -345,7 +345,7 @@ liveapi/
 ### Core Commands
 - `liveapi` - Interactive mode (guides you through the process)
 - `liveapi init` - Initialize project with metadata tracking
-- `liveapi generate` - Generate OpenAPI spec with AI
+- `liveapi generate` - Generate OpenAPI spec interactively
 - `liveapi regenerate <prompt>` - Regenerate from saved prompt
 - `liveapi status` - Show changes and sync status
 - `liveapi validate` - Validate OpenAPI specifications
@@ -363,7 +363,7 @@ liveapi
 # Or initialize new project
 liveapi init
 
-# Generate a spec with AI
+# Generate a spec interactively
 liveapi generate
 
 # Check for changes
@@ -385,4 +385,4 @@ liveapi run
 liveapi regenerate .liveapi/prompts/my_api_prompt.json
 ```
 
-This architecture provides complete API lifecycle management with safe evolution, version control, automated implementation synchronization, and AI-powered specification generation.
+This architecture provides complete API lifecycle management with safe evolution, version control, and automated implementation synchronization.
