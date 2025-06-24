@@ -52,19 +52,21 @@ def handle_no_command():
                 from .generate import cmd_generate
 
                 cmd_generate(GenArgs())
-                
+
                 # Offer to sync after successful generation
                 print("\n✨ Would you like to generate implementation files now?")
-                sync_response = input("Generate implementations? (Y/n): ").strip().lower()
-                
+                sync_response = (
+                    input("Generate implementations? (Y/n): ").strip().lower()
+                )
+
                 if sync_response != "n":
                     from .sync import cmd_sync
-                    
+
                     # Create args for sync
                     class SyncArgs:
                         preview = False
                         force = False
-                    
+
                     cmd_sync(SyncArgs())
 
         elif choice == "2":

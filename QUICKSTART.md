@@ -89,8 +89,8 @@ Open your browser to `http://localhost:8000/docs` to see the Swagger UI.
 4.  **Update your implementation**: Run `liveapi sync` to regenerate service files with changes.
 
 ### Option 2: Switch Backend Types
-You can change your backend by regenerating your API:
-1.  **Regenerate with different backend**: Run `liveapi generate` and choose a different option
+You can change your backend by generating a new API with a different backend option.
+1.  **Generate with different backend**: Run `liveapi generate` and choose a different option
 2.  **Update configuration**: Backend choice is saved to `.liveapi/config.json`
 3.  **Resync implementation**: Run `liveapi sync` to update service files
 4.  **Configure new backend**: Set up database URL if switching to SQL

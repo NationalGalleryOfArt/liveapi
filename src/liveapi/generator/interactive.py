@@ -107,7 +107,7 @@ class InteractiveGenerator:
         if existing_info and "backend_type" in existing_info:
             current_backend = existing_info["backend_type"]
             print(f"Current: {current_backend}")
-        
+
         backend_choice = input("Enter choice (1 or 2) [1]: ").strip()
         if not backend_choice and existing_info and "backend_type" in existing_info:
             backend_type = existing_info["backend_type"]
@@ -115,11 +115,11 @@ class InteractiveGenerator:
             backend_type = "sqlmodel"
         else:
             backend_type = "default"
-            
+
         # Save backend configuration to project config
         try:
             from ..metadata_manager import MetadataManager
-            
+
             metadata_manager = MetadataManager()
             config = metadata_manager.load_config()
             if config:

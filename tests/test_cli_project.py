@@ -44,7 +44,7 @@ class TestHandleNoCommand:
 
             # Verify generate was called
             mock_generate.assert_called_once()
-            
+
             # Verify sync was called
             mock_sync.assert_called_once()
 
@@ -72,10 +72,10 @@ class TestHandleNoCommand:
 
             # Verify init was called
             mock_init.assert_called_once()
-            
+
             # Verify generate was called
             mock_generate.assert_called_once()
-            
+
             # Verify sync was NOT called
             mock_sync.assert_not_called()
 

@@ -64,11 +64,12 @@ class TestEndToEndFlow:
 
         # Ensure the config specifies the sqlmodel backend
         import json
+
         with open(config_path, "r") as f:
             config = json.load(f)
-        
+
         config["backend_type"] = "sqlmodel"
-        
+
         with open(config_path, "w") as f:
             json.dump(config, f)
 
@@ -187,7 +188,11 @@ class TestEndToEndFlow:
             # Set up a file-based SQLite database for the test
             db_path = Path.cwd() / "test.db"
             os.environ["DATABASE_URL"] = f"sqlite:///{db_path}"
-            from src.liveapi.implementation.database import init_database, close_database
+            from src.liveapi.implementation.database import (
+                init_database,
+                close_database,
+            )
+
             init_database()
 
             # Run the server using uvicorn
@@ -227,7 +232,7 @@ class TestEndToEndFlow:
                     server_process.wait(timeout=5)
                 except subprocess.TimeoutExpired:
                     server_process.kill()
-            
+
             close_database()
             os.chdir(original_cwd)
 

@@ -12,7 +12,7 @@ from .exceptions import NotFoundError, ValidationError, ConflictError
 
 class SQLModelResourceService:
     """Database-backed resource service using SQLModel.
-    
+
     This class provides the same interface as DefaultResourceService but
     persists data to a SQL database using SQLModel.
     """
@@ -45,7 +45,7 @@ class SQLModelResourceService:
         try:
             # Create SQLModel instance for validation
             resource_data = data.copy()
-            
+
             # Get or generate ID
             resource_id = resource_data.get("id")
             if not resource_id:
@@ -54,14 +54,14 @@ class SQLModelResourceService:
 
             # Add timestamps if the model supports them
             now = datetime.now(timezone.utc)
-            if hasattr(self.model, 'created_at'):
+            if hasattr(self.model, "created_at"):
                 resource_data["created_at"] = now
-            if hasattr(self.model, 'updated_at'):
+            if hasattr(self.model, "updated_at"):
                 resource_data["updated_at"] = now
 
             # Create and validate the model instance
             db_resource = self.model(**resource_data)
-            
+
             # Save to database
             # Check for existing resource with same ID
             existing = self.session.get(self.model, resource_id)
@@ -69,14 +69,14 @@ class SQLModelResourceService:
                 raise ConflictError(
                     f"{self.resource_name} with ID {resource_id} already exists"
                 )
-            
+
             self.session.add(db_resource)
             self.session.commit()
             self.session.refresh(db_resource)
-            
+
             # Convert to dict for return
             return self._model_to_dict(db_resource)
-                
+
         except IntegrityError as e:
             raise ConflictError(f"Database constraint violation: {str(e)}")
         except Exception as e:
@@ -98,10 +98,8 @@ class SQLModelResourceService:
         """
         db_resource = self.session.get(self.model, resource_id)
         if not db_resource:
-            raise NotFoundError(
-                f"{self.resource_name} with ID {resource_id} not found"
-            )
-        
+            raise NotFoundError(f"{self.resource_name} with ID {resource_id} not found")
+
         return self._model_to_dict(db_resource)
 
     async def update(
@@ -123,13 +121,11 @@ class SQLModelResourceService:
         """
         db_resource = self.session.get(self.model, resource_id)
         if not db_resource:
-            raise NotFoundError(
-                f"{self.resource_name} with ID {resource_id} not found"
-            )
+            raise NotFoundError(f"{self.resource_name} with ID {resource_id} not found")
 
         try:
             update_data = data.copy()
-            
+
             if partial:
                 # PATCH: Update only provided fields
                 for key, value in update_data.items():
@@ -139,27 +135,27 @@ class SQLModelResourceService:
                 # PUT: Replace entire resource (except system fields)
                 # Get current values for system fields
                 existing_dict = self._model_to_dict(db_resource)
-                
+
                 # Preserve system fields
                 update_data["id"] = resource_id
                 if "created_at" in existing_dict:
                     update_data["created_at"] = existing_dict["created_at"]
-                
+
                 # Create new instance to validate all fields
                 for key, value in update_data.items():
                     if hasattr(db_resource, key):
                         setattr(db_resource, key, value)
 
             # Update timestamp
-            if hasattr(db_resource, 'updated_at'):
+            if hasattr(db_resource, "updated_at"):
                 db_resource.updated_at = datetime.now(timezone.utc)
 
             self.session.add(db_resource)
             self.session.commit()
             self.session.refresh(db_resource)
-            
+
             return self._model_to_dict(db_resource)
-            
+
         except Exception as e:
             self.session.rollback()
             raise ValidationError(f"Invalid data: {str(e)}")
@@ -175,9 +171,7 @@ class SQLModelResourceService:
         """
         db_resource = self.session.get(self.model, resource_id)
         if not db_resource:
-            raise NotFoundError(
-                f"{self.resource_name} with ID {resource_id} not found"
-            )
+            raise NotFoundError(f"{self.resource_name} with ID {resource_id} not found")
 
         self.session.delete(db_resource)
         self.session.commit()
@@ -200,17 +194,17 @@ class SQLModelResourceService:
         """
         # Start with base query
         query = select(self.model)
-        
+
         # Apply filters
         if filters:
             query = self._apply_filters(query, filters)
-        
+
         # Apply pagination
         query = query.offset(offset).limit(limit)
-        
+
         # Execute query
         results = self.session.exec(query).all()
-        
+
         # Convert to dicts
         return [self._model_to_dict(resource) for resource in results]
 
@@ -225,12 +219,12 @@ class SQLModelResourceService:
             Filtered query
         """
         conditions = []
-        
+
         for key, value in filters.items():
             # Skip pagination parameters
             if key in ("limit", "offset"):
                 continue
-                
+
             # Get the field from the model
             field_name = key
             if key.endswith("__gte"):
@@ -253,10 +247,10 @@ class SQLModelResourceService:
                 if hasattr(self.model, field_name):
                     field = getattr(self.model, field_name)
                     conditions.append(field == value)
-        
+
         if conditions:
             query = query.where(and_(*conditions))
-            
+
         return query
 
     def _model_to_dict(self, model_instance: SQLModel) -> Dict[str, Any]:

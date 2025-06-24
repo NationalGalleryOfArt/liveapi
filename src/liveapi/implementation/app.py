@@ -5,7 +5,11 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from .liveapi_router import create_liveapi_app
-from .exceptions import BusinessException, InternalServerError, NotImplementedError as CustomNotImplementedError
+from .exceptions import (
+    BusinessException,
+    InternalServerError,
+    NotImplementedError as CustomNotImplementedError,
+)
 
 
 def add_exception_handlers(app: FastAPI):
@@ -18,8 +22,12 @@ def add_exception_handlers(app: FastAPI):
     @app.exception_handler(NotImplementedError)
     async def handle_not_implemented_error(request: Request, exc: NotImplementedError):
         # Convert built-in NotImplementedError to our custom format
-        custom_exc = CustomNotImplementedError(str(exc) or "This feature is not yet implemented.")
-        return JSONResponse(status_code=custom_exc.status_code, content=custom_exc.to_response())
+        custom_exc = CustomNotImplementedError(
+            str(exc) or "This feature is not yet implemented."
+        )
+        return JSONResponse(
+            status_code=custom_exc.status_code, content=custom_exc.to_response()
+        )
 
     @app.exception_handler(Exception)
     async def handle_generic_exception(request: Request, exc: Exception):
@@ -29,9 +37,7 @@ def add_exception_handlers(app: FastAPI):
 
         # Log the exception for debugging
         # Return a generic 500 error
-        server_error = InternalServerError(
-            "An unexpected error occurred."
-        )
+        server_error = InternalServerError("An unexpected error occurred.")
         return JSONResponse(
             status_code=server_error.status_code, content=server_error.to_response()
         )

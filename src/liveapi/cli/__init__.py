@@ -9,7 +9,7 @@ from .commands.version import (
     cmd_version_compare,
 )
 from .commands.sync import cmd_sync
-from .commands.generate import cmd_generate, cmd_regenerate
+from .commands.generate import cmd_generate
 from .commands.server import cmd_run, cmd_kill, cmd_ping
 from .utils import resolve_spec_path, extract_spec_name_from_input
 
@@ -32,7 +32,6 @@ __all__ = [
     "cmd_version_compare",
     "cmd_sync",
     "cmd_generate",
-    "cmd_regenerate",
     "cmd_run",
     "cmd_kill",
     "cmd_ping",

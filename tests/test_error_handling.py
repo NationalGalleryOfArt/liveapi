@@ -32,7 +32,9 @@ def test_app():
                                 "application/json": {
                                     "schema": {
                                         "type": "array",
-                                        "items": {"$ref": "#/components/schemas/MockModel"},
+                                        "items": {
+                                            "$ref": "#/components/schemas/MockModel"
+                                        },
                                     }
                                 }
                             },
@@ -41,12 +43,8 @@ def test_app():
                 },
                 "post": {
                     "summary": "Create Item",
-                    "responses": {
-                        "201": {
-                            "description": "Item created"
-                        }
-                    }
-                }
+                    "responses": {"201": {"description": "Item created"}},
+                },
             }
         },
         "components": {
@@ -75,11 +73,13 @@ def test_app():
     @app.get("/test-unauthorized")
     def get_unauthorized():
         from src.liveapi.implementation.exceptions import UnauthorizedError
+
         raise UnauthorizedError("Authentication is required.")
 
     @app.get("/test-forbidden")
     def get_forbidden():
         from src.liveapi.implementation.exceptions import ForbiddenError
+
         raise ForbiddenError("You do not have permission.")
 
     @app.post("/items/some_action")

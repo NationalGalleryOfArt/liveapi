@@ -45,7 +45,9 @@ def create_rfc7807_validation_error_handler():
                 "detail": error.get("msg", "Validation error"),
                 "status": "422",
                 "source": {
-                    "pointer": f"/data/attributes/{field_path}" if field_path else "/data"
+                    "pointer": (
+                        f"/data/attributes/{field_path}" if field_path else "/data"
+                    )
                 },
             }
             errors.append(rfc_error)
@@ -76,6 +78,7 @@ class LiveAPIRouter:
 
             if config_file.exists():
                 import json
+
                 with open(config_file, "r") as f:
                     config_data = json.load(f)
                     return config_data.get("backend_type", "default")
@@ -93,23 +96,30 @@ class LiveAPIRouter:
                     return SQLModelResourceService(
                         model=model, resource_name=resource_name, session=session
                     )
+
                 return get_sql_service
             except ImportError:
                 print("⚠️ SQLModel backend not available, falling back to default")
                 # Create a singleton service instance for default backend
                 if resource_name not in self.handlers:
-                    self.handlers[resource_name] = DefaultResourceService(model=model, resource_name=resource_name)
-                
+                    self.handlers[resource_name] = DefaultResourceService(
+                        model=model, resource_name=resource_name
+                    )
+
                 def get_default_service():
                     return self.handlers[resource_name]
+
                 return get_default_service
         else:
             # Create a singleton service instance for default backend
             if resource_name not in self.handlers:
-                self.handlers[resource_name] = DefaultResourceService(model=model, resource_name=resource_name)
-            
+                self.handlers[resource_name] = DefaultResourceService(
+                    model=model, resource_name=resource_name
+                )
+
             def get_default_service():
                 return self.handlers[resource_name]
+
             return get_default_service
 
     def create_app_from_spec(self, spec_path: str) -> FastAPI:
@@ -127,6 +137,7 @@ class LiveAPIRouter:
             if app.openapi_schema:
                 return app.openapi_schema
             from fastapi.openapi.utils import get_openapi
+
             openapi_schema = get_openapi(
                 title=app.title,
                 version=app.version,
@@ -191,6 +202,7 @@ class LiveAPIRouter:
         # Initialize database after all models are created (SQLModel needs this)
         if self.backend_type == "sqlmodel":
             from .database import init_database
+
             init_database()
 
         @app.get("/health")
@@ -200,6 +212,7 @@ class LiveAPIRouter:
                 "service": "liveapi.implementation",
                 "resources": list(resources.keys()),
             }
+
         return app
 
     def _create_resource_router(
@@ -251,7 +264,9 @@ class LiveAPIRouter:
                 response_model=model,
                 operation_id=op.get("operationId", f"update_{resource_name}"),
             )
-            async def update_resource(id: str, data: model, service=Depends(service_dependency)):
+            async def update_resource(
+                id: str, data: model, service=Depends(service_dependency)
+            ):
                 return await service.update(id, data.model_dump(), partial=False)
 
         if "update_partial" in operations:
@@ -264,7 +279,9 @@ class LiveAPIRouter:
                 response_model=model,
                 operation_id=op.get("operationId", f"patch_{resource_name}"),
             )
-            async def patch_resource(id: str, data: Dict[str, Any], service=Depends(service_dependency)):
+            async def patch_resource(
+                id: str, data: Dict[str, Any], service=Depends(service_dependency)
+            ):
                 return await service.update(id, data, partial=True)
 
         if "delete" in operations:
@@ -291,7 +308,9 @@ class LiveAPIRouter:
                 response_model=List[model],
                 operation_id=op.get("operationId", f"list_{resource_name}"),
             )
-            async def list_resources(limit: int = 100, offset: int = 0, service=Depends(service_dependency)):
+            async def list_resources(
+                limit: int = 100, offset: int = 0, service=Depends(service_dependency)
+            ):
                 return await service.list(limit=limit, offset=offset)
 
         return router

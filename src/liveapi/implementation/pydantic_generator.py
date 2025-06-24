@@ -10,22 +10,25 @@ class PydanticGenerator:
 
     def __init__(self, backend_type: str = "default"):
         """Initialize the generator.
-        
+
         Args:
             backend_type: Backend type - "default" for in-memory, "sqlmodel" for SQL
         """
         self.backend_type = backend_type
         self.generated_models: Dict[str, Type[Union[BaseModel, Any]]] = {}
         self._schema_cache: Dict[str, Dict[str, Any]] = {}
-        
+
         # Import SQLModel only when needed
         self._sqlmodel_base = None
         if backend_type == "sqlmodel":
             try:
                 from sqlmodel import SQLModel
+
                 self._sqlmodel_base = SQLModel
             except ImportError:
-                raise ImportError("SQLModel is required for SQL backend. Install with: pip install sqlmodel")
+                raise ImportError(
+                    "SQLModel is required for SQL backend. Install with: pip install sqlmodel"
+                )
 
     def set_schema_definitions(self, components: Dict[str, Any]) -> None:
         """Store schema definitions from OpenAPI components."""
@@ -69,7 +72,7 @@ class PydanticGenerator:
             # Handle SQLModel Field vs Pydantic Field
             if self.backend_type == "sqlmodel":
                 from sqlmodel import Field as SQLField
-                
+
                 # Determine if field is required and configure for SQLModel
                 if field_name == "id":  # Special handling for ID field
                     field_info = SQLField(default=None, primary_key=True)
@@ -79,7 +82,7 @@ class PydanticGenerator:
                 else:
                     field_info = SQLField(default=None)
                     field_type = Optional[field_type]
-                    
+
                 # Add description if available
                 description = field_schema.get("description", None)
                 if description:
@@ -103,28 +106,30 @@ class PydanticGenerator:
             # Create SQLModel table
             if not table_name:
                 table_name = model_name.lower() + "s"  # pluralize for table name
-                
+
             # For SQLModel, use create_model approach with proper SQLModel base
             from sqlmodel import SQLModel
-            
+
             # Use create_model for SQLModel - this avoids the type resolution issues
             # First, prepare field definitions for create_model format
             create_model_fields = {}
             for field_name, (field_type, field_info) in field_definitions.items():
                 create_model_fields[field_name] = (field_type, field_info)
-            
+
             # Create the model with table=True configuration
             model = create_model(
                 model_name,
                 __base__=SQLModel,
-                __config__={'table': True},
+                __config__={"table": True},
                 __tablename__=table_name,
-                **create_model_fields
+                **create_model_fields,
             )
-            
+
             # Add example to the model if it exists in the schema
             if "example" in schema:
-                model.model_config = {"json_schema_extra": {"example": schema["example"]}}
+                model.model_config = {
+                    "json_schema_extra": {"example": schema["example"]}
+                }
         else:
             base_class = BaseModel
             # Create the model
@@ -201,14 +206,15 @@ class PydanticGenerator:
         """Create a simple dict-based model."""
         if self.backend_type == "sqlmodel":
             from sqlmodel import SQLModel
+
             # Create a SQLModel table class
             class_attrs = {
-                '__annotations__': {'__root__': Dict[str, Any]},
-                '__root__': (..., ),
-                '__tablename__': model_name.lower() + "s"
+                "__annotations__": {"__root__": Dict[str, Any]},
+                "__root__": (...,),
+                "__tablename__": model_name.lower() + "s",
             }
             model = type(model_name, (SQLModel,), class_attrs)
-            model.model_config = {'table': True}
+            model.model_config = {"table": True}
             return model
         else:
             return create_model(
@@ -229,17 +235,20 @@ class PydanticGenerator:
 
         if self.backend_type == "sqlmodel":
             from sqlmodel import SQLModel
+
             # Create a SQLModel table class
             class_attrs = {
-                '__annotations__': {'__root__': root_type},
-                '__root__': (..., ),
-                '__tablename__': model_name.lower() + "s"
+                "__annotations__": {"__root__": root_type},
+                "__root__": (...,),
+                "__tablename__": model_name.lower() + "s",
             }
             model = type(model_name, (SQLModel,), class_attrs)
-            model.model_config = {'table': True}
+            model.model_config = {"table": True}
             return model
         else:
-            return create_model(model_name, __base__=BaseModel, __root__=(root_type, ...))
+            return create_model(
+                model_name, __base__=BaseModel, __root__=(root_type, ...)
+            )
 
     def _field_to_model_name(self, field_name: str) -> str:
         """Convert field name to model name."""
@@ -288,7 +297,7 @@ class PydanticGenerator:
             return ""
         components = snake_str.split("_")
         return "".join(word.capitalize() for word in components if word)
-    
+
     def _type_to_string(self, type_annotation) -> str:
         """Convert a type annotation to its string representation."""
         # Handle basic types
@@ -300,13 +309,13 @@ class PydanticGenerator:
             return "float"
         elif type_annotation == bool:
             return "bool"
-        elif hasattr(type_annotation, '__name__'):
+        elif hasattr(type_annotation, "__name__"):
             return type_annotation.__name__
-        elif hasattr(type_annotation, '__origin__'):
+        elif hasattr(type_annotation, "__origin__"):
             # Handle generic types like Optional[str], List[int], etc.
             origin = type_annotation.__origin__
-            args = getattr(type_annotation, '__args__', ())
-            
+            args = getattr(type_annotation, "__args__", ())
+
             # Check if it's a Union type (which Optional uses)
             if origin is Union:
                 if len(args) == 2 and type(None) in args:
@@ -321,6 +330,6 @@ class PydanticGenerator:
                 if len(args) >= 2:
                     return f"Dict[{self._type_to_string(args[0])}, {self._type_to_string(args[1])}]"
                 return "Dict[str, Any]"
-        
+
         # Fallback to string representation
-        return str(type_annotation).replace('<class \'', '').replace('\'>', '')
+        return str(type_annotation).replace("<class '", "").replace("'>", "")

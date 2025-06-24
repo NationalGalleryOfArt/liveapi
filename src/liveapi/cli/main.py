@@ -6,7 +6,7 @@ import argparse
 from .commands.project import handle_no_command, cmd_init, cmd_status, cmd_validate
 from .commands.version import cmd_version
 from .commands.sync import cmd_sync
-from .commands.generate import cmd_generate, cmd_regenerate
+from .commands.generate import cmd_generate
 from .commands.server import cmd_run, cmd_kill, cmd_ping
 
 
@@ -20,7 +20,6 @@ Examples:
   liveapi                         # Interactive mode
   liveapi init                    # Initialize new project
   liveapi generate                # Generate OpenAPI spec with AI
-  liveapi regenerate prompt.json  # Regenerate spec from saved prompt
   liveapi status                  # Show project status
   liveapi validate                # Validate all specifications
   liveapi version create --major   # Create major version
@@ -143,23 +142,6 @@ Examples:
         help="Output format (default: yaml)",
     )
 
-    # Regenerate command
-    regenerate_parser = subparsers.add_parser(
-        "regenerate", help="Regenerate API spec from saved prompt"
-    )
-    regenerate_parser.add_argument(
-        "prompt_file", help="Path to saved prompt file (.liveapi/prompts/*.json)"
-    )
-    regenerate_parser.add_argument(
-        "--output", "-o", help="Output file path (default: updates original spec)"
-    )
-    regenerate_parser.add_argument(
-        "--format",
-        choices=["yaml", "json"],
-        default="yaml",
-        help="Output format (default: yaml)",
-    )
-
     # Run command
     run_parser = subparsers.add_parser(
         "run", help="Run the FastAPI application with uvicorn"
@@ -224,8 +206,6 @@ Examples:
             cmd_sync(args)
         elif args.command == "generate":
             cmd_generate(args)
-        elif args.command == "regenerate":
-            cmd_regenerate(args)
         elif args.command == "run":
             cmd_run(args)
         elif args.command == "kill":

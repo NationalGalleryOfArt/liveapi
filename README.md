@@ -47,7 +47,6 @@ liveapi generate
 
 # 2. (Optional) Edit the clean JSON schema
 # open .liveapi/prompts/users_schema.json
-liveapi regenerate .liveapi/prompts/users_prompt.json
 
 # 3. Check status
 liveapi status
@@ -295,7 +294,6 @@ def read_root():
 ```bash
 liveapi init                   # Initialize project
 liveapi generate               # Generate OpenAPI spec interactively
-liveapi regenerate <prompt_file> # Regenerate from a saved prompt
 liveapi status                 # Show changes and sync status
 liveapi validate               # Validate OpenAPI specs
 ```
