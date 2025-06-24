@@ -375,8 +375,21 @@ You can run the test suite using `make`:
 # Run all tests
 make test
 
+# Run tests with verbose output
+make test-verbose
+
 # Generate a coverage report
 make coverage
+
+# Run UI tests with Playwright
+# First, install Playwright and browser drivers:
+make setup-playwright
+
+# Then run the UI tests:
+make test-ui
+
+# Run all tests including UI tests
+make test-all
 ```
 
 ### Formatting and Linting

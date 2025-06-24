@@ -1,9 +1,12 @@
-.PHONY: test test-verbose coverage install build clean lint format upload help
+.PHONY: test test-verbose test-ui test-all setup-playwright coverage install build clean lint format upload help
 
 help:
 	@echo "Available targets:"
-	@echo "  test          - Run test suite"
+	@echo "  test          - Run test suite (excluding UI tests)"
 	@echo "  test-verbose  - Run test suite with verbose output"
+	@echo "  test-ui       - Run UI tests with Playwright"
+	@echo "  test-all      - Run all tests including UI tests"
+	@echo "  setup-playwright - Install Playwright and browser drivers"
 	@echo "  coverage      - Run test suite with coverage report"
 	@echo "  install       - Install package in development mode"
 	@echo "  build         - Build the package"
@@ -14,10 +17,20 @@ help:
 	@echo "  help          - Show this help message"
 
 test:
-	python -m pytest tests/ -v
+	python -m pytest tests/ -k "not test_designer_ui.py" -v
 
 test-verbose:
-	python -m pytest tests/ -vv
+	python -m pytest tests/ -k "not test_designer_ui.py" -vv
+
+test-ui:
+	python -m pytest tests/test_designer_ui.py -v
+
+test-all:
+	python -m pytest tests/ -v
+
+setup-playwright:
+	pip install playwright
+	playwright install
 
 coverage:
 	python -m pytest tests/ --cov=src/liveapi --cov-report=html --cov-report=term-missing

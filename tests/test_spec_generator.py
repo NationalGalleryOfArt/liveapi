@@ -18,6 +18,79 @@ class TestSpecGenerator:
         generator = SpecGenerator()
         # Just verify it initializes without error
         assert generator is not None
+        
+    def test_status_codes_by_method(self):
+        """Test that appropriate status codes are used based on HTTP method."""
+        generator = SpecGenerator()
+        
+        api_info = {
+            "name": "Status Code Test API",
+            "description": "API for testing status codes",
+            "is_crud": True,
+            "resource_name": "items",
+            "resource_schema": {"name": "string"}
+        }
+        
+        result = generator.generate_spec(api_info)
+        
+        # Test POST operation uses 201 Created
+        assert "201" in result["paths"]["/items"]["post"]["responses"]
+        assert "200" not in result["paths"]["/items"]["post"]["responses"]
+        assert result["paths"]["/items"]["post"]["responses"]["201"]["description"] == "Created"
+        
+        # Test DELETE operation uses 204 No Content
+        assert "204" in result["paths"]["/items/{id}"]["delete"]["responses"]
+        assert "200" not in result["paths"]["/items/{id}"]["delete"]["responses"]
+        assert result["paths"]["/items/{id}"]["delete"]["responses"]["204"]["description"] == "No Content"
+        
+        # Test GET operation uses 200 OK
+        assert "200" in result["paths"]["/items"]["get"]["responses"]
+        assert result["paths"]["/items"]["get"]["responses"]["200"]["description"] == "Success"
+        
+        # Test PUT operation uses 200 OK
+        assert "200" in result["paths"]["/items/{id}"]["put"]["responses"]
+        assert result["paths"]["/items/{id}"]["put"]["responses"]["200"]["description"] == "Success"
+
+    def test_error_response_examples(self):
+        """Test that error responses have correct examples."""
+        generator = SpecGenerator()
+        
+        api_info = {
+            "name": "Error Test API",
+            "description": "API for testing error responses",
+            "is_crud": True,
+            "resource_name": "items",
+            "resource_schema": {"name": "string"}
+        }
+        
+        result = generator.generate_spec(api_info)
+        
+        # Get a sample endpoint to test error responses
+        endpoint_responses = result["paths"]["/items"]["get"]["responses"]
+        
+        # Test 400 Bad Request example
+        assert "example" in endpoint_responses["400"]["content"]["application/problem+json"]
+        bad_request_example = endpoint_responses["400"]["content"]["application/problem+json"]["example"]
+        assert bad_request_example["status"] == 400
+        assert bad_request_example["title"] == "Bad Request"
+        
+        # Test 401 Unauthorized example
+        assert "example" in endpoint_responses["401"]["content"]["application/problem+json"]
+        unauthorized_example = endpoint_responses["401"]["content"]["application/problem+json"]["example"]
+        assert unauthorized_example["status"] == 401
+        assert unauthorized_example["title"] == "Unauthorized"
+        
+        # Test 500 Internal Server Error example
+        assert "example" in endpoint_responses["500"]["content"]["application/problem+json"]
+        server_error_example = endpoint_responses["500"]["content"]["application/problem+json"]["example"]
+        assert server_error_example["status"] == 500
+        assert server_error_example["title"] == "Internal Server Error"
+        
+        # Test 503 Service Unavailable example
+        assert "example" in endpoint_responses["503"]["content"]["application/problem+json"]
+        unavailable_example = endpoint_responses["503"]["content"]["application/problem+json"]["example"]
+        assert unavailable_example["status"] == 503
+        assert unavailable_example["title"] == "Service Unavailable"
 
     def test_build_prompt(self):
         """Test prompt building."""
