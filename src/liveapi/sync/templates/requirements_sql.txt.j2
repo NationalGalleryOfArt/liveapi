@@ -1,0 +1,18 @@
+# Dependencies for {{ resource_name }} service with SQLModel backend
+
+# Core FastAPI and LiveAPI
+fastapi>=0.115.0
+uvicorn>=0.20.0
+pydantic>=2.11.0
+
+# Database dependencies
+sqlmodel>=0.0.14
+psycopg2-binary>=2.9.0  # PostgreSQL adapter
+
+# Optional: SQLite support (already included with Python)
+# For production, use PostgreSQL with DATABASE_URL environment variable
+
+# Development dependencies (optional)
+# pytest>=7.0.0
+# pytest-asyncio>=0.21.0
+# httpx>=0.24.0

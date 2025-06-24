@@ -23,8 +23,8 @@ Examples:
   liveapi regenerate prompt.json  # Regenerate spec from saved prompt
   liveapi status                  # Show project status
   liveapi validate                # Validate all specifications
-  liveapi version users --major   # Create major version of users API
-  liveapi version list users      # List all versions of users API
+  liveapi version create --major   # Create major version
+  liveapi version list            # List all versions
   liveapi sync                    # Generate individual implementation files
   liveapi run                     # Run FastAPI app with uvicorn --reload
   liveapi run --background        # Run in background with PID file

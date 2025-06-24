@@ -1,0 +1,41 @@
+"""Database configuration and session management for {{ resource_name }} service."""
+
+import os
+from typing import Generator
+from sqlmodel import SQLModel, create_engine, Session
+
+# Database URL - can be overridden with environment variable
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./{{ resource_name }}.db")
+
+# Create database engine
+if DATABASE_URL.startswith("sqlite"):
+    # SQLite configuration
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={"check_same_thread": False},
+        echo=os.getenv("DATABASE_DEBUG", "false").lower() == "true"
+    )
+else:
+    # PostgreSQL and other databases
+    engine = create_engine(
+        DATABASE_URL,
+        echo=os.getenv("DATABASE_DEBUG", "false").lower() == "true"
+    )
+
+
+def create_db_and_tables():
+    """Create database tables."""
+    SQLModel.metadata.create_all(engine)
+
+
+def get_session() -> Generator[Session, None, None]:
+    """Get database session for dependency injection."""
+    with Session(engine) as session:
+        try:
+            yield session
+        finally:
+            session.close()
+
+
+# Initialize database on import
+create_db_and_tables()

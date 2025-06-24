@@ -4,7 +4,7 @@
 
 LiveAPI combines interactive spec generation, immutable versioning, change detection, and a default resource service to provide instant, standardized APIs from OpenAPI specifications.
 
-## Key Features
+## Features
 
 ### 🤖 Interactive Spec Generation
 - **Interactive Generation**: Interactively generate OpenAPI specifications from high-level prompts.
@@ -13,11 +13,11 @@ LiveAPI combines interactive spec generation, immutable versioning, change detec
 - **Smart Regeneration**: Automatically rebuilds specs from edited schemas.
 - **Standards Compliant**: Generates OpenAPI 3.0 specs with professional error handling (RFC 7807).
 
-### 🚀 Database-Ready Implementation Generation
-- **Customizable Service Classes**: Generates implementation files with CRUD method overrides for database integration.
-- **Database Integration Points**: Clear hooks for connecting PostgreSQL, MongoDB, or any database.
+### 🚀 Pluggable & Database-Ready Implementation
+- **Selectable Backends**: Choose your data backend during project generation—from a simple in-memory store for prototypes to a production-ready SQL database with SQLModel.
+- **Pluggable Service Architecture**: The API layer is decoupled from the data layer, allowing for easy extension with other databases like Redis or Elasticsearch.
+- **Customizable Service Classes**: Generates clean, database-ready service classes with clear method overrides for your business logic.
 - **Business Logic Hooks**: Built-in spots for validation, logging, caching, and event publishing.
-- **Dynamic Resource Service Fallback**: Uses LiveAPI's dynamic resource service as a foundation while allowing full customization.
 - **Professional Error Handling**: RFC 7807 compliant error responses with proper exception handling.
 
 ### 🔄 API Lifecycle Management
@@ -34,6 +34,7 @@ LiveAPI combines interactive spec generation, immutable versioning, change detec
 ## How It Works
 
 LiveAPI simplifies API creation from spec to running server.
+## Usage
 
 ```bash
 # 1. Generate a new API spec interactively
@@ -70,56 +71,28 @@ liveapi kill                   # Stop development server
 
 ## Quick Start
 
-### 1. Installation
+For a detailed getting started guide, see [QUICKSTART.md](QUICKSTART.md).
+
+**Quick setup:**
 ```bash
+# Install LiveAPI
 git clone <repository-url>
 cd liveapi
 pip install -e .
-```
 
-### 2. Initialization
-```bash
-mkdir my-api-project
-cd my-api-project
-liveapi init
-```
+# Create project directory
+mkdir my-api-project && cd my-api-project
 
-### 3. Generate API Specification
-```bash
-liveapi generate
-```
-Follow the interactive prompts to define your API resource.
+# Run interactive mode (handles init, generate, sync)
+liveapi
 
-### 4. Sync
-```bash
-liveapi sync
-# ✅ Created: implementations/users_service.py (customizable database service)
-# ✅ Created: main.py (FastAPI app using your service)
-# 🎯 Customize implementations/users_service.py for real data stores
-```
-
-### 5. Run Your API
-```bash
-# Start development server with auto-reload
+# Start API server
 liveapi run
-
-# Start in background
-liveapi run --background
-
-# Check server health
-liveapi ping
-
-# Stop server
-liveapi kill
-
-# Access your API:
-# http://localhost:8000/docs    # Interactive API docs
-# http://localhost:8000/health  # Health check endpoint
 ```
 
-## CRUD+ Interface
+## CRUD Operations
 
-LiveAPI automatically provides standardized CRUD+ operations for any resource.
+Generated APIs provide standard CRUD operations:
 
 ```bash
 # Create
@@ -150,103 +123,170 @@ curl -X POST http://localhost:8000/users \
 
 ## Generated Implementation Files
 
-### Custom Service Class (Database-Ready)
-```python
-# implementations/users_service.py (auto-generated)
-"""UserService - Database-connected implementation for users API."""
+The `liveapi sync` command generates a clean, customizable service class that is ready for you to connect to your database of choice.
 
-from liveapi.implementation import create_app
-from liveapi.implementation.default_resource_service import DefaultResourceService
-from typing import Dict, List, Any, Optional
+#### Example: `implementations/users_service.py` (SQLModel Backend)
+
+```python
+# implementations/users_service.py (auto-generated for SQLModel)
+from typing import Dict, Any, List
+from datetime import datetime, timezone
 import uuid
 
-class UserService(DefaultResourceService):
-    """Custom users service with database integration."""
-    
+from sqlmodel import Session, select
+from sqlalchemy.exc import IntegrityError
+
+from liveapi.implementation.database import engine
+from liveapi.implementation.exceptions import NotFoundError, ValidationError, ConflictError
+from .models import User
+
+
+class UserService:
+    """Service for user resources."""
+
     def __init__(self):
-        # TODO: Initialize your database connection
-        # self.db = PostgreSQLConnection()
-        # self.logger = YourLogger()
-        self._storage: Dict[str, Dict[str, Any]] = {}
-    
-    async def create_user(self, user_data: dict) -> dict:
-        """Create a new user in your database."""
-        from fastapi import HTTPException
-        from liveapi.implementation.exceptions import ValidationError, ConflictError
-        
+        self.session = Session(engine)
+
+    async def create(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a new resource."""
         try:
-            # Business validation
-            if not user_data.get("email"):
-                raise ValidationError(
-                    message="Email is required",
-                    details={"field": "email", "error": "missing_required_field"}
+            resource_data = data.copy()
+            
+            resource_id = resource_data.get("id")
+            if not resource_id:
+                resource_id = str(uuid.uuid4())
+                resource_data["id"] = resource_id
+
+            now = datetime.now(timezone.utc)
+            if hasattr(User, 'created_at'):
+                resource_data["created_at"] = now
+            if hasattr(User, 'updated_at'):
+                resource_data["updated_at"] = now
+
+            db_resource = User(**resource_data)
+            
+            existing = self.session.get(User, resource_id)
+            if existing:
+                raise ConflictError(
+                    f"user with ID {resource_id} already exists"
                 )
             
-            # TODO: Replace with your database insert
-            # result = await self.db.insert_one("users", {
-            #     "id": str(uuid.uuid4()),
-            #     **user_data,
-            #     "created_at": datetime.utcnow()
-            # })
+            self.session.add(db_resource)
+            self.session.commit()
+            self.session.refresh(db_resource)
             
-            # In-memory implementation (replace with database)
-            user_id = str(uuid.uuid4())
-            user_record = {"id": user_id, **user_data}
-            self._storage[user_id] = user_record
-            
-            # TODO: Add business logic here
-            # - Logging, caching, event publishing
-            
-            return user_record
-            
-        except (ValidationError, ConflictError):
-            raise
+            return db_resource.model_dump(mode="json")
+                
+        except IntegrityError as e:
+            raise ConflictError(f"Database constraint violation: {str(e)}")
         except Exception as e:
-            raise HTTPException(status_code=500, detail="Internal server error")
-    
-    # Other CRUD methods: get_user, list_users, update_user, delete_user...
+            if isinstance(e, (ConflictError, ValidationError)):
+                raise
+            raise ValidationError(f"Invalid data: {str(e)}")
 
-# Create the FastAPI app
-def create_custom_app():
-    """Create FastAPI app with database-connected users service."""
-    app = create_app("specifications/users.yaml", custom_handlers={"users": UserService()})
-    return app
+    async def read(self, resource_id: str) -> Dict[str, Any]:
+        """Read a single resource by ID."""
+        db_resource = self.session.get(User, resource_id)
+        if not db_resource:
+            raise NotFoundError(
+                f"user with ID {resource_id} not found"
+            )
+        
+        return db_resource.model_dump(mode="json")
+
+    async def update(
+        self, resource_id: str, data: Dict[str, Any], partial: bool = False
+    ) -> Dict[str, Any]:
+        """Update an existing resource."""
+        db_resource = self.session.get(User, resource_id)
+        if not db_resource:
+            raise NotFoundError(
+                f"user with ID {resource_id} not found"
+            )
+
+        try:
+            update_data = data.copy()
+            
+            if partial:
+                for key, value in update_data.items():
+                    if hasattr(db_resource, key):
+                        setattr(db_resource, key, value)
+            else:
+                existing_dict = db_resource.model_dump(mode="json")
+                
+                update_data["id"] = resource_id
+                if "created_at" in existing_dict:
+                    update_data["created_at"] = existing_dict["created_at"]
+                
+                for key, value in update_data.items():
+                    if hasattr(db_resource, key):
+                        setattr(db_resource, key, value)
+
+            if hasattr(db_resource, 'updated_at'):
+                db_resource.updated_at = datetime.now(timezone.utc)
+
+            self.session.add(db_resource)
+            self.session.commit()
+            self.session.refresh(db_resource)
+            
+            return db_resource.model_dump(mode="json")
+            
+        except Exception as e:
+            self.session.rollback()
+            raise ValidationError(f"Invalid data: {str(e)}")
+
+    async def delete(self, resource_id: str) -> None:
+        """Delete a resource."""
+        db_resource = self.session.get(User, resource_id)
+        if not db_resource:
+            raise NotFoundError(
+                f"user with ID {resource_id} not found"
+            )
+
+        self.session.delete(db_resource)
+        self.session.commit()
+
+    async def list(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+        **filters: Any,
+    ) -> List[Dict[str, Any]]:
+        """List resources."""
+        query = select(User)
+        
+        if filters:
+            from .utils import apply_filters
+            query = apply_filters(query, User, filters)
+        
+        query = query.offset(offset).limit(limit)
+        
+        results = self.session.exec(query).all()
+        
+        return [resource.model_dump(mode="json") for resource in results]
 ```
 
 ### Main Application
 ```python
 # main.py (auto-generated)
-"""FastAPI application using custom LiveAPI implementations."""
+"""Main application file for the FastAPI server."""
 
-import importlib.util
-from pathlib import Path
 from fastapi import FastAPI
+from liveapi.implementation.app import create_app
+import os
 
-# Auto-discover and load custom service implementations
-app = FastAPI(title="Custom LiveAPI Services")
+# Get the directory of the current script
+current_dir = os.path.dirname(os.path.abspath(__file__))
 
-def discover_and_mount_services():
-    """Discover service files and mount their apps."""
-    implementations_dir = Path(__file__).parent / "implementations"
-    service_files = list(implementations_dir.glob("*_service.py"))
-    
-    for service_file in service_files:
-        # Import the service module
-        spec = importlib.util.spec_from_file_location(service_file.stem, service_file)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        
-        # Mount the custom app
-        if hasattr(module, 'create_custom_app'):
-            custom_app = module.create_custom_app()
-            resource_name = service_file.stem.replace('_service', '')
-            app.mount(f"/{resource_name}s", custom_app)
+# Construct the path to the specification file
+spec_path = os.path.join(current_dir, "specifications", "users.yaml")
 
-discover_and_mount_services()
+app = create_app(spec_path=spec_path)
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to the LiveAPI!"}
+
 ```
 
 ## Command Reference
@@ -255,7 +295,7 @@ if __name__ == "__main__":
 ```bash
 liveapi init                   # Initialize project
 liveapi generate               # Generate OpenAPI spec interactively
-liveapi regenerate <prompt>    # Regenerate from a saved prompt
+liveapi regenerate <prompt_file> # Regenerate from a saved prompt
 liveapi status                 # Show changes and sync status
 liveapi validate               # Validate OpenAPI specs
 ```
@@ -308,6 +348,13 @@ my-api-project/
 └── main.py                      # FastAPI application
 ```
 
+## Documentation
+
+- **[Quick Start Guide](docs/QUICKSTART.md)** - Setup and basic usage
+- **[Architecture Overview](docs/ARCHITECTURE.md)** - Technical architecture and component details  
+- **[Database Setup](docs/DATABASE_SETUP.md)** - SQL backend configuration
+- **[Changelog](CHANGELOG.md)** - Release notes and version history
+
 ## Development
 
 ### Testing
@@ -317,7 +364,7 @@ You can run the test suite using `make`:
 # Run all tests
 make test
 
-f# Generate a coverage report
+# Generate a coverage report
 make coverage
 ```
 

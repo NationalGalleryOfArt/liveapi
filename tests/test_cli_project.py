@@ -27,11 +27,13 @@ class TestHandleNoCommand:
         mock_manager.get_project_status.return_value = ProjectStatus.UNINITIALIZED
         mock_metadata.return_value = mock_manager
 
-        mock_input.side_effect = ["1", "test-project", "y"]
+        mock_input.side_effect = ["1", "test-project", "y", "y"]
 
         with patch("src.liveapi.cli.commands.project.cmd_init") as mock_init, patch(
             "src.liveapi.cli.commands.generate.cmd_generate"
-        ) as mock_generate:
+        ) as mock_generate, patch(
+            "src.liveapi.cli.commands.sync.cmd_sync"
+        ) as mock_sync:
 
             handle_no_command()
 
@@ -42,6 +44,40 @@ class TestHandleNoCommand:
 
             # Verify generate was called
             mock_generate.assert_called_once()
+            
+            # Verify sync was called
+            mock_sync.assert_called_once()
+
+    @patch("src.liveapi.cli.commands.project.MetadataManager")
+    @patch("builtins.input")
+    @patch("builtins.print")
+    def test_uninitialized_project_choice_1_no_sync(
+        self, mock_print, mock_input, mock_metadata
+    ):
+        """Test interactive mode choice 1: initialize and generate but no sync."""
+        # Setup mocks
+        mock_manager = Mock()
+        mock_manager.get_project_status.return_value = ProjectStatus.UNINITIALIZED
+        mock_metadata.return_value = mock_manager
+
+        mock_input.side_effect = ["1", "test-project", "y", "n"]
+
+        with patch("src.liveapi.cli.commands.project.cmd_init") as mock_init, patch(
+            "src.liveapi.cli.commands.generate.cmd_generate"
+        ) as mock_generate, patch(
+            "src.liveapi.cli.commands.sync.cmd_sync"
+        ) as mock_sync:
+
+            handle_no_command()
+
+            # Verify init was called
+            mock_init.assert_called_once()
+            
+            # Verify generate was called
+            mock_generate.assert_called_once()
+            
+            # Verify sync was NOT called
+            mock_sync.assert_not_called()
 
     @patch("src.liveapi.cli.commands.project.MetadataManager")
     @patch("builtins.input")

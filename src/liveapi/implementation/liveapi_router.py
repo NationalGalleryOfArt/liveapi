@@ -1,15 +1,16 @@
 """LiveAPI router that maps CRUD+ resources to standard handlers."""
 
-from typing import Dict, Any, List, Type
-from fastapi import APIRouter, FastAPI, Request
+from typing import Dict, Any, List, Type, Union
+from pathlib import Path
+from fastapi import APIRouter, FastAPI, Request, Depends
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from sqlmodel import Session
 from .liveapi_parser import LiveAPIParser
 from .default_resource_service import DefaultResourceService
-from .exceptions import BusinessException, NotImplementedError
-
-# Auth removed - handled at API Gateway level
+from .exceptions import BusinessException
+from .database import get_db_session
 
 
 def create_business_exception_handler():
@@ -36,19 +37,15 @@ def create_rfc7807_validation_error_handler():
         errors = []
 
         for error in exc.errors():
-            # Extract location information
             loc = error.get("loc", [])
             field_path = "/".join(str(item) for item in loc if item != "body")
 
-            # Create RFC 7807 compliant error
             rfc_error = {
                 "title": "Unprocessable Entity",
                 "detail": error.get("msg", "Validation error"),
                 "status": "422",
                 "source": {
-                    "pointer": (
-                        f"/data/attributes/{field_path}" if field_path else "/data"
-                    )
+                    "pointer": f"/data/attributes/{field_path}" if field_path else "/data"
                 },
             }
             errors.append(rfc_error)
@@ -63,67 +60,83 @@ def create_rfc7807_validation_error_handler():
 
 
 class LiveAPIRouter:
-    """Router that creates CRUD+ endpoints using standard handlers.
-
-    This router identifies CRUD+ resources in OpenAPI specs and automatically
-    creates endpoints using the standard DefaultResourceService.
-    """
+    """Router that creates CRUD+ endpoints using standard handlers."""
 
     def __init__(self):
         self.routers: Dict[str, APIRouter] = {}
-        self.handlers: Dict[str, DefaultResourceService] = {}
+        self.handlers: Dict[str, Union[DefaultResourceService, Any]] = {}
+        self.backend_type = self._load_backend_config()
+
+    def _load_backend_config(self) -> str:
+        """Load backend configuration from project metadata."""
+        try:
+            project_root = Path.cwd()
+            metadata_dir = project_root / ".liveapi"
+            config_file = metadata_dir / "config.json"
+
+            if config_file.exists():
+                import json
+                with open(config_file, "r") as f:
+                    config_data = json.load(f)
+                    return config_data.get("backend_type", "default")
+        except Exception:
+            pass
+        return "default"
+
+    def _create_service_dependency(self, model: Type[BaseModel], resource_name: str):
+        """Create a dependency factory for the appropriate service."""
+        if self.backend_type == "sqlmodel":
+            try:
+                from .sql_model_resource_service import SQLModelResourceService
+
+                def get_sql_service(session: Session = Depends(get_db_session)):
+                    return SQLModelResourceService(
+                        model=model, resource_name=resource_name, session=session
+                    )
+                return get_sql_service
+            except ImportError:
+                print("⚠️ SQLModel backend not available, falling back to default")
+                # Create a singleton service instance for default backend
+                if resource_name not in self.handlers:
+                    self.handlers[resource_name] = DefaultResourceService(model=model, resource_name=resource_name)
+                
+                def get_default_service():
+                    return self.handlers[resource_name]
+                return get_default_service
+        else:
+            # Create a singleton service instance for default backend
+            if resource_name not in self.handlers:
+                self.handlers[resource_name] = DefaultResourceService(model=model, resource_name=resource_name)
+            
+            def get_default_service():
+                return self.handlers[resource_name]
+            return get_default_service
 
     def create_app_from_spec(self, spec_path: str) -> FastAPI:
-        """Create a FastAPI app from an OpenAPI spec using CRUD+ handlers.
-
-        Args:
-            spec_path: Path to OpenAPI specification
-
-        Returns:
-            FastAPI app with CRUD+ endpoints
-        """
-        # Parse the spec
-        parser = LiveAPIParser(spec_path)
+        """Create a FastAPI app from an OpenAPI spec using CRUD+ handlers."""
+        parser = LiveAPIParser(spec_path, backend_type=self.backend_type)
         parser.load_spec()
 
-        # Create FastAPI app
         app = FastAPI(
             title=parser.spec.get("info", {}).get("title", "LiveAPI CRUD+ API"),
             description=parser.spec.get("info", {}).get("description", ""),
             version=parser.spec.get("info", {}).get("version", "1.0.0"),
         )
 
-        # The exception handlers are now added in app.py
-        # app.add_exception_handler(
-        #     RequestValidationError, create_rfc7807_validation_error_handler()
-        # )
-        # app.add_exception_handler(
-        #     BusinessException, create_business_exception_handler()
-        # )
-
-        # Override OpenAPI schema to use correct validation error format
         def custom_openapi():
             if app.openapi_schema:
                 return app.openapi_schema
-
-            # Import get_openapi to avoid recursion
             from fastapi.openapi.utils import get_openapi
-
-            # Get the default OpenAPI schema using FastAPI's function directly
             openapi_schema = get_openapi(
                 title=app.title,
                 version=app.version,
                 description=app.description,
                 routes=app.routes,
             )
-
-            # Add our custom ValidationError schema
             if "components" not in openapi_schema:
                 openapi_schema["components"] = {}
             if "schemas" not in openapi_schema["components"]:
                 openapi_schema["components"]["schemas"] = {}
-
-            # Replace the default ValidationError with our RFC 7807 format
             openapi_schema["components"]["schemas"]["ValidationError"] = {
                 "type": "object",
                 "properties": {
@@ -146,8 +159,6 @@ class LiveAPIRouter:
                 },
                 "required": ["errors"],
             }
-
-            # Override 422 responses to use our ValidationError schema
             for path_item in openapi_schema.get("paths", {}).values():
                 for operation in path_item.values():
                     if isinstance(operation, dict) and "responses" in operation:
@@ -162,16 +173,12 @@ class LiveAPIRouter:
                                     }
                                 },
                             }
-
             app.openapi_schema = openapi_schema
             return app.openapi_schema
 
         app.openapi = custom_openapi
 
-        # Identify CRUD resources
         resources = parser.identify_crud_resources()
-
-        # Create routers for each resource
         for resource_name, resource_info in resources.items():
             model = resource_info["model"]
             if model:
@@ -181,7 +188,11 @@ class LiveAPIRouter:
                 app.include_router(router, tags=[resource_name])
                 self.routers[resource_name] = router
 
-        # Add health check
+        # Initialize database after all models are created (SQLModel needs this)
+        if self.backend_type == "sqlmodel":
+            from .database import init_database
+            init_database()
+
         @app.get("/health")
         async def health_check():
             return {
@@ -189,36 +200,20 @@ class LiveAPIRouter:
                 "service": "liveapi.implementation",
                 "resources": list(resources.keys()),
             }
-
         return app
 
     def _create_resource_router(
         self, resource_name: str, resource_info: Dict[str, Any], model: Type[BaseModel]
     ) -> APIRouter:
-        """Create a router for a CRUD+ resource.
-
-        Args:
-            resource_name: Name of the resource
-            resource_info: Resource metadata from parser
-            model: Pydantic model for the resource
-
-        Returns:
-            APIRouter with CRUD+ endpoints
-        """
+        """Create a router for a CRUD+ resource."""
         router = APIRouter()
-        handlers = DefaultResourceService(model, resource_name)
-        self.handlers[resource_name] = handlers
+        service_dependency = self._create_service_dependency(model, resource_name)
 
-        # Get paths
         collection_path = resource_info["paths"]["collection"] or f"/{resource_name}"
         item_path = resource_info["paths"]["item"] or f"/{resource_name}/{{id}}"
 
-        # Authentication removed - handled at API Gateway level
-
-        # Map operations to handlers
         operations = resource_info["operations"]
 
-        # Create
         if "create" in operations:
             op = operations["create"]["operation"]
 
@@ -230,10 +225,9 @@ class LiveAPIRouter:
                 status_code=201,
                 operation_id=op.get("operationId", f"create_{resource_name}"),
             )
-            async def create_resource(data: model):
-                return await handlers.create(data.model_dump())
+            async def create_resource(data: model, service=Depends(service_dependency)):
+                return await service.create(data.model_dump())
 
-        # Read
         if "read" in operations:
             op = operations["read"]["operation"]
 
@@ -244,10 +238,9 @@ class LiveAPIRouter:
                 response_model=model,
                 operation_id=op.get("operationId", f"get_{resource_name}"),
             )
-            async def read_resource(id: str):
-                return await handlers.read(id)
+            async def read_resource(id: str, service=Depends(service_dependency)):
+                return await service.read(id)
 
-        # Update (PUT)
         if "update" in operations:
             op = operations["update"]["operation"]
 
@@ -258,10 +251,9 @@ class LiveAPIRouter:
                 response_model=model,
                 operation_id=op.get("operationId", f"update_{resource_name}"),
             )
-            async def update_resource(id: str, data: model):
-                return await handlers.update(id, data.model_dump(), partial=False)
+            async def update_resource(id: str, data: model, service=Depends(service_dependency)):
+                return await service.update(id, data.model_dump(), partial=False)
 
-        # Update (PATCH)
         if "update_partial" in operations:
             op = operations["update_partial"]["operation"]
 
@@ -272,10 +264,9 @@ class LiveAPIRouter:
                 response_model=model,
                 operation_id=op.get("operationId", f"patch_{resource_name}"),
             )
-            async def patch_resource(id: str, data: Dict[str, Any]):
-                return await handlers.update(id, data, partial=True)
+            async def patch_resource(id: str, data: Dict[str, Any], service=Depends(service_dependency)):
+                return await service.update(id, data, partial=True)
 
-        # Delete
         if "delete" in operations:
             op = operations["delete"]["operation"]
 
@@ -286,17 +277,12 @@ class LiveAPIRouter:
                 status_code=204,
                 operation_id=op.get("operationId", f"delete_{resource_name}"),
             )
-            async def delete_resource(id: str):
-                await handlers.delete(id)
+            async def delete_resource(id: str, service=Depends(service_dependency)):
+                await service.delete(id)
                 return None
 
-        # List
         if "list" in operations:
             op = operations["list"]["operation"]
-
-            # Extract query parameters from operation
-            # parameters = op.get("parameters", [])
-            # query_params = {p["name"]: p for p in parameters if p.get("in") == "query"}
 
             @router.get(
                 collection_path,
@@ -305,26 +291,13 @@ class LiveAPIRouter:
                 response_model=List[model],
                 operation_id=op.get("operationId", f"list_{resource_name}"),
             )
-            async def list_resources(limit: int = 100, offset: int = 0):
-                return await handlers.list(limit=limit, offset=offset)
-
-        # Example of a not implemented endpoint
-        if "create" in operations: # piggy-back on create operation to add this endpoint
-            @router.post(f"/{resource_name}/some_action")
-            async def some_action():
-                raise NotImplementedError("This feature is not yet implemented.")
+            async def list_resources(limit: int = 100, offset: int = 0, service=Depends(service_dependency)):
+                return await service.list(limit=limit, offset=offset)
 
         return router
 
 
 def create_liveapi_app(spec_path: str) -> FastAPI:
-    """Convenience function to create a LiveAPI app from a spec.
-
-    Args:
-        spec_path: Path to OpenAPI specification
-
-    Returns:
-        FastAPI app with CRUD+ endpoints
-    """
+    """Convenience function to create a LiveAPI app from a spec."""
     router = LiveAPIRouter()
     return router.create_app_from_spec(spec_path)

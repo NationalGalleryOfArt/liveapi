@@ -135,9 +135,15 @@ class SpecGenerator:
         if "id" not in resource_object["fields"]:
             resource_object["fields"]["id"] = "string"
         if "created_at" not in resource_object["fields"]:
-            resource_object["fields"]["created_at"] = "string"
+            resource_object["fields"]["created_at"] = {
+                "type": "string",
+                "format": "date-time",
+            }
         if "updated_at" not in resource_object["fields"]:
-            resource_object["fields"]["updated_at"] = "string"
+            resource_object["fields"]["updated_at"] = {
+                "type": "string",
+                "format": "date-time",
+            }
 
         # Build the structured data
         structured_data = {"endpoints": endpoints, "objects": [resource_object]}
@@ -356,14 +362,16 @@ class SpecGenerator:
             required = []
 
             # Convert simple field definitions to OpenAPI properties
-            for field_name, field_type in obj.get("fields", {}).items():
-                if field_type == "integer":
+            for field_name, field_schema in obj.get("fields", {}).items():
+                if isinstance(field_schema, dict):
+                    properties[field_name] = field_schema
+                elif field_schema == "integer":
                     properties[field_name] = {"type": "integer"}
-                elif field_type == "number":
+                elif field_schema == "number":
                     properties[field_name] = {"type": "number"}
-                elif field_type == "string":
+                elif field_schema == "string":
                     properties[field_name] = {"type": "string"}
-                elif field_type == "boolean":
+                elif field_schema == "boolean":
                     properties[field_name] = {"type": "boolean"}
                 else:
                     # Default to string for unknown types

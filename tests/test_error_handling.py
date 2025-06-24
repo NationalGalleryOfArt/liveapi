@@ -11,7 +11,7 @@ class MockModel(BaseModel):
     name: str
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def test_app():
     """Creates a test FastAPI app with a mock resource."""
     # We need a dummy spec file for create_app
@@ -82,10 +82,14 @@ def test_app():
         from src.liveapi.implementation.exceptions import ForbiddenError
         raise ForbiddenError("You do not have permission.")
 
+    @app.post("/items/some_action")
+    def post_not_implemented():
+        raise NotImplementedError("This feature is not yet implemented.")
+
     return app
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def client(test_app):
     """Test client for the FastAPI app."""
     return TestClient(test_app)

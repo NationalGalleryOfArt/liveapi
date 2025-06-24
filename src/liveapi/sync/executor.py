@@ -75,6 +75,13 @@ def _generate_implementation_file(
         with open(spec_path, "r") as f:
             spec = yaml.safe_load(f)
 
+        # Load project configuration to check backend type
+        from ..metadata_manager import MetadataManager
+
+        metadata_manager = MetadataManager(project_root)
+        config = metadata_manager.load_config()
+        backend_type = getattr(config, "backend_type", "default")
+
         # Extract resource name from spec
         resource_name = _extract_resource_name_from_spec(spec, spec_path)
         class_name = f"{resource_name.capitalize()}Service"
@@ -82,15 +89,39 @@ def _generate_implementation_file(
         # Set up Jinja2 environment
         template_dir = Path(__file__).parent / "templates"
         env = Environment(loader=FileSystemLoader(template_dir))
-        template = env.get_template("implementation.py.j2")
+
+        # Choose template based on backend type
+        if backend_type == "sqlmodel":
+            template = env.get_template("sql_model_service.py.j2")
+        else:
+            template = env.get_template("implementation.py.j2")
+
+        # Generate the model for the resource
+        from ..implementation.liveapi_parser import LiveAPIParser
+
+        parser = LiveAPIParser(spec_path, backend_type=backend_type)
+        resources = parser.identify_crud_resources()
+        model = resources.get(resource_name, {}).get("model")
+        model_name = model.__name__ if model else f"{resource_name.capitalize()}"
+
+        # Create a models.py file for the implementation
+        if model and hasattr(model, "model_source"):
+            models_file = implementations_dir / "models.py"
+            with open(models_file, "a") as f:
+                f.write(f"\n\n# Model for {resource_name}\n")
+                f.write(model.model_source)
 
         # Render the template
-        content = template.render(resource_name=resource_name, class_name=class_name)
+        content = template.render(
+            resource_name=resource_name,
+            class_name=class_name,
+            model_name=model_name,
+        )
 
         # Write the implementation file
         impl_file = implementations_dir / f"{resource_name}_service.py"
         impl_file.write_text(content)
-        print(f"📝 Generated: {impl_file}")
+        print(f"📝 Generated: {impl_file} (backend: {backend_type})")
 
         return True
 

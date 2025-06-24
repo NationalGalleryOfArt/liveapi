@@ -44,7 +44,7 @@ class TestEndToEndFlow:
                 os.chdir(original_cwd)
 
     def _initialize_project(self):
-        """Initialize a LiveAPI project."""
+        """Initialize a LiveAPI project and configure it for SQLModel."""
         # Mock user inputs for project initialization
         init_inputs = [
             "",  # Empty project name (use directory name)
@@ -59,7 +59,18 @@ class TestEndToEndFlow:
 
         # Verify project was initialized
         assert Path(".liveapi").exists()
-        assert Path(".liveapi/config.json").exists()
+        config_path = Path(".liveapi/config.json")
+        assert config_path.exists()
+
+        # Ensure the config specifies the sqlmodel backend
+        import json
+        with open(config_path, "r") as f:
+            config = json.load(f)
+        
+        config["backend_type"] = "sqlmodel"
+        
+        with open(config_path, "w") as f:
+            json.dump(config, f)
 
     def _generate_api_spec(self):
         """Generate API specification using interactive mode."""
@@ -173,6 +184,12 @@ class TestEndToEndFlow:
         server_process = None
 
         try:
+            # Set up a file-based SQLite database for the test
+            db_path = Path.cwd() / "test.db"
+            os.environ["DATABASE_URL"] = f"sqlite:///{db_path}"
+            from src.liveapi.implementation.database import init_database, close_database
+            init_database()
+
             # Run the server using uvicorn
             cmd = [
                 "python",
@@ -183,7 +200,6 @@ class TestEndToEndFlow:
                 "0.0.0.0",
                 "--port",
                 str(port),
-                "--reload",
             ]
 
             # Change to the appropriate working directory
@@ -211,7 +227,8 @@ class TestEndToEndFlow:
                     server_process.wait(timeout=5)
                 except subprocess.TimeoutExpired:
                     server_process.kill()
-
+            
+            close_database()
             os.chdir(original_cwd)
 
     def _wait_for_server(self, port, timeout=30):
@@ -288,32 +305,15 @@ class TestEndToEndFlow:
 
         response = requests.post(f"{base_url}/products", json=new_product)
         if response.status_code != 201:
-            print(f"POST /products failed with {response.status_code}")
-            print(f"Response headers: {dict(response.headers)}")
-            print(f"Response content: {response.text}")
-            # Let's also check if there are server logs we can see
-            try:
-                # Try to get more details from the response
-                if response.headers.get("content-type", "").startswith(
-                    "application/json"
-                ):
-                    error_details = response.json()
-                    print(f"Error details: {error_details}")
-            except Exception:
-                pass
-        # Skip POST test for now due to model validation complexity
-        # The core workflow (generate -> sync -> run) is validated by server startup
-        if response.status_code != 201:
-            print(
-                "⚠️  POST /products has model validation issues, but basic workflow works"
-            )
-            return
-
+            print("POST /products failed with status:", response.status_code)
+            print("Response body:", response.text)
         assert response.status_code == 201
         created_product = response.json()
         assert created_product["name"] == "Test Product"
         assert "id" in created_product
         product_id = created_product["id"]
+
+        time.sleep(1)
 
         # 3. GET /products/{id} (read)
         response = requests.get(

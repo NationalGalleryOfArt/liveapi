@@ -5,6 +5,58 @@ All notable changes to the LiveAPI project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2025-06-23
+
+### 🗃️ Database Integration - Pluggable Backend Architecture
+
+#### Added
+- **Pluggable Service Layer**: Choose between multiple data persistence backends during API generation
+- **SQLModelResourceService**: Production-ready SQL database backend using SQLModel ORM
+- **Interactive Backend Selection**: Choose backend during `liveapi generate` with automatic configuration saving
+- **Database Connection Management**: Complete SQLModel setup with connection pooling and session management
+- **Automatic Table Creation**: SQLModel tables auto-generated from OpenAPI schemas with proper types
+- **Configuration Persistence**: Backend choice saved to `.liveapi/config.json` and used across sessions
+- **Graceful Fallback**: Automatic fallback to DefaultResourceService if SQLModel dependencies unavailable
+
+#### Enhanced
+- **PydanticGenerator**: Now supports both Pydantic BaseModel and SQLModel table generation based on backend
+- **LiveAPIRouter**: Backend-aware service instantiation based on project configuration
+- **Interactive Workflow**: Added backend selection step with clear options for prototyping vs production
+- **Project Metadata**: Enhanced ProjectConfig model to include backend_type field
+
+#### Technical Implementation
+- **DatabaseManager**: Centralized database connection and session management
+- **SQLModelResourceService**: Full CRUD operations with proper SQL queries, filtering, and transactions
+- **Backend Detection**: Automatic configuration loading from project metadata
+- **Model Generation**: Conditional SQLModel table creation with primary keys and relationships
+- **Template System**: Jinja2 templates for generating database configuration and service files
+
+#### Testing & Documentation
+- **Comprehensive Test Suite**: 20 test cases covering all database integration scenarios
+- **DATABASE_SETUP.md**: Complete setup guide for SQL backends with PostgreSQL and SQLite examples
+- **Updated CLAUDE.md**: Enhanced documentation with database backend workflows and examples
+- **Environment Configuration**: Support for DATABASE_URL and DATABASE_DEBUG environment variables
+
+#### Database Features
+- **Multi-Database Support**: PostgreSQL (production) and SQLite (development) with automatic detection
+- **Query Filtering**: Advanced filtering with exact match, comparisons, and text search
+- **Transaction Safety**: Proper rollback handling and error management
+- **Timestamp Management**: Automatic created_at and updated_at field handling
+- **UUID Generation**: Automatic ID generation for new records
+
+#### Migration
+- Existing projects continue working with DefaultResourceService (in-memory)
+- New projects can choose SQL backend during generation
+- No breaking changes to existing functionality
+- Configuration automatically migrated when regenerating APIs
+
+### Benefits
+- **Production Ready**: SQL database persistence for real applications
+- **Development Friendly**: In-memory option remains for rapid prototyping
+- **Future Extensible**: Architecture ready for Redis, Elasticsearch, and other backends
+- **Configuration Managed**: User choice persists across all LiveAPI operations
+- **Zero Lock-in**: Easy switching between backends during development
+
 ## [0.8.0] - 2025-06-23
 
 ### Refactoring

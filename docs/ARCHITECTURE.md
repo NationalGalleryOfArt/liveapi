@@ -26,8 +26,13 @@ graph TB
     end
     
     subgraph "Synchronization Layer"
-        SYNC[SyncManager<br/>- Generates implementation files<br/>- Creates main.py<br/>- Database integration ready]
-        IMPLEMENTATION[Implementation Engine<br/>- Customizable service classes<br/>- CRUD method overrides<br/>- Dynamic CRUD+ foundation]
+        SYNC[SyncManager<br/>- Generates implementation files<br/>- Creates main.py<br/>- Pluggable database integration]
+        IMPLEMENTATION[Implementation Engine<br/>- Pluggable Resource Services<br/>- Default In-Memory Service<br/>- SQLModel Service<br/>- Backend-aware routing]
+    end
+    
+    subgraph "Database Backend Layer"
+        BACKENDS[Resource Service Backends<br/>- DefaultResourceService (In-Memory)<br/>- SQLModelResourceService (SQL)<br/>- Future: Redis, Elasticsearch, etc.]
+        DATABASE[Database Management<br/>- Connection pooling<br/>- Session management<br/>- Transaction handling<br/>- Auto table creation]
     end
     
     subgraph "Specification Generation Layer"
@@ -53,6 +58,8 @@ graph TB
     VMANAGER --> VERSIONS
     DETECTOR --> SYNC
     SYNC --> IMPLEMENTATION
+    IMPLEMENTATION --> BACKENDS
+    BACKENDS --> DATABASE
     GENERATOR --> PROMPT
 ```
 
@@ -158,6 +165,26 @@ graph TB
   - **Fallback Mode**: `--crud` flag for legacy dynamic CRUD+ behavior
 - **Integration**: Generates production-ready implementation files while maintaining LiveAPI infrastructure
 
+### Database Backend Layer (`implementation/` package)
+- **Purpose**: Provide pluggable data persistence backends for different use cases
+- **Key Components**:
+  - `default_resource_service.py`: In-memory backend for rapid prototyping
+  - `sql_model_resource_service.py`: SQL database backend using SQLModel ORM
+  - `database.py`: Database connection and session management
+  - `liveapi_router.py`: Backend-aware service instantiation
+  - `pydantic_generator.py`: Model generation for both Pydantic and SQLModel
+- **Key Features**:
+  - **Pluggable Architecture**: Easy switching between backends via configuration
+  - **Configuration Persistence**: Backend choice saved to `.liveapi/config.json`
+  - **Automatic Fallback**: Graceful degradation if dependencies unavailable
+  - **Database Management**: Connection pooling, session handling, transaction safety
+  - **Model Generation**: Conditional SQLModel table creation with proper relationships
+  - **Query Features**: Advanced filtering, pagination, and ordering support
+- **Backend Options**:
+  - **DefaultResourceService**: In-memory dict storage for development and testing
+  - **SQLModelResourceService**: SQL database persistence for production (PostgreSQL, SQLite)
+  - **Future Extensibility**: Architecture ready for Redis, Elasticsearch, and other backends
+
 ### SpecGenerator (`generator/` package)
 - **Purpose**: Generate OpenAPI specifications with streamlined interactive workflow
 - **Key Components**:
@@ -167,12 +194,14 @@ graph TB
   - `utils.py`: Helper functions
 - **Key Features**:
   - **Streamlined UX**: Object-first workflow with smart auto-inference
+  - **Backend Selection**: Interactive choice between in-memory and SQL backends
   - **No duplicate questions**: Auto-infer API name/description from resource info
   - **JSON array examples**: Clean format for providing multiple examples
   - **Professional implementation**: Generates proper FastAPI specs with RFC 7807 errors
   - Interactive prompts for API design with smart defaults
   - Saved prompts for regeneration and schema editing workflow
-- **Integration**: Generates specifications that can be versioned and synchronized
+  - Configuration persistence for backend choices
+- **Integration**: Generates specifications that can be versioned and synchronized with chosen backend
 
 ### CLI Interface (`cli/` package)
 - **Purpose**: Provide command-line interface for LiveAPI
@@ -200,8 +229,9 @@ sequenceDiagram
     
     Dev->>CLI: liveapi
     CLI->>Gen: Interactive mode
+    Gen->>Gen: Choose backend (In-memory/SQL)
     Gen->>Gen: Generate OpenAPI spec interactively
-    Gen->>Meta: Track generated spec
+    Gen->>Meta: Save backend config & track spec
     
     Dev->>CLI: liveapi init
     CLI->>Meta: Initialize project
@@ -222,8 +252,9 @@ sequenceDiagram
     Dev->>CLI: liveapi sync
     CLI->>Sync: Analyze sync requirements
     Sync->>Change: Get change analysis
-    Sync->>Sync: Plan sync actions
-    Sync->>Sync: Generate implementation files with database hooks
+    Sync->>Meta: Load backend configuration
+    Sync->>Sync: Plan sync actions with backend choice
+    Sync->>Sync: Generate implementation files (in-memory/SQL)
     Sync->>Sync: Create backups & migration guides
     Sync->>CLI: Sync complete
     
@@ -268,13 +299,15 @@ liveapi/
 │       │   ├── executor.py        # Sync execution
 │       │   ├── crud_sync.py       # main.py generation
 │       │   └── models.py          # Sync models
-│       ├── implementation/        # Dynamic implementation engine (IMPROVED!)
+│       ├── implementation/        # Pluggable resource services
 │       │   ├── __init__.py
 │       │   ├── app.py
-│       │   ├── default_resource_service.py
+│       │   ├── default_resource_service.py # In-memory
+│       │   ├── sql_model_resource_service.py # SQL via SQLModel
+│       │   ├── database.py # DB connection logic
 │       │   ├── exceptions.py
 │       │   ├── liveapi_parser.py
-│       │   ├── liveapi_router.py  # RFC 7807 errors, correct parameters
+│       │   ├── liveapi_router.py
 │       │   └── pydantic_generator.py
 │       ├── spec_generator.py      # Facade for generator package
 │       ├── generator/             # Specification generation package

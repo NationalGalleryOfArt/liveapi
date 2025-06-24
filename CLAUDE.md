@@ -42,13 +42,18 @@ liveapi/
 │       │   ├── manager.py         # Main SyncManager class
 │       │   ├── plan.py            # Sync planning
 │       │   ├── executor.py        # Sync execution
+│       │   ├── crud_sync.py       # Legacy CRUD mode
 │       │   ├── models.py          # Sync models
-│       │   └── migration.py       # Migration guides
+│       │   ├── migration.py       # Migration guides
+│       │   └── templates/         # Jinja2 templates
+│       │       ├── database.py.j2
+│       │       ├── implementation.py.j2
+│       │       ├── requirements_sql.txt.j2
+│       │       └── sql_model_service.py.j2
 │       ├── spec_generator.py      # Facade for generator package
 │       ├── generator/             # Specification generation package
 │       │   ├── __init__.py        # Re-exports
 │       │   ├── generator.py       # Main SpecGenerator class
-│       │   ├── prompt.py          # Prompt building
 │       │   ├── interactive.py     # Interactive workflow
 │       │   └── utils.py           # Helper functions
 │       ├── cli.py                 # Facade for CLI package
@@ -63,13 +68,16 @@ liveapi/
 │       │       ├── sync.py
 │       │       ├── generate.py
 │       │       └── server.py
-│       └── implementation/        # Implementation generation (formerly automatic)
-│           ├── __init__.py        # Re-exports
-│           ├── app.py             # FastAPI app creation
-│           ├── parser.py          # OpenAPI parsing
-│           ├── router.py          # Route generation
-│           ├── scaffold.py        # Code scaffolding
-│           └── templates/         # Code templates
+│       └── implementation/        # Pluggable resource services and API implementation
+│           ├── __init__.py
+│           ├── app.py             # FastAPI app factory
+│           ├── default_resource_service.py # In-memory data store
+│           ├── sql_model_resource_service.py # SQL database data store
+│           ├── database.py        # Database connection management
+│           ├── exceptions.py      # Custom exceptions
+│           ├── liveapi_parser.py  # OpenAPI parser
+│           ├── liveapi_router.py  # Dynamic router (backend-aware)
+│           └── pydantic_generator.py # Pydantic/SQLModel generator
 ├── .liveapi/                      # Project metadata
 │   ├── config.json               # Project configuration
 │   ├── specs.json                # Specification tracking
@@ -87,7 +95,7 @@ liveapi/
 - **SyncManager** (`sync/` package): Synchronizes implementations with specification changes
 - **SpecGenerator** (`generator/` package): Generates OpenAPI specifications using structured templates
 - **CLI Interface** (`cli/` package): Provides command-line interface for all LiveAPI operations
-- **Implementation** (`implementation/` package): Handles implementation generation from OpenAPI specs
+- **Implementation** (`implementation/` package): Provides pluggable resource services and generates API implementations from OpenAPI specs. Supports both in-memory and SQL database backends.
 
 ## Refactoring Plan
 
@@ -222,7 +230,10 @@ liveapi sync --force
 - **Array responses** - list endpoints return proper array types
 - **RFC 7807 validation errors** - professional error format with proper Content-Type
 - Simple list responses (no pagination complexity)
-- In-memory storage (easily replaceable with database)
+- **Pluggable Data Storage**: Choose between multiple backend options:
+  - **DefaultResourceService**: In-memory storage for rapid prototyping and testing
+  - **SQLModelResourceService**: SQL database persistence for production (PostgreSQL, SQLite)
+  - Backend selection during API generation with automatic configuration saving
 - **No authentication** - handled at API Gateway level
 
 ## Command Reference
@@ -390,6 +401,30 @@ ls .liveapi/prompts/
 # 4. Change models (--model flag)
 ```
 
+### Database Backend Selection (NEW!)
+```bash
+# Generate a new API and choose your backend
+liveapi generate
+# New prompt in the interactive workflow:
+# "Which resource service would you like to use?"
+# 1. DefaultResourceService (In-memory, for prototypes)
+# 2. SQLModelResourceService (PostgreSQL, for production)
+
+# For SQLModel backend, set your database URL:
+export DATABASE_URL="postgresql://user:password@localhost/mydatabase"
+# Or use SQLite (default): sqlite:///./myapi.db
+
+# Configuration is automatically saved to .liveapi/config.json
+# All future operations use the selected backend
+
+# Generate implementation with chosen backend
+liveapi sync
+
+# Run with database persistence
+liveapi run
+# SQLModel backend automatically creates tables on first run
+```
+
 ### Creating CRUD APIs with Custom Schemas (Improved)
 ```bash
 # Generate a CRUD API with streamlined workflow
@@ -451,10 +486,14 @@ python -m pytest tests/ -v
 - **Backup and recovery** for safe implementation updates
 - **Preview mode** for all destructive operations
 - **Complete CLI interface** with all essential commands
-- **67 comprehensive tests** covering all functionality with 100% pass rate
+- **134 comprehensive tests** covering all functionality
 - **Team collaboration** via shared `.liveapi/` metadata
 - **Git integration** ready for version control workflows
 - **CRUD+ implementation generation** with automatic resource detection
 - **Dynamic Pydantic model generation** for robust type validation
 - **Simplified CRUD-only architecture** with streamlined handlers
 - **Cloud-friendly testing** that works reliably in all development environments
+- **Pluggable database architecture** with support for in-memory and SQL backends
+- **SQLModel integration** for production-ready database persistence
+- **Automatic table creation** and database connection management  
+- **Backend configuration persistence** - choice saved across sessions

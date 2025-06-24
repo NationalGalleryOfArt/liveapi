@@ -1,6 +1,6 @@
 # LiveAPI Quick Start Guide
 
-Get up and running with LiveAPI in 5 minutes.
+Get up and running with LiveAPI in 5 minutes. This guide covers setup, basic usage, and customization.
 
 ## Prerequisites
 
@@ -15,7 +15,7 @@ cd liveapi
 pip install -e .
 ```
 
-## 5-Minute Tutorial
+## Tutorial
 
 ### Step 1: Initialize Your Project
 ```bash
@@ -31,34 +31,53 @@ You can either generate a spec interactively, or create one manually.
 ```bash
 liveapi generate
 ```
-Follow the interactive prompts to define your API.
+Follow the interactive prompts to define your API:
+1. Enter your object name (e.g., "users")
+2. Describe your object (e.g., "User management records")
+3. Choose your backend:
+   - **1**: DefaultResourceService (In-memory, for prototypes)  
+   - **2**: SQLModelResourceService (PostgreSQL, for production)
+4. Provide JSON schema and examples
 
 **Option B: Manual Creation**
 Create a file named `specifications/users.yaml` with your OpenAPI content.
 
-### Step 3: Generate Implementation Files
+### Step 3: Configure Database (SQL Backend Only)
+If you chose SQLModelResourceService in step 2, set up your database:
+
+```bash
+# For PostgreSQL (recommended for production)
+export DATABASE_URL="postgresql://username:password@localhost:5432/database_name"
+
+# For SQLite (default for development)  
+export DATABASE_URL="sqlite:///./myapi.db"
+
+# Install SQL dependencies
+pip install sqlmodel psycopg2-binary
+```
+
+### Step 4: Generate Implementation Files
 ```bash
 liveapi sync
 ```
 This will generate:
-- `implementations/users_service.py` - Customizable service class with database hooks
+- `implementations/users_service.py` - Service class configured for your chosen backend
 - `main.py` - FastAPI application that loads your service
+- Database tables (automatically created on first run for SQL backend)
 
-The generated service class contains CRUD method overrides ready for database integration.
-
-### Step 4: Run Your API
+### Step 5: Run Your API
 ```bash
 liveapi run
 ```
 
-### Step 5: Test Your API
+### Step 6: Test Your API
 ```bash
 curl http://localhost:8000/health
 # Assuming you created a 'users' API
 curl http://localhost:8000/users
 ```
 
-### Step 6: View Interactive Docs
+### Step 7: View Interactive Docs
 Open your browser to `http://localhost:8000/docs` to see the Swagger UI.
 
 ## Making Changes
@@ -69,21 +88,31 @@ Open your browser to `http://localhost:8000/docs` to see the Swagger UI.
 3.  **Create a new version**: Run `liveapi version create --minor` to create a new, versioned spec file.
 4.  **Update your implementation**: Run `liveapi sync` to regenerate service files with changes.
 
-### Option 2: Customize Your Database Implementation
+### Option 2: Switch Backend Types
+You can change your backend by regenerating your API:
+1.  **Regenerate with different backend**: Run `liveapi generate` and choose a different option
+2.  **Update configuration**: Backend choice is saved to `.liveapi/config.json`
+3.  **Resync implementation**: Run `liveapi sync` to update service files
+4.  **Configure new backend**: Set up database URL if switching to SQL
+
+### Option 3: Customize Your Implementation
 1.  **Edit service class**: Open `implementations/users_service.py`
-2.  **Add database connection**: Replace the TODO comments with your database code
-3.  **Add business logic**: Implement validation, logging, caching as needed
+2.  **Add business logic**: Implement validation, logging, caching as needed
+3.  **Database customization**: For SQL backend, customize queries and relationships
 4.  **Test changes**: Your customizations are preserved across spec updates
 
-Example database integration:
+Example SQL backend customization:
 ```python
 async def create_user(self, user_data: dict) -> dict:
-    # Replace TODO with your database insert
-    result = await self.db.insert_one("users", {
-        "id": str(uuid.uuid4()),
-        **user_data,
-        "created_at": datetime.utcnow()
-    })
+    # Add custom validation
+    if not user_data.get("email"):
+        raise ValidationError("Email is required")
+    
+    # Custom database logic (SQL backend handles the connection)
+    result = await super().create(user_data)
+    
+    # Add custom post-processing
+    await self.send_welcome_email(result["email"])
     return result
 ```
 
@@ -102,13 +131,17 @@ liveapi kill
 - `liveapi sync --preview` - Preview sync changes without applying them
 
 ### Customize Your Implementation
-- **Database Integration**: Replace in-memory storage with PostgreSQL, MongoDB, etc.
-- **Business Logic**: Add validation, authorization, logging, caching
+- **Backend Selection**: Choose between in-memory (prototyping) and SQL (production) backends during generation
+- **Database Integration**: SQL backend automatically handles PostgreSQL, SQLite connections with proper ORM
+- **Business Logic**: Add validation, authorization, logging, caching in service methods
 - **Error Handling**: Customize ValidationError and ConflictError responses
 - **Custom Endpoints**: Add non-CRUD endpoints alongside generated ones
+- **Environment Configuration**: Use DATABASE_URL and DATABASE_DEBUG for SQL backend setup
 
 ### Production Deployment
 - Your generated service classes are production-ready
-- Database connections, logging, and error handling are built-in
+- SQL backend provides automatic database connections, pooling, and transaction management
+- Database tables are automatically created from your OpenAPI schemas
 - Service classes can be version controlled and customized independently
+- Environment-based configuration (DATABASE_URL) for different deployment stages
 - Use container deployment with your customized implementations

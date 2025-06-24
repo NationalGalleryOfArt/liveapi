@@ -120,6 +120,7 @@ class TestSpecGenerator:
             "Gallery location records",  # object description
             "Art Gallery API",  # API name (with default shown)
             "Art locations for an art gallery",  # API description (with default shown)
+            "1",  # backend choice (DefaultResourceService)
             '{"locationID": "integer", "site": "string", "room": "string"}',  # JSON schema (one line)
             "",  # Empty line 1
             "",  # Empty line 2 (end JSON input)
@@ -179,6 +180,7 @@ class TestPromptPersistence:
             "User account records",  # object description
             "User Management API",  # API name (with default shown)
             "Manage user accounts and profiles",  # API description (with default shown)
+            "1",  # backend choice (DefaultResourceService)
             '{"userID": "integer", "email": "string"}',  # JSON schema (one line)
             "",  # Empty line 1
             "",  # Empty line 2 (end JSON input)

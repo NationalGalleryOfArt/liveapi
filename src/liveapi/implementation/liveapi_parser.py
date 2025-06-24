@@ -13,10 +13,10 @@ class LiveAPIParser:
     automatically maps them to standard handlers.
     """
 
-    def __init__(self, spec_path: str):
+    def __init__(self, spec_path: str, backend_type: str = "default"):
         self.spec_path = Path(spec_path)
         self.spec = None
-        self.pydantic_generator = PydanticGenerator()
+        self.pydantic_generator = PydanticGenerator(backend_type=backend_type)
 
     def load_spec(self):
         """Load OpenAPI specification from file."""
@@ -57,6 +57,11 @@ class LiveAPIParser:
                     "model": None,
                     "paths": {"collection": None, "item": None},
                 }
+
+            if is_item_path:
+                resources[resource_name]["paths"]["item"] = path
+            else:
+                resources[resource_name]["paths"]["collection"] = path
 
             for method in ["get", "post", "put", "patch", "delete"]:
                 operation = path_item.get(method)

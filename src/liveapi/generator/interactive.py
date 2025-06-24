@@ -100,6 +100,35 @@ class InteractiveGenerator:
             except Exception:
                 pass  # Use default if config not available
 
+        # Backend selection
+        print("\nWhich resource service would you like to use?")
+        print("1. DefaultResourceService (In-memory, for prototypes)")
+        print("2. SQLModelResourceService (PostgreSQL, for production)")
+        if existing_info and "backend_type" in existing_info:
+            current_backend = existing_info["backend_type"]
+            print(f"Current: {current_backend}")
+        
+        backend_choice = input("Enter choice (1 or 2) [1]: ").strip()
+        if not backend_choice and existing_info and "backend_type" in existing_info:
+            backend_type = existing_info["backend_type"]
+        elif backend_choice == "2":
+            backend_type = "sqlmodel"
+        else:
+            backend_type = "default"
+            
+        # Save backend configuration to project config
+        try:
+            from ..metadata_manager import MetadataManager
+            
+            metadata_manager = MetadataManager()
+            config = metadata_manager.load_config()
+            if config:
+                config.backend_type = backend_type
+                metadata_manager.save_config(config)
+                print(f"✅ Backend configuration saved: {backend_type}")
+        except Exception:
+            pass  # If no project config exists yet, it will be created during init
+
         # Ask for JSON schema
         print(
             f"\nPaste the JSON attributes for {resource_name} (press Enter twice when done):"
@@ -224,6 +253,7 @@ class InteractiveGenerator:
             "resource_description": resource_description,
             "resource_schema": resource_schema,
             "examples": examples,
+            "backend_type": backend_type,
         }
 
     def save_prompt_and_json(

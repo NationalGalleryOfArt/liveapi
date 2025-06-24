@@ -38,3 +38,4 @@ class ProjectConfig:
     git_repository: Optional[str] = None
     api_base_url: Optional[str] = None
     auto_sync: bool = True
+    backend_type: str = "default"  # "default" for in-memory, "sqlmodel" for SQL

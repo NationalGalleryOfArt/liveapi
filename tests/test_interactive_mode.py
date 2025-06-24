@@ -30,6 +30,7 @@ class TestInteractiveMode:
                 "Product inventory items",  # object description
                 "Product Catalog API",  # API name (with default shown)
                 "API for managing product catalog",  # API description (with default shown)
+                "1",  # backend choice (DefaultResourceService)
                 # JSON attributes (with double newlines to end input)
                 '{\n  "name": "string",\n  "price": "number",\n  "category": "string",\n  "inStock": "boolean"\n}',
                 "",  # first empty line
@@ -77,6 +78,7 @@ class TestInteractiveMode:
                             "inStock": False,
                         },
                     ],
+                    "backend_type": "default",
                 }
 
                 assert api_info == expected_api_info
@@ -92,6 +94,7 @@ class TestInteractiveMode:
             "Test items",  # object description
             "Test API",  # API name (with default shown)
             "Test description",  # API description (with default shown)
+            "1",  # backend choice (DefaultResourceService)
             '{"name": "string"}',  # JSON attributes
             "",  # first empty line
             "",  # second empty line
@@ -114,6 +117,7 @@ class TestInteractiveMode:
                 "resource_description",
                 "resource_schema",
                 "examples",
+                "backend_type",
             ]
 
             for field in required_fields:
@@ -138,6 +142,7 @@ class TestInteractiveMode:
             "",  # Empty object description -> "A items resource"
             "",  # Empty API name -> "Items API" (auto-inferred)
             "",  # Empty API description -> "A items resource" (auto-inferred)
+            "",  # Empty backend choice -> default
             "",  # Empty JSON -> default schema
             "",  # first empty line
             "",  # second empty line (invalid JSON)
@@ -177,6 +182,7 @@ class TestInteractiveMode:
             "Test items",  # object description
             "Test API",  # API name (with default shown)
             "Test description",  # API description (with default shown)
+            "1",  # backend choice (DefaultResourceService)
             "invalid json {",  # Invalid JSON attributes
             "",  # first empty line
             "",  # second empty line
@@ -226,6 +232,7 @@ class TestInteractiveMode:
                     "resource_description": "Test items",
                     "resource_schema": {"name": "string"},
                     "examples": [{"name": "Item 1"}],
+                    "backend_type": "default",
                 }
 
                 spec = {"info": {"title": "Test API", "version": "1.0.0"}}
@@ -265,6 +272,7 @@ class TestInteractiveMode:
             "resource_description": "Existing items",
             "resource_schema": {"name": "string", "id": "integer"},
             "examples": [{"name": "Existing Item"}],
+            "backend_type": "default",
         }
 
         # User just presses enter to accept existing values

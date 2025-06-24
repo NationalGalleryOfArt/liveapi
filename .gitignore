@@ -59,3 +59,10 @@ dmypy.json
 # LiveAPI - ignore any .liveapi directories created during testing/development
 .liveapi/
 test-api/
+
+# LiveAPI generated files and temporary data
+.liveapi/generated/
+.liveapi/cache/
+.liveapi/backups/
+.liveapi/uvicorn.pid
+.liveapi/*.log
