@@ -1,0 +1,22 @@
+{
+  "api_name": "Test API",
+  "api_description": "A test API for the designer workflow",
+  "objects": [
+    {
+      "name": "products",
+      "description": "Product catalog items",
+      "fields": {
+        "name": "string",
+        "description": "string",
+        "price": "number",
+        "in_stock": "boolean"
+      },
+      "example": {
+        "name": "Laptop",
+        "description": "High-performance laptop",
+        "price": 999.99,
+        "in_stock": true
+      }
+    }
+  ]
+}

@@ -5,6 +5,38 @@ All notable changes to the LiveAPI project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2025-06-24
+
+### 🎨 LiveAPI Designer - Visual API Design Tool
+
+#### Added
+- **LiveAPI Designer**: A browser-based visual tool for designing APIs
+- **New CLI Command**: `liveapi designer` to launch the designer UI
+- **Serverless Architecture**: No build process or complex setup required
+- **Real-time Preview**: See OpenAPI documentation as you design
+- **Auto-refresh**: Preview automatically updates when changes are made
+- **JSON Editor**: Simple JSON-based API design interface
+- **Example APIs**: Pre-configured example API designs
+- **Root Redirection**: Automatic redirection to designer.html from root URL
+
+#### Technical Implementation
+- **Static HTML Interface**: Single-page React application loaded from CDN
+- **Python HTTP Server**: Simple server for static files and API generation
+- **OpenAPI Generation**: Uses existing SpecGenerator for consistency
+- **Browser Integration**: Automatic browser opening with webbrowser module
+- **Port Configuration**: Configurable port with `--port` option (default: 8888)
+
+#### Documentation
+- **Designer README**: Comprehensive documentation in designer/README.md
+- **Updated Main README**: Added designer command to command reference
+- **Example JSON Files**: Included example API designs for quick start
+
+#### Benefits
+- **Visual Design**: Easier API design for visual thinkers
+- **No Dependencies**: Works without Node.js, npm, or complex build tools
+- **Immediate Feedback**: See changes to your API in real-time
+- **Simplified Workflow**: Design → Generate → Preview in one interface
+
 ## [0.9.0] - 2025-06-23
 
 ### 🗃️ Database Integration - Pluggable Backend Architecture

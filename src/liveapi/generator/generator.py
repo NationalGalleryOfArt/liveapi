@@ -257,23 +257,39 @@ class SpecGenerator:
                 else:
                     response_schema = {"type": "object"}
 
-            responses = {
-                "200": {
+            # Determine appropriate success response code based on method
+            success_responses = {}
+            if method.lower() == "post":
+                # Use 201 Created for POST operations
+                success_responses["201"] = {
+                    "description": "Created",
+                    "content": {"application/json": {"schema": response_schema}},
+                }
+            elif method.lower() == "delete":
+                # Use 204 No Content for DELETE operations
+                success_responses["204"] = {
+                    "description": "No Content",
+                    "content": {},  # No content for 204 responses
+                }
+            else:
+                # Use 200 OK for GET, PUT, PATCH operations
+                success_responses["200"] = {
                     "description": "Success",
                     "content": {"application/json": {"schema": response_schema}},
-                },
+                }
+
+            responses = {
+                **success_responses,  # Include the appropriate success response
                 "400": {
                     "description": "Bad Request",
                     "content": {
                         "application/problem+json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "type": {"type": "string"},
-                                    "title": {"type": "string"},
-                                    "status": {"type": "integer"},
-                                    "detail": {"type": "string"},
-                                },
+                            "schema": {"$ref": "#/components/schemas/Error"},
+                            "example": {
+                                "type": "https://tools.ietf.org/html/rfc7807",
+                                "title": "Bad Request",
+                                "status": 400,
+                                "detail": "The request could not be processed due to invalid input"
                             }
                         }
                     },
@@ -282,14 +298,12 @@ class SpecGenerator:
                     "description": "Unauthorized",
                     "content": {
                         "application/problem+json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "type": {"type": "string"},
-                                    "title": {"type": "string"},
-                                    "status": {"type": "integer"},
-                                    "detail": {"type": "string"},
-                                },
+                            "schema": {"$ref": "#/components/schemas/Error"},
+                            "example": {
+                                "type": "https://tools.ietf.org/html/rfc7807",
+                                "title": "Unauthorized",
+                                "status": 401,
+                                "detail": "Authentication credentials were missing or invalid"
                             }
                         }
                     },
@@ -298,14 +312,12 @@ class SpecGenerator:
                     "description": "Internal Server Error",
                     "content": {
                         "application/problem+json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "type": {"type": "string"},
-                                    "title": {"type": "string"},
-                                    "status": {"type": "integer"},
-                                    "detail": {"type": "string"},
-                                },
+                            "schema": {"$ref": "#/components/schemas/Error"},
+                            "example": {
+                                "type": "https://tools.ietf.org/html/rfc7807",
+                                "title": "Internal Server Error",
+                                "status": 500,
+                                "detail": "The server encountered an unexpected condition that prevented it from fulfilling the request"
                             }
                         }
                     },
@@ -314,14 +326,12 @@ class SpecGenerator:
                     "description": "Service Unavailable",
                     "content": {
                         "application/problem+json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "type": {"type": "string"},
-                                    "title": {"type": "string"},
-                                    "status": {"type": "integer"},
-                                    "detail": {"type": "string"},
-                                },
+                            "schema": {"$ref": "#/components/schemas/Error"},
+                            "example": {
+                                "type": "https://tools.ietf.org/html/rfc7807",
+                                "title": "Service Unavailable",
+                                "status": 503,
+                                "detail": "The server is currently unable to handle the request due to temporary overloading or maintenance"
                             }
                         }
                     },
@@ -404,6 +414,12 @@ class SpecGenerator:
                 "detail": {"type": "string"},
             },
             "required": ["type", "title", "status", "detail"],
+            "example": {
+                "type": "https://tools.ietf.org/html/rfc7807",
+                "title": "Bad Request",
+                "status": 400,
+                "detail": "The request could not be processed due to invalid input"
+            }
         }
 
         # Add RFC 7807 ValidationError schema
@@ -428,6 +444,22 @@ class SpecGenerator:
                 }
             },
             "required": ["errors"],
+            "example": {
+                "errors": [
+                    {
+                        "title": "Validation Error",
+                        "detail": "Field 'name' is required",
+                        "status": "400",
+                        "source": {"pointer": "/name"}
+                    },
+                    {
+                        "title": "Validation Error", 
+                        "detail": "Field 'price' must be a positive number",
+                        "status": "400",
+                        "source": {"pointer": "/price"}
+                    }
+                ]
+            }
         }
 
         # Build the complete OpenAPI spec

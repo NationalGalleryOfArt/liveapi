@@ -1,0 +1,30 @@
+{
+  "api_name": "Library Management API",
+  "api_description": "Comprehensive API for managing library resources and member activities",
+  "objects": [
+    {
+      "name": "books",
+      "description": "Books available in the library catalog",
+      "fields": {
+        "title": "string",
+        "author": "string",
+        "isbn": "string",
+        "genre": "string",
+        "publication_year": "integer",
+        "available_copies": "integer",
+        "total_copies": "integer",
+        "is_featured": "boolean"
+      },
+      "example": {
+        "title": "The Midnight Library",
+        "author": "Matt Haig",
+        "isbn": "978-0-525-55948-1",
+        "genre": "Fiction",
+        "publication_year": 2020,
+        "available_copies": 3,
+        "total_copies": 5,
+        "is_featured": true
+      }
+    }
+  ]
+}

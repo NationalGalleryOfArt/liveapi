@@ -1,0 +1,24 @@
+{
+  "api_name": "Library API",
+  "api_description": "API for managing library books",
+  "objects": [
+    {
+      "name": "books",
+      "description": "Books in the library catalog",
+      "fields": {
+        "title": "string",
+        "author": "string",
+        "isbn": "string",
+        "year": "integer",
+        "available": "boolean"
+      },
+      "example": {
+        "title": "The Great Gatsby",
+        "author": "F. Scott Fitzgerald",
+        "isbn": "978-0-7432-7356-5",
+        "year": 1925,
+        "available": true
+      }
+    }
+  ]
+}

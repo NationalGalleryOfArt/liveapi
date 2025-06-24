@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenAPI Preview - LiveAPI Designer</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        #swagger-ui {
+            background: #fafafa;
+        }
+        .no-spec {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: #f5f5f5;
+            color: #666;
+            text-align: center;
+            padding: 20px;
+        }
+        .no-spec-content {
+            max-width: 500px;
+        }
+        .no-spec h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .no-spec p {
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+        .no-spec code {
+            background: #e0e0e0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .no-spec ol {
+            text-align: left;
+            max-width: 400px;
+            margin: 20px auto;
+        }
+        .no-spec li {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="swagger-ui"></div>
+    <div id="no-spec" class="no-spec" style="display: none;">
+        <div class="no-spec-content">
+            <h2>No OpenAPI Specification Found</h2>
+            <p>To view your API documentation here:</p>
+            <ol>
+                <li>Edit the JSON in the designer</li>
+                <li>Save it to a file (e.g., <code>my_api.json</code>)</li>
+                <li>Run: <code>python designer/generate_from_json.py my_api.json</code></li>
+                <li>Refresh this page</li>
+            </ol>
+            <p>The generator will create <code>build/openapi.json</code> which will be displayed here.</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui-bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui-standalone-preset.js"></script>
+    <script>
+        window.onload = function() {
+            // Try to load the OpenAPI spec with cache busting
+            fetch('./build/openapi.json?t=' + new Date().getTime())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Spec not found');
+                    }
+                    return response.json();
+                })
+                .then(spec => {
+                    // Hide the no-spec message
+                    document.getElementById('no-spec').style.display = 'none';
+                    
+                    // Initialize Swagger UI
+                    window.ui = SwaggerUIBundle({
+                        spec: spec,
+                        dom_id: '#swagger-ui',
+                        deepLinking: true,
+                        presets: [
+                            SwaggerUIBundle.presets.apis,
+                            SwaggerUIStandalonePreset
+                        ],
+                        plugins: [
+                            SwaggerUIBundle.plugins.DownloadUrl
+                        ],
+                        layout: "StandaloneLayout",
+                        validatorUrl: null
+                    });
+                })
+                .catch(error => {
+                    // Show the no-spec message
+                    document.getElementById('swagger-ui').style.display = 'none';
+                    document.getElementById('no-spec').style.display = 'flex';
+                    console.log('No OpenAPI spec found. Generate one first.');
+                });
+        }
+    </script>
+</body>
+</html>

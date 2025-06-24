@@ -12,6 +12,7 @@ LiveAPI combines interactive spec generation, immutable versioning, change detec
 - **Editable Intermediates**: Edit the generated JSON schema directly for fine-grained control.
 - **Smart Regeneration**: Automatically rebuilds specs from edited schemas.
 - **Standards Compliant**: Generates OpenAPI 3.0 specs with professional error handling (RFC 7807).
+- **Visual Designer**: Browser-based UI for designing APIs with real-time preview (run `liveapi designer`).
 
 ### 🚀 Pluggable & Database-Ready Implementation
 - **Selectable Backends**: Choose your data backend during project generation—from a simple in-memory store for prototypes to a production-ready SQL database with SQLModel.
@@ -33,7 +34,18 @@ LiveAPI combines interactive spec generation, immutable versioning, change detec
 
 ## How It Works
 
-LiveAPI simplifies API creation from spec to running server.
+LiveAPI simplifies API creation from spec to running server. You can use the interactive CLI or the visual designer to create your API specifications, then generate implementation files and run your API server.
+
+### Visual Designer
+
+The LiveAPI Designer provides a browser-based interface for designing APIs:
+
+1. Run `liveapi designer` to launch the designer in your browser
+2. Edit the JSON in the left panel to define your API
+3. Click "Generate API" to create the OpenAPI specification
+4. See the preview update in real-time on the right panel
+
+![LiveAPI Designer](https://example.com/liveapi-designer.png)
 ## Usage
 
 ```bash
@@ -296,6 +308,7 @@ liveapi init                   # Initialize project
 liveapi generate               # Generate OpenAPI spec interactively
 liveapi status                 # Show changes and sync status
 liveapi validate               # Validate OpenAPI specs
+liveapi designer               # Launch the LiveAPI Designer UI
 ```
 
 ### Development Server

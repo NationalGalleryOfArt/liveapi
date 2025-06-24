@@ -8,6 +8,7 @@ from .commands.version import cmd_version
 from .commands.sync import cmd_sync
 from .commands.generate import cmd_generate
 from .commands.server import cmd_run, cmd_kill, cmd_ping
+from .commands.designer import cmd_designer
 
 
 def main():
@@ -29,6 +30,7 @@ Examples:
   liveapi run --background        # Run in background with PID file
   liveapi kill                    # Stop background FastAPI app
   liveapi ping                    # Check local dev server health
+  liveapi designer                # Launch the LiveAPI Designer UI
         """,
     )
 
@@ -185,6 +187,14 @@ Examples:
     ping_parser.add_argument(
         "--pid-file", help="Custom PID file path (default: .liveapi/uvicorn.pid)"
     )
+    
+    # Designer command
+    designer_parser = subparsers.add_parser(
+        "designer", help="Launch the LiveAPI Designer UI"
+    )
+    designer_parser.add_argument(
+        "--port", type=int, default=8888, help="Port to bind to (default: 8888)"
+    )
 
     args = parser.parse_args()
 
@@ -212,6 +222,8 @@ Examples:
             cmd_kill(args)
         elif args.command == "ping":
             cmd_ping(args)
+        elif args.command == "designer":
+            cmd_designer(args)
         else:
             parser.print_help()
 

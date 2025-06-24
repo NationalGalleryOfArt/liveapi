@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiveAPI Designer</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const defaultApiInfo = {
+            "api_name": "My API",
+            "api_description": "A simple API for managing resources",
+            "objects": [
+                {
+                    "name": "items",
+                    "description": "Items in the system",
+                    "fields": {
+                        "name": "string",
+                        "description": "string",
+                        "price": "number",
+                        "active": "boolean"
+                    },
+                    "example": {
+                        "name": "Widget A",
+                        "description": "A standard widget",
+                        "price": 19.99,
+                        "active": true
+                    }
+                }
+            ]
+        };
+
+        function App() {
+            const [jsonContent, setJsonContent] = useState(JSON.stringify(defaultApiInfo, null, 2));
+            const [copyStatus, setCopyStatus] = useState('');
+            const [generateStatus, setGenerateStatus] = useState('');
+            const [previewKey, setPreviewKey] = useState(Date.now());
+            
+            // Auto-generate on first load
+            useEffect(() => {
+                // Wait a moment for the component to fully mount
+                const timer = setTimeout(() => {
+                    if (validateJson()) {
+                        handleGenerate();
+                    }
+                }, 500);
+                
+                return () => clearTimeout(timer);
+            }, []);
+
+            const handleCopy = async () => {
+                try {
+                    await navigator.clipboard.writeText(jsonContent);
+                    setCopyStatus('Copied!');
+                    setTimeout(() => setCopyStatus(''), 2000);
+                } catch (err) {
+                    setCopyStatus('Failed to copy');
+                    setTimeout(() => setCopyStatus(''), 2000);
+                }
+            };
+
+            const handleGenerate = async () => {
+                if (!validateJson()) {
+                    setGenerateStatus('Invalid JSON!');
+                    setTimeout(() => setGenerateStatus(''), 2000);
+                    return;
+                }
+                
+                setGenerateStatus('Generating...');
+                
+                try {
+                    const response = await fetch('/generate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: jsonContent
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        setGenerateStatus('Generated!');
+                        // Auto-refresh preview after generation
+                        setTimeout(() => {
+                            setPreviewKey(Date.now());
+                            setGenerateStatus('');
+                        }, 1000);
+                    } else {
+                        setGenerateStatus('Error: ' + result.error);
+                        setTimeout(() => setGenerateStatus(''), 3000);
+                    }
+                } catch (err) {
+                    setGenerateStatus('Failed to generate');
+                    setTimeout(() => setGenerateStatus(''), 2000);
+                }
+            };
+
+            const handleRefreshPreview = () => {
+                setPreviewKey(Date.now());
+            };
+
+            const validateJson = () => {
+                try {
+                    JSON.parse(jsonContent);
+                    return true;
+                } catch {
+                    return false;
+                }
+            };
+
+            const isValid = validateJson();
+
+            return (
+                <div className="h-screen flex flex-col bg-gray-50">
+                    {/* Header */}
+                    <header className="bg-white shadow-sm border-b">
+                        <div className="px-4 py-3 flex items-center justify-between">
+                            <h1 className="text-2xl font-bold text-gray-800">LiveAPI Designer</h1>
+                            <div className="text-sm text-gray-600">
+                                Edit JSON → Click "Generate API" → Preview updates automatically
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Main Content */}
+                    <div className="flex-1 flex">
+                        {/* Left Column - JSON Editor */}
+                        <div className="w-1/2 flex flex-col border-r">
+                            <div className="p-4 bg-white border-b flex items-center justify-between">
+                                <h2 className="text-lg font-semibold text-gray-700">API Design JSON</h2>
+                                <div className="flex items-center gap-2">
+                                    {!isValid && (
+                                        <span className="text-red-600 text-sm">Invalid JSON</span>
+                                    )}
+                                    <button
+                                        onClick={handleGenerate}
+                                        className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                                        disabled={!isValid}
+                                    >
+                                        {generateStatus || 'Generate API'}
+                                    </button>
+                                    <button
+                                        onClick={handleCopy}
+                                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                                    >
+                                        {copyStatus || 'Copy JSON'}
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="flex-1 p-4">
+                                <textarea
+                                    value={jsonContent}
+                                    onChange={(e) => setJsonContent(e.target.value)}
+                                    className={`w-full h-full p-4 font-mono text-sm border rounded-lg resize-none focus:outline-none focus:ring-2 ${
+                                        isValid 
+                                            ? 'border-gray-300 focus:ring-blue-500' 
+                                            : 'border-red-300 focus:ring-red-500'
+                                    }`}
+                                    spellCheck="false"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Right Column - Preview */}
+                        <div className="w-1/2 flex flex-col">
+                            <div className="p-4 bg-white border-b flex items-center justify-between">
+                                <h2 className="text-lg font-semibold text-gray-700">OpenAPI Preview</h2>
+                                <button
+                                    onClick={handleRefreshPreview}
+                                    className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+                                >
+                                    Refresh Preview
+                                </button>
+                            </div>
+                            <div className="flex-1 bg-gray-100">
+                                <iframe
+                                    key={previewKey}
+                                    src={`preview.html?t=${previewKey}`}
+                                    className="w-full h-full"
+                                    title="OpenAPI Preview"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Instructions Footer */}
+                    <footer className="bg-white border-t p-4">
+                        <div className="max-w-4xl mx-auto">
+                            <h3 className="font-semibold text-gray-700 mb-2">Quick Start:</h3>
+                            <ol className="list-decimal list-inside text-sm text-gray-600 space-y-1">
+                                <li>Edit the JSON in the left panel to design your API</li>
+                                <li>Click "Generate API" to create your OpenAPI specification</li>
+                                <li>The preview will automatically update with your generated API docs</li>
+                                <li>Optional: Click "Copy JSON" to save your design for later</li>
+                            </ol>
+                        </div>
+                    </footer>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
