@@ -16,8 +16,9 @@
         const { useState, useEffect } = React;
 
         const defaultApiInfo = {
-            "api_name": "My API",
-            "api_description": "A simple API for managing resources",
+            "api_name": "Items API",
+            "api_description": "API for managing items",
+            "x-resource-type": "DefaultResourceService", // Options: DefaultResourceService, SQLModelResourceService
             "objects": [
                 {
                     "name": "items",
@@ -254,6 +255,7 @@
                     
                     if (result.success) {
                         setSyncStatus('Synced!');
+                        alert('API implementation generated successfully!\n\nYou can now run `liveapi run` to test out the API server implementation.');
                         setTimeout(() => setSyncStatus(''), 2000);
                     } else {
                         setSyncStatus('Error: ' + result.error);
@@ -356,9 +358,6 @@
                                         </button>
                                     )}
                                 </div>
-                                <div className="text-sm text-gray-600">
-                                    Edit JSON → Preview API Spec → Confirm API
-                                </div>
                             </div>
                         </div>
                     </header>
@@ -368,7 +367,7 @@
                         {/* Left Column - JSON Editor */}
                         <div className="w-1/2 flex flex-col border-r">
                             <div className="p-4 bg-white border-b flex items-center justify-between">
-                                <h2 className="text-lg font-semibold text-gray-700">API Design JSON</h2>
+                                <h2 className="text-xl font-semibold text-gray-700">API Design JSON</h2>
                                 <div className="flex items-center gap-2">
                                     {!isValid && (
                                         <span className="text-red-600 text-sm">Invalid JSON</span>
@@ -405,7 +404,7 @@
                         {/* Right Column - Preview */}
                         <div className="w-1/2 flex flex-col">
                             <div className="p-4 bg-white border-b flex items-center justify-between">
-                                <h2 className="text-lg font-semibold text-gray-700">OpenAPI Preview</h2>
+                                <h2 className="text-xl font-semibold text-gray-700">OpenAPI Preview</h2>
                             </div>
                             <div className="flex-1 bg-gray-100">
                                 <iframe

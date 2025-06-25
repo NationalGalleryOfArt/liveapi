@@ -182,6 +182,10 @@ class LiveAPIRouter:
                 "required": ["errors"],
             }
             
+            # Remove FastAPI's default HTTPValidationError schema if it exists
+            if "HTTPValidationError" in openapi_schema["components"]["schemas"]:
+                del openapi_schema["components"]["schemas"]["HTTPValidationError"]
+            
             # Add Error schema if not already present
             if "Error" not in openapi_schema["components"]["schemas"]:
                 openapi_schema["components"]["schemas"]["Error"] = {
@@ -211,8 +215,8 @@ class LiveAPIRouter:
                             if status_code in original_responses and status_code not in operation["responses"]:
                                 operation["responses"][status_code] = original_responses[status_code]
                         
-                        # Add validation error response
-                        if "422" in operation["responses"]:
+                        # Add validation error response for operations that accept request bodies
+                        if method.lower() in ["post", "put", "patch"]:
                             operation["responses"]["422"] = {
                                 "description": "Validation Error",
                                 "content": {
@@ -223,6 +227,12 @@ class LiveAPIRouter:
                                     }
                                 },
                             }
+            
+            # Replace any HTTPValidationError references with ValidationError
+            import json
+            openapi_str = json.dumps(openapi_schema)
+            openapi_str = openapi_str.replace('"#/components/schemas/HTTPValidationError"', '"#/components/schemas/ValidationError"')
+            openapi_schema = json.loads(openapi_str)
             
             app.openapi_schema = openapi_schema
             return app.openapi_schema

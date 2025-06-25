@@ -154,6 +154,7 @@ class SpecGenerator:
             api_info.get("name"),
             api_info.get("description"),
             examples,
+            api_info.get("resource_type"),
         )
 
         final_spec = self._add_server_environments(spec, api_info.get("base_url"))
@@ -207,6 +208,7 @@ class SpecGenerator:
         name: str = None,
         description: str = None,
         examples: List[Dict[str, Any]] = None,
+        resource_type: str = None,
     ) -> Dict[str, Any]:
         """Build complete OpenAPI spec from structured endpoint/object data.
 
@@ -215,6 +217,7 @@ class SpecGenerator:
             name: API name
             description: API description
             examples: List of example objects to include in schema
+            resource_type: Resource service type (DefaultResourceService or SQLModelResourceService)
 
         Returns:
             OpenAPI specification as dict
@@ -482,6 +485,16 @@ class SpecGenerator:
             "paths": paths,
             "components": {"schemas": schemas},
         }
+        
+        # Add resource_type if provided (using x- prefix for OpenAPI compliance)
+        if resource_type:
+            spec["x-resource-type"] = resource_type
+            
+        # Always add the available options for documentation
+        spec["x-resource-type-options"] = [
+            "DefaultResourceService",  # In-memory storage for prototyping
+            "SQLModelResourceService"  # SQL database persistence for production
+        ]
 
         return spec
 

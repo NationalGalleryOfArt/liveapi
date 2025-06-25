@@ -303,7 +303,8 @@ class DesignerHandler(SimpleHTTPRequestHandler):
                         'resource_name': first_object['name'],
                         'resource_description': first_object.get('description', ''),
                         'resource_schema': first_object.get('fields', {}),
-                        'examples': [first_object.get('example', {})] if 'example' in first_object else []
+                        'examples': [first_object.get('example', {})] if 'example' in first_object else [],
+                        'resource_type': api_info.get('x-resource-type', 'DefaultResourceService')
                     }
                 else:
                     transformed_info = api_info
