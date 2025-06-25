@@ -5,7 +5,36 @@ import subprocess
 import signal
 import os
 import time
+import webbrowser
+import threading
 from pathlib import Path
+
+
+def _wait_for_server_and_open_docs(host, port, open_docs=True):
+    """Wait for server to start and optionally open documentation in browser."""
+    import requests
+    
+    docs_url = f"http://{host}:{port}/docs"
+    max_attempts = 30  # Wait up to 15 seconds (30 * 0.5s)
+    
+    for attempt in range(max_attempts):
+        try:
+            # Try to connect to server
+            response = requests.get(f"http://{host}:{port}/health", timeout=2)
+            if response.status_code == 200:
+                # Server is ready
+                if open_docs:
+                    print(f"🌐 Opening API documentation: {docs_url}")
+                    webbrowser.open(docs_url)
+                return
+        except requests.exceptions.RequestException:
+            # Server not ready yet
+            time.sleep(0.5)
+            continue
+    
+    # If we get here, server didn't start in time
+    if open_docs:
+        print(f"⚠️  Server may still be starting. Open docs manually: {docs_url}")
 
 
 def cmd_run(args):
@@ -69,12 +98,32 @@ def cmd_run(args):
 
         print(f"✅ Server started (PID: {process.pid})")
         print("   Use 'liveapi kill' to stop the server")
+        
+        # Open docs in background mode if requested
+        if not getattr(args, 'no_open', False):
+            print(f"🌐 API documentation will open at: http://{args.host}:{args.port}/docs")
+            # Start a background thread to wait for server and open docs
+            threading.Thread(
+                target=_wait_for_server_and_open_docs, 
+                args=(args.host, args.port, True),
+                daemon=True
+            ).start()
     else:
         # Run in foreground
         print("🚀 Starting FastAPI server...")
         print(f"   App: {args.app}")
         print(f"   Host: {args.host}:{args.port}")
         print("   Press Ctrl+C to stop")
+        
+        # Open docs in foreground mode if requested
+        if not getattr(args, 'no_open', False):
+            print(f"🌐 API documentation will open at: http://{args.host}:{args.port}/docs")
+            # Start a background thread to wait for server and open docs
+            threading.Thread(
+                target=_wait_for_server_and_open_docs, 
+                args=(args.host, args.port, True),
+                daemon=True
+            ).start()
 
         try:
             subprocess.run(cmd, check=True, env=env)

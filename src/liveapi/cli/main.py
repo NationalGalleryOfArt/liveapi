@@ -26,7 +26,7 @@ Examples:
   liveapi version create --major   # Create major version
   liveapi version list            # List all versions
   liveapi sync                    # Generate individual implementation files
-  liveapi run                     # Run FastAPI app with uvicorn --reload
+  liveapi run                     # Run FastAPI app (auto-opens /docs)
   liveapi run --background        # Run in background with PID file
   liveapi kill                    # Stop background FastAPI app
   liveapi ping                    # Check local dev server health
@@ -146,7 +146,7 @@ Examples:
 
     # Run command
     run_parser = subparsers.add_parser(
-        "run", help="Run the FastAPI application with uvicorn"
+        "run", help="Run the FastAPI application with uvicorn (auto-opens /docs)"
     )
     run_parser.add_argument(
         "--host", default="127.0.0.1", help="Host to bind to (default: 127.0.0.1)"
@@ -170,6 +170,9 @@ Examples:
     )
     run_parser.add_argument(
         "--pid-file", help="Custom PID file path (default: .liveapi/uvicorn.pid)"
+    )
+    run_parser.add_argument(
+        "--no-open", action="store_true", help="Don't automatically open API docs in browser"
     )
 
     # Kill command

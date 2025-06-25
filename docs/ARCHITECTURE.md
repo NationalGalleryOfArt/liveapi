@@ -168,8 +168,8 @@ graph TB
 ### Database Backend Layer (`implementation/` package)
 - **Purpose**: Provide pluggable data persistence backends for different use cases
 - **Key Components**:
-  - `default_resource_service.py`: In-memory backend for rapid prototyping
-  - `sql_model_resource_service.py`: SQL database backend using SQLModel ORM
+  - `default_resource.py`: In-memory backend for rapid prototyping
+  - `sql_model_resource.py`: SQL database backend using SQLModel ORM
   - `database.py`: Database connection and session management
   - `liveapi_router.py`: Backend-aware service instantiation
   - `pydantic_generator.py`: Model generation for both Pydantic and SQLModel
@@ -302,8 +302,8 @@ liveapi/
 │       ├── implementation/        # Pluggable resource services
 │       │   ├── __init__.py
 │       │   ├── app.py
-│       │   ├── default_resource_service.py # In-memory
-│       │   ├── sql_model_resource_service.py # SQL via SQLModel
+│       │   ├── default_resource.py # In-memory
+│       │   ├── sql_model_resource.py # SQL via SQLModel
 │       │   ├── database.py # DB connection logic
 │       │   ├── exceptions.py
 │       │   ├── liveapi_parser.py

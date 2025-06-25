@@ -5,7 +5,7 @@ A focused framework for building standardized CRUD+ APIs from OpenAPI specificat
 """
 
 from .app import create_app
-from .default_resource_service import DefaultResource, create_resource_router
+from .default_resource import DefaultResource, create_resource_router
 from .pydantic_generator import PydanticGenerator
 from .liveapi_parser import LiveAPIParser
 from .liveapi_router import LiveAPIRouter, create_liveapi_app

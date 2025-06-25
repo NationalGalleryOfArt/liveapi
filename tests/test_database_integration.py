@@ -9,14 +9,14 @@ from unittest.mock import patch, MagicMock
 from src.liveapi.implementation.database import DatabaseManager, get_database_manager
 from src.liveapi.implementation.pydantic_generator import PydanticGenerator
 from src.liveapi.implementation.liveapi_router import LiveAPIRouter
-from src.liveapi.implementation.default_resource_service import DefaultResource
+from src.liveapi.implementation.default_resource import DefaultResource
 from src.liveapi.generator.interactive import InteractiveGenerator
 from src.liveapi.metadata.models import ProjectConfig
 
 # Check if SQLModel is available
 try:
     from sqlmodel import Session
-    from src.liveapi.implementation.sql_model_resource_service import SQLModelResource
+    from src.liveapi.implementation.sql_model_resource import SQLModelResource
 
     HAS_SQLMODEL = True
 except ImportError:
@@ -175,7 +175,7 @@ class TestLiveAPIRouterBackendSelection:
                 )
                 service = service_dependency()
 
-                from src.liveapi.implementation.default_resource_service import (
+                from src.liveapi.implementation.default_resource import (
                     DefaultResource,
                 )
 
@@ -215,7 +215,7 @@ class TestLiveAPIRouterBackendSelection:
                 # We need to inject the dependency manually for testing
                 service = service_dependency(session=mock_session)
 
-                from src.liveapi.implementation.sql_model_resource_service import (
+                from src.liveapi.implementation.sql_model_resource import (
                     SQLModelResource,
                 )
 
@@ -305,7 +305,7 @@ class TestSQLModelIntegration:
 
     def test_sqlmodel_resource_service_creation(self):
         """Test SQLModelResource instantiation."""
-        from src.liveapi.implementation.sql_model_resource_service import (
+        from src.liveapi.implementation.sql_model_resource import (
             SQLModelResource,
         )
         from sqlmodel import SQLModel, Field

@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlmodel import Session
 from .liveapi_parser import LiveAPIParser
-from .default_resource_service import DefaultResource
+from .default_resource import DefaultResource
 from .exceptions import BusinessException
 from .database import get_db_session
 
@@ -90,7 +90,7 @@ class LiveAPIRouter:
         """Create a dependency factory for the appropriate service."""
         if self.backend_type == "sqlmodel":
             try:
-                from .sql_model_resource_service import SQLModelResource
+                from .sql_model_resource import SQLModelResource
 
                 def get_sql_service(session: Session = Depends(get_db_session)):
                     return SQLModelResource(

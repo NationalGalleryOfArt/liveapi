@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
-from src.liveapi.implementation.default_resource_service import (
+from src.liveapi.implementation.default_resource import (
     DefaultResource,
     create_resource_router,
 )

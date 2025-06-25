@@ -2,6 +2,7 @@
 
 import uvicorn
 from liveapi.implementation import create_app
+from fastapi.responses import RedirectResponse
 
 # Create the app from OpenAPI specification{% if single_spec %}
 app = create_app("{{ spec_path }}"){% else %}
@@ -13,6 +14,12 @@ spec_files = [{% for spec in spec_files %}
 # For multiple specs, create app from the first one
 # In the future, this could be enhanced to support multiple APIs
 app = create_app(spec_files[0]){% endif %}
+
+# Add redirect from root to docs for better UX
+@app.get("/", include_in_schema=False)
+async def redirect_to_docs():
+    """Redirect root URL to API documentation."""
+    return RedirectResponse(url="/docs")
 
 if __name__ == "__main__":
     # Run the development server

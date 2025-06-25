@@ -71,8 +71,8 @@ liveapi/
 │       └── implementation/        # Pluggable resource services and API implementation
 │           ├── __init__.py
 │           ├── app.py             # FastAPI app factory
-│           ├── default_resource_service.py # In-memory data store
-│           ├── sql_model_resource_service.py # SQL database data store
+│           ├── default_resource.py # In-memory data store
+│           ├── sql_model_resource.py # SQL database data store
 │           ├── database.py        # Database connection management
 │           ├── exceptions.py      # Custom exceptions
 │           ├── liveapi_parser.py  # OpenAPI parser
