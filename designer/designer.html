@@ -42,6 +42,7 @@
             const [jsonContent, setJsonContent] = useState(JSON.stringify(defaultApiInfo, null, 2));
             const [copyStatus, setCopyStatus] = useState('');
             const [generateStatus, setGenerateStatus] = useState('');
+            const [syncStatus, setSyncStatus] = useState('');
             const [previewKey, setPreviewKey] = useState(Date.now());
             
             // Auto-generate on first load
@@ -107,6 +108,29 @@
             const handleRefreshPreview = () => {
                 setPreviewKey(Date.now());
             };
+            
+            const handleSync = async () => {
+                setSyncStatus('Syncing...');
+                
+                try {
+                    const response = await fetch('/sync', {
+                        method: 'POST',
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        setSyncStatus('Synced!');
+                        setTimeout(() => setSyncStatus(''), 2000);
+                    } else {
+                        setSyncStatus('Error: ' + result.error);
+                        setTimeout(() => setSyncStatus(''), 3000);
+                    }
+                } catch (err) {
+                    setSyncStatus('Failed to sync');
+                    setTimeout(() => setSyncStatus(''), 2000);
+                }
+            };
 
             const validateJson = () => {
                 try {
@@ -126,7 +150,7 @@
                         <div className="px-4 py-3 flex items-center justify-between">
                             <h1 className="text-2xl font-bold text-gray-800">LiveAPI Designer</h1>
                             <div className="text-sm text-gray-600">
-                                Edit JSON → Click "Generate API" → Preview updates automatically
+                                Edit JSON → Preview API Spec → Scaffold Application
                             </div>
                         </div>
                     </header>
@@ -146,13 +170,13 @@
                                         className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
                                         disabled={!isValid}
                                     >
-                                        {generateStatus || 'Generate API'}
+                                        {generateStatus || 'Preview API Spec'}
                                     </button>
                                     <button
-                                        onClick={handleCopy}
+                                        onClick={handleSync}
                                         className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                                     >
-                                        {copyStatus || 'Copy JSON'}
+                                        {syncStatus || 'Scaffold Application'}
                                     </button>
                                 </div>
                             </div>
@@ -192,18 +216,7 @@
                         </div>
                     </div>
 
-                    {/* Instructions Footer */}
-                    <footer className="bg-white border-t p-4">
-                        <div className="max-w-4xl mx-auto">
-                            <h3 className="font-semibold text-gray-700 mb-2">Quick Start:</h3>
-                            <ol className="list-decimal list-inside text-sm text-gray-600 space-y-1">
-                                <li>Edit the JSON in the left panel to design your API</li>
-                                <li>Click "Generate API" to create your OpenAPI specification</li>
-                                <li>The preview will automatically update with your generated API docs</li>
-                                <li>Optional: Click "Copy JSON" to save your design for later</li>
-                            </ol>
-                        </div>
-                    </footer>
+                    {/* No footer - removed as requested */}
                 </div>
             );
         }

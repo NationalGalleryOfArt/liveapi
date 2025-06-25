@@ -6,6 +6,7 @@ Serves static files and handles API generation requests
 import json
 import os
 import sys
+import subprocess
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
@@ -33,7 +34,57 @@ class DesignerHandler(SimpleHTTPRequestHandler):
         
     def do_POST(self):
         """Handle POST requests for API generation"""
-        if self.path == '/generate':
+        if self.path == '/sync':
+            try:
+                # Check if project directory is set
+                if not hasattr(self.__class__, 'project_dir') or not self.__class__.project_dir:
+                    raise ValueError("Project directory not set. Please restart the designer.")
+                
+                # Run liveapi sync command
+                print(f"🔄 Running liveapi sync in {self.__class__.project_dir}")
+                result = subprocess.run(
+                    ["liveapi", "sync"],
+                    cwd=self.__class__.project_dir,
+                    capture_output=True,
+                    text=True
+                )
+                
+                # Check if command was successful
+                if result.returncode == 0:
+                    print("✅ Sync completed successfully")
+                    success_message = "Implementation files generated successfully"
+                    
+                    # Send success response
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({
+                        'success': True,
+                        'message': success_message,
+                        'output': result.stdout
+                    }).encode())
+                else:
+                    print(f"❌ Sync failed: {result.stderr}")
+                    # Send error response
+                    self.send_response(500)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({
+                        'success': False,
+                        'error': f"Sync failed: {result.stderr}"
+                    }).encode())
+                    
+            except Exception as e:
+                # Send error response
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    'success': False,
+                    'error': str(e)
+                }).encode())
+                
+        elif self.path == '/generate':
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length)
             
@@ -66,6 +117,32 @@ class DesignerHandler(SimpleHTTPRequestHandler):
                 
                 with open(output_file, 'w') as f:
                     json.dump(spec_dict, f, indent=2)
+                
+                # Also save to project specifications directory if available
+                if hasattr(self.__class__, 'project_dir') and self.__class__.project_dir:
+                    # Create specifications directory if it doesn't exist
+                    project_specs_dir = self.__class__.project_dir / 'specifications'
+                    project_specs_dir.mkdir(exist_ok=True)
+                    
+                    # Use resource name for the filename
+                    resource_name = transformed_info.get('resource_name', 'api')
+                    project_spec_file = project_specs_dir / f"{resource_name}.json"
+                    
+                    # Save the spec to the project
+                    with open(project_spec_file, 'w') as f:
+                        json.dump(spec_dict, f, indent=2)
+                    
+                    print(f"✅ OpenAPI specification saved to project: {project_spec_file}")
+                    
+                    # Also save the design JSON to .liveapi/prompts
+                    prompts_dir = self.__class__.project_dir / '.liveapi' / 'prompts'
+                    prompts_dir.mkdir(exist_ok=True)
+                    
+                    prompt_file = prompts_dir / f"{resource_name}_schema.json"
+                    with open(prompt_file, 'w') as f:
+                        json.dump(api_info, f, indent=2)
+                    
+                    print(f"✅ Design JSON saved to: {prompt_file}")
                 
                 # Send success response
                 self.send_response(200)
@@ -102,10 +179,16 @@ class DesignerHandler(SimpleHTTPRequestHandler):
         self.end_headers()
 
 
-def run_server(port=8888):
+def run_server(port=8888, project_dir=None):
     """Run the designer server"""
     # Change to the directory where server.py is located
     os.chdir(Path(__file__).parent)
+    
+    # Store project directory for use by the handler
+    if project_dir:
+        DesignerHandler.project_dir = Path(project_dir)
+    else:
+        DesignerHandler.project_dir = None
     
     server_address = ('', port)
     httpd = HTTPServer(server_address, DesignerHandler)

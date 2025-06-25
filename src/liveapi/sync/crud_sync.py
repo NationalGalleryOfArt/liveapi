@@ -8,7 +8,7 @@ def create_crud_main_py(spec_files: List[Path], project_root: Path) -> None:
     """Create main.py for CRUD+ APIs.
 
     Args:
-        spec_files: List of OpenAPI specification files
+        spec_files: List of OpenAPI specification files (YAML or JSON)
         project_root: Root directory of the project
     """
     main_py_path = project_root / "main.py"
