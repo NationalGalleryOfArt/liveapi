@@ -532,30 +532,41 @@ def add_error_schemas_to_app(app: FastAPI):
                 "required": ["type", "title", "status", "detail"],
             }
         
-        # Add ValidationError schema if not already present
-        if "ValidationError" not in openapi_schema["components"]["schemas"]:
-            openapi_schema["components"]["schemas"]["ValidationError"] = {
-                "type": "object",
-                "properties": {
-                    "errors": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "title": {"type": "string"},
-                                "detail": {"type": "string"},
-                                "status": {"type": "string"},
-                                "source": {
-                                    "type": "object",
-                                    "properties": {"pointer": {"type": "string"}},
-                                },
+        # Add/update ValidationError schema to ensure correct RFC 7807 format
+        openapi_schema["components"]["schemas"]["ValidationError"] = {
+            "type": "object",
+            "properties": {
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "title": {"type": "string"},
+                            "detail": {"type": "string"},
+                            "status": {"type": "string"},
+                            "source": {
+                                "type": "object",
+                                "properties": {"pointer": {"type": "string"}},
                             },
-                            "required": ["title", "detail", "status"],
                         },
+                        "required": ["title", "detail", "status"],
+                    },
+                }
+            },
+            "required": ["errors"],
+            "example": {
+                "errors": [
+                    {
+                        "title": "Unprocessable Entity",
+                        "detail": "String should have at least 2 characters",
+                        "status": "422",
+                        "source": {
+                            "pointer": "/data/attributes/name"
+                        }
                     }
-                },
-                "required": ["errors"],
+                ]
             }
+        }
         
         app.openapi_schema = openapi_schema
         return app.openapi_schema
