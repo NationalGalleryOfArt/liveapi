@@ -38,14 +38,21 @@ LiveAPI simplifies API creation from spec to running server. You can use the int
 
 ### Visual Designer
 
-The LiveAPI Designer provides a browser-based interface for designing APIs:
+The LiveAPI Designer provides a browser-based interface for designing APIs with enhanced resource management:
 
 1. Run `liveapi designer` to launch the designer in your browser
-2. Edit the JSON in the left panel to define your API
-3. Click "Generate API" to create the OpenAPI specification
-4. See the preview update in real-time on the right panel
+2. Edit project settings (API name, base URL) directly in the interface
+3. Select existing resources from the dropdown or create new ones
+4. Edit the JSON in the left panel to define your API
+5. Click "Preview API Spec" to generate the OpenAPI specification
+6. See the preview update in real-time on the right panel
+7. Click "Confirm API" to sync and generate implementation files
 
-![LiveAPI Designer](https://example.com/liveapi-designer.png)
+**New Features:**
+- **Resource Management**: Dropdown to list, select, and delete existing API resources
+- **Editable Configuration**: Change project name and base URL directly in the UI
+- **Resource Persistence**: Resources are saved and can be reloaded for editing
+- **Real-time Preview**: Immediate preview updates without manual refresh
 ## Usage
 
 ```bash

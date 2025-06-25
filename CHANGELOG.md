@@ -5,6 +5,36 @@ All notable changes to the LiveAPI project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.1] - 2025-06-25
+
+### 🎨 LiveAPI Designer - Enhanced Resource Management
+
+#### Added
+- **Resource Management UI**: Dropdown to list, select, edit, and delete existing API resources
+- **Editable Project Configuration**: API name and base URL can be edited directly in the designer interface
+- **Resource Persistence**: Resources are automatically saved to `.liveapi/prompts/` and can be reloaded
+- **Enhanced UX**: Workflow text updated to "Edit JSON → Preview API Spec → Confirm API"
+- **No Auto-Generation**: Removed automatic preview generation on page load
+
+#### Fixed
+- **Preview Refresh Issue**: Fixed race condition where preview wouldn't update after generation
+- **Cache-Busting Support**: Fixed query parameter handling in API endpoints (`/api/openapi.json?t=...`)
+- **Memory Caching**: Added in-memory caching for generated OpenAPI specs to eliminate file system timing issues
+- **File System Synchronization**: Added proper file flushing and sync to ensure file writes complete before serving
+
+#### Changed
+- **Button Renaming**: "Scaffold Application" renamed to "Confirm API" for clarity
+- **Removed Refresh Button**: Preview automatically refreshes when spec is generated
+- **Enhanced Logging**: Improved debug logging for troubleshooting preview issues
+- **Project Storage**: OpenAPI specs now stored in project's `.liveapi/openapi.json` instead of library directory
+
+#### Technical Implementation
+- **Dual Serving Strategy**: Serves OpenAPI specs from memory cache first, then falls back to file system
+- **Path Matching Fix**: Enhanced URL pattern matching to handle cache-busting query parameters
+- **Resource API Endpoints**: Added `/api/resources`, `/api/resource/{name}`, and DELETE support
+- **Configuration Endpoints**: Added `/api/config` for reading/writing project configuration
+- **Improved Error Handling**: Better error messages and fallback behavior for missing resources
+
 ## [0.10.0] - 2025-06-24
 
 ### 🎨 LiveAPI Designer - Visual API Design Tool
