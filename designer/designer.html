@@ -44,18 +44,114 @@
             const [generateStatus, setGenerateStatus] = useState('');
             const [syncStatus, setSyncStatus] = useState('');
             const [previewKey, setPreviewKey] = useState(Date.now());
+            const [resources, setResources] = useState([]);
+            const [selectedResource, setSelectedResource] = useState(null);
+            const [projectConfig, setProjectConfig] = useState({ project_name: '', api_base_url: '' });
+            const [editingConfig, setEditingConfig] = useState(false);
+            const [tempConfig, setTempConfig] = useState({ project_name: '', api_base_url: '' });
             
-            // Auto-generate on first load
+            // Load resources and config on mount
             useEffect(() => {
-                // Wait a moment for the component to fully mount
-                const timer = setTimeout(() => {
-                    if (validateJson()) {
-                        handleGenerate();
-                    }
-                }, 500);
+                loadResources();
+                loadConfig();
                 
-                return () => clearTimeout(timer);
+                // Check if we already have a generated spec
+                fetch('/api/openapi.json')
+                    .then(response => {
+                        if (response.ok) {
+                            // Spec exists, just update preview
+                            setPreviewKey(Date.now());
+                        }
+                    })
+                    .catch(() => {
+                        // No spec exists, that's ok
+                    });
             }, []);
+
+            const loadResources = async () => {
+                try {
+                    const response = await fetch('/api/resources');
+                    if (response.ok) {
+                        const data = await response.json();
+                        setResources(data);
+                    }
+                } catch (err) {
+                    console.error('Failed to load resources:', err);
+                }
+            };
+
+            const loadConfig = async () => {
+                try {
+                    const response = await fetch('/api/config');
+                    if (response.ok) {
+                        const data = await response.json();
+                        setProjectConfig(data);
+                        setTempConfig(data);
+                    }
+                } catch (err) {
+                    console.error('Failed to load config:', err);
+                }
+            };
+
+            const handleResourceSelect = async (resourceName) => {
+                if (!resourceName) {
+                    setSelectedResource(null);
+                    setJsonContent(JSON.stringify(defaultApiInfo, null, 2));
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/resource/${resourceName}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        setJsonContent(JSON.stringify(data, null, 2));
+                        setSelectedResource(resourceName);
+                    }
+                } catch (err) {
+                    console.error('Failed to load resource:', err);
+                }
+            };
+
+            const handleResourceDelete = async (resourceName) => {
+                if (!confirm(`Delete resource "${resourceName}"?`)) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/resource/${resourceName}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (response.ok) {
+                        await loadResources();
+                        if (selectedResource === resourceName) {
+                            setSelectedResource(null);
+                            setJsonContent(JSON.stringify(defaultApiInfo, null, 2));
+                        }
+                    }
+                } catch (err) {
+                    console.error('Failed to delete resource:', err);
+                }
+            };
+
+            const handleConfigSave = async () => {
+                try {
+                    const response = await fetch('/api/config', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(tempConfig)
+                    });
+                    
+                    if (response.ok) {
+                        setProjectConfig(tempConfig);
+                        setEditingConfig(false);
+                    }
+                } catch (err) {
+                    console.error('Failed to save config:', err);
+                }
+            };
 
             const handleCopy = async () => {
                 try {
@@ -90,6 +186,8 @@
                     
                     if (result.success) {
                         setGenerateStatus('Generated!');
+                        // Reload resources
+                        await loadResources();
                         // Auto-refresh preview after generation
                         setTimeout(() => {
                             setPreviewKey(Date.now());
@@ -103,10 +201,6 @@
                     setGenerateStatus('Failed to generate');
                     setTimeout(() => setGenerateStatus(''), 2000);
                 }
-            };
-
-            const handleRefreshPreview = () => {
-                setPreviewKey(Date.now());
             };
             
             const handleSync = async () => {
@@ -147,10 +241,85 @@
                 <div className="h-screen flex flex-col bg-gray-50">
                     {/* Header */}
                     <header className="bg-white shadow-sm border-b">
-                        <div className="px-4 py-3 flex items-center justify-between">
-                            <h1 className="text-2xl font-bold text-gray-800">LiveAPI Designer</h1>
-                            <div className="text-sm text-gray-600">
-                                Edit JSON → Preview API Spec → Scaffold Application
+                        <div className="px-4 py-3">
+                            <div className="flex items-center justify-between mb-2">
+                                <h1 className="text-2xl font-bold text-gray-800">LiveAPI Designer</h1>
+                                <div className="flex items-center gap-4">
+                                    {editingConfig ? (
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="text"
+                                                value={tempConfig.project_name}
+                                                onChange={(e) => setTempConfig({...tempConfig, project_name: e.target.value})}
+                                                className="px-2 py-1 border rounded"
+                                                placeholder="Project name"
+                                            />
+                                            <input
+                                                type="text"
+                                                value={tempConfig.api_base_url}
+                                                onChange={(e) => setTempConfig({...tempConfig, api_base_url: e.target.value})}
+                                                className="px-2 py-1 border rounded"
+                                                placeholder="API base URL"
+                                            />
+                                            <button
+                                                onClick={handleConfigSave}
+                                                className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                                            >
+                                                Save
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setEditingConfig(false);
+                                                    setTempConfig(projectConfig);
+                                                }}
+                                                className="px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                                            <span className="font-semibold">{projectConfig.project_name || 'Unnamed Project'}</span>
+                                            {projectConfig.api_base_url && (
+                                                <span className="text-gray-500">• {projectConfig.api_base_url}</span>
+                                            )}
+                                            <button
+                                                onClick={() => setEditingConfig(true)}
+                                                className="px-2 py-1 text-blue-600 hover:bg-blue-50 rounded"
+                                            >
+                                                Edit
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <label className="text-sm text-gray-600">Resource:</label>
+                                    <select
+                                        value={selectedResource || ''}
+                                        onChange={(e) => handleResourceSelect(e.target.value)}
+                                        className="px-2 py-1 border rounded text-sm"
+                                    >
+                                        <option value="">New Resource</option>
+                                        {resources.map(resource => (
+                                            <option key={resource.name} value={resource.name}>
+                                                {resource.name} - {resource.api_name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {selectedResource && (
+                                        <button
+                                            onClick={() => handleResourceDelete(selectedResource)}
+                                            className="px-2 py-1 text-red-600 hover:bg-red-50 rounded text-sm"
+                                        >
+                                            Delete
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="text-sm text-gray-600">
+                                    Edit JSON → Preview API Spec → Confirm API
+                                </div>
                             </div>
                         </div>
                     </header>
@@ -176,7 +345,7 @@
                                         onClick={handleSync}
                                         className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                                     >
-                                        {syncStatus || 'Scaffold Application'}
+                                        {syncStatus || 'Confirm API'}
                                     </button>
                                 </div>
                             </div>
@@ -198,12 +367,6 @@
                         <div className="w-1/2 flex flex-col">
                             <div className="p-4 bg-white border-b flex items-center justify-between">
                                 <h2 className="text-lg font-semibold text-gray-700">OpenAPI Preview</h2>
-                                <button
-                                    onClick={handleRefreshPreview}
-                                    className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
-                                >
-                                    Refresh Preview
-                                </button>
                             </div>
                             <div className="flex-1 bg-gray-100">
                                 <iframe
@@ -215,8 +378,6 @@
                             </div>
                         </div>
                     </div>
-
-                    {/* No footer - removed as requested */}
                 </div>
             );
         }

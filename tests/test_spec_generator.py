@@ -367,8 +367,8 @@ class TestPromptPersistence:
             ],
             "objects": [
                 {
-                    "name": "ExistingObject",
-                    "fields": {"id": "integer"},
+                    "name": "Existing",
+                    "fields": {"id": "integer", "name": "string"},
                 }
             ],
         }
@@ -385,7 +385,8 @@ class TestPromptPersistence:
         # Verify the spec was generated correctly
         assert spec["info"]["title"] == "Existing API"
         assert "/existing" in spec["paths"]
-        assert "ExistingObject" in spec["components"]["schemas"]
+        # In CRUD mode, the schema is named after the resource (capitalized)
+        assert "Existing" in spec["components"]["schemas"]
 
     @patch("builtins.input")
     def test_interactive_generate_edit_existing_prompt(self, mock_input):

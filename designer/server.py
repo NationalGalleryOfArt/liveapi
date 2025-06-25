@@ -30,11 +30,184 @@ class DesignerHandler(SimpleHTTPRequestHandler):
             self.send_header('Location', '/designer.html')
             self.end_headers()
             return
+        elif self.path == '/api/resources':
+            # List all resources in the project
+            if hasattr(self.__class__, 'project_dir') and self.__class__.project_dir:
+                resources = []
+                
+                # Check .liveapi/prompts for saved schemas
+                prompts_dir = self.__class__.project_dir / '.liveapi' / 'prompts'
+                if prompts_dir.exists():
+                    for schema_file in prompts_dir.glob('*_schema.json'):
+                        try:
+                            with open(schema_file, 'r') as f:
+                                schema_data = json.load(f)
+                                # Extract resource info
+                                resource_name = schema_file.stem.replace('_schema', '')
+                                resources.append({
+                                    'name': resource_name,
+                                    'api_name': schema_data.get('api_name', 'Unknown API'),
+                                    'description': schema_data.get('api_description', ''),
+                                    'file': str(schema_file.relative_to(self.__class__.project_dir))
+                                })
+                        except Exception as e:
+                            print(f"Error reading {schema_file}: {e}")
+                
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(resources).encode())
+                return
+            
+            # No project directory
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps([]).encode())
+            return
+        elif self.path.startswith('/api/resource/'):
+            # Load a specific resource
+            resource_name = self.path.split('/')[-1]
+            if hasattr(self.__class__, 'project_dir') and self.__class__.project_dir:
+                schema_file = self.__class__.project_dir / '.liveapi' / 'prompts' / f"{resource_name}_schema.json"
+                if schema_file.exists():
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    with open(schema_file, 'rb') as f:
+                        self.wfile.write(f.read())
+                    return
+            
+            # Resource not found
+            self.send_response(404)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'error': 'Resource not found'}).encode())
+            return
+        elif self.path == '/api/config':
+            # Get project configuration
+            if hasattr(self.__class__, 'project_dir') and self.__class__.project_dir:
+                config_file = self.__class__.project_dir / '.liveapi' / 'config.json'
+                if config_file.exists():
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    with open(config_file, 'rb') as f:
+                        self.wfile.write(f.read())
+                    return
+            
+            # Default config
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                'project_name': 'My API Project',
+                'api_base_url': ''
+            }).encode())
+            return
+        elif self.path == '/api/openapi.json':
+            # Serve openapi.json from project .liveapi directory
+            if hasattr(self.__class__, 'project_dir') and self.__class__.project_dir:
+                openapi_file = self.__class__.project_dir / '.liveapi' / 'openapi.json'
+                if openapi_file.exists():
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    with open(openapi_file, 'rb') as f:
+                        self.wfile.write(f.read())
+                    return
+            # File not found
+            self.send_response(404)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'error': 'OpenAPI spec not found'}).encode())
+            return
         return super().do_GET()
         
+    def do_DELETE(self):
+        """Handle DELETE requests"""
+        if self.path.startswith('/api/resource/'):
+            # Delete a resource
+            resource_name = self.path.split('/')[-1]
+            if hasattr(self.__class__, 'project_dir') and self.__class__.project_dir:
+                # Delete schema file
+                schema_file = self.__class__.project_dir / '.liveapi' / 'prompts' / f"{resource_name}_schema.json"
+                prompt_file = self.__class__.project_dir / '.liveapi' / 'prompts' / f"{resource_name}_prompt.json"
+                spec_file = self.__class__.project_dir / 'specifications' / f"{resource_name}.json"
+                
+                deleted = False
+                if schema_file.exists():
+                    schema_file.unlink()
+                    deleted = True
+                if prompt_file.exists():
+                    prompt_file.unlink()
+                    deleted = True
+                if spec_file.exists():
+                    spec_file.unlink()
+                    deleted = True
+                
+                if deleted:
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'success': True}).encode())
+                    return
+            
+            # Resource not found
+            self.send_response(404)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'error': 'Resource not found'}).encode())
+            return
+        else:
+            self.send_response(404)
+            self.end_headers()
+    
     def do_POST(self):
         """Handle POST requests for API generation"""
-        if self.path == '/sync':
+        if self.path == '/api/config':
+            # Update project configuration
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            try:
+                config_data = json.loads(post_data)
+                
+                if hasattr(self.__class__, 'project_dir') and self.__class__.project_dir:
+                    config_file = self.__class__.project_dir / '.liveapi' / 'config.json'
+                    
+                    # Read existing config
+                    existing_config = {}
+                    if config_file.exists():
+                        with open(config_file, 'r') as f:
+                            existing_config = json.load(f)
+                    
+                    # Update with new values
+                    existing_config.update(config_data)
+                    
+                    # Save back
+                    with open(config_file, 'w') as f:
+                        json.dump(existing_config, f, indent=2)
+                    
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'success': True}).encode())
+                    return
+                
+                # No project directory
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': 'Project directory not set'}).encode())
+                
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode())
+                
+        elif self.path == '/sync':
             try:
                 # Check if project directory is set
                 if not hasattr(self.__class__, 'project_dir') or not self.__class__.project_dir:
@@ -110,13 +283,17 @@ class DesignerHandler(SimpleHTTPRequestHandler):
                 generator = SpecGenerator()
                 spec_dict, _ = generator.generate_spec_with_json(transformed_info)
                 
-                # Save to build directory
-                output_dir = Path(__file__).parent / 'build'
-                output_dir.mkdir(exist_ok=True)
-                output_file = output_dir / 'openapi.json'
-                
-                with open(output_file, 'w') as f:
-                    json.dump(spec_dict, f, indent=2)
+                # Save to project .liveapi directory if available
+                if hasattr(self.__class__, 'project_dir') and self.__class__.project_dir:
+                    # Save the working openapi.json to .liveapi directory
+                    liveapi_dir = self.__class__.project_dir / '.liveapi'
+                    liveapi_dir.mkdir(exist_ok=True)
+                    working_file = liveapi_dir / 'openapi.json'
+                    
+                    with open(working_file, 'w') as f:
+                        json.dump(spec_dict, f, indent=2)
+                    
+                    print(f"✅ Working OpenAPI spec saved to: {working_file}")
                 
                 # Also save to project specifications directory if available
                 if hasattr(self.__class__, 'project_dir') and self.__class__.project_dir:

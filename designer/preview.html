@@ -60,11 +60,10 @@
             <p>To view your API documentation here:</p>
             <ol>
                 <li>Edit the JSON in the designer</li>
-                <li>Save it to a file (e.g., <code>my_api.json</code>)</li>
-                <li>Run: <code>python designer/generate_from_json.py my_api.json</code></li>
-                <li>Refresh this page</li>
+                <li>Click "Preview API Spec" to generate the OpenAPI specification</li>
+                <li>The preview will refresh automatically</li>
             </ol>
-            <p>The generator will create <code>build/openapi.json</code> which will be displayed here.</p>
+            <p>The OpenAPI spec is stored in your project's <code>.liveapi/openapi.json</code> file.</p>
         </div>
     </div>
 
@@ -72,8 +71,8 @@
     <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui-standalone-preset.js"></script>
     <script>
         window.onload = function() {
-            // Try to load the OpenAPI spec with cache busting
-            fetch('./build/openapi.json?t=' + new Date().getTime())
+            // Try to load the OpenAPI spec from project directory with cache busting
+            fetch('/api/openapi.json?t=' + new Date().getTime())
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Spec not found');
