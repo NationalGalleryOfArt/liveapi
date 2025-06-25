@@ -172,6 +172,8 @@
                 }
                 
                 setGenerateStatus('Generating...');
+                console.log('[Designer] Generating API spec...');
+                console.log('[Designer] JSON content:', jsonContent);
                 
                 try {
                     const response = await fetch('/generate', {
@@ -182,22 +184,59 @@
                         body: jsonContent
                     });
                     
+                    console.log('[Designer] Generate response status:', response.status);
                     const result = await response.json();
+                    console.log('[Designer] Generate result:', result);
                     
                     if (result.success) {
                         setGenerateStatus('Generated!');
                         // Reload resources
                         await loadResources();
-                        // Auto-refresh preview after generation
-                        setTimeout(() => {
-                            setPreviewKey(Date.now());
-                            setGenerateStatus('');
-                        }, 1000);
+                        
+                        // Wait for the server to actually have the file ready
+                        // Try to fetch the openapi.json endpoint until it succeeds
+                        let retries = 0;
+                        const maxRetries = 10;
+                        const checkAndRefresh = async () => {
+                            try {
+                                const checkResponse = await fetch('/api/openapi.json');
+                                if (checkResponse.ok) {
+                                    console.log('[Designer] OpenAPI endpoint ready, refreshing preview');
+                                    setPreviewKey(Date.now());
+                                    setGenerateStatus('');
+                                } else {
+                                    retries++;
+                                    if (retries < maxRetries) {
+                                        console.log(`[Designer] OpenAPI not ready, retry ${retries}/${maxRetries}`);
+                                        setTimeout(checkAndRefresh, 200);
+                                    } else {
+                                        console.error('[Designer] Max retries reached, forcing refresh anyway');
+                                        setPreviewKey(Date.now());
+                                        setGenerateStatus('');
+                                    }
+                                }
+                            } catch (err) {
+                                retries++;
+                                if (retries < maxRetries) {
+                                    console.log(`[Designer] Error checking OpenAPI, retry ${retries}/${maxRetries}:`, err);
+                                    setTimeout(checkAndRefresh, 200);
+                                } else {
+                                    console.error('[Designer] Max retries reached after errors, forcing refresh');
+                                    setPreviewKey(Date.now());
+                                    setGenerateStatus('');
+                                }
+                            }
+                        };
+                        
+                        // Start checking immediately
+                        checkAndRefresh();
                     } else {
                         setGenerateStatus('Error: ' + result.error);
+                        console.error('[Designer] Generation error:', result.error);
                         setTimeout(() => setGenerateStatus(''), 3000);
                     }
                 } catch (err) {
+                    console.error('[Designer] Failed to generate:', err);
                     setGenerateStatus('Failed to generate');
                     setTimeout(() => setGenerateStatus(''), 2000);
                 }
@@ -374,6 +413,7 @@
                                     src={`preview.html?t=${previewKey}`}
                                     className="w-full h-full"
                                     title="OpenAPI Preview"
+                                    onLoad={() => console.log('[Designer] iframe loaded with key:', previewKey)}
                                 />
                             </div>
                         </div>

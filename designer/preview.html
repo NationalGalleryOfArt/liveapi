@@ -71,17 +71,29 @@
     <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui-standalone-preset.js"></script>
     <script>
         window.onload = function() {
+            console.log('[Preview] Loading OpenAPI spec...');
+            const specUrl = '/api/openapi.json?t=' + new Date().getTime();
+            console.log('[Preview] Fetching from:', specUrl);
+            
             // Try to load the OpenAPI spec from project directory with cache busting
-            fetch('/api/openapi.json?t=' + new Date().getTime())
+            fetch(specUrl)
                 .then(response => {
+                    console.log('[Preview] Response status:', response.status);
+                    console.log('[Preview] Response headers:', response.headers);
+                    
                     if (!response.ok) {
+                        console.error('[Preview] Response not OK:', response.status, response.statusText);
                         throw new Error('Spec not found');
                     }
                     return response.json();
                 })
                 .then(spec => {
+                    console.log('[Preview] Spec loaded successfully:', spec);
+                    console.log('[Preview] Spec title:', spec.info?.title);
+                    
                     // Hide the no-spec message
                     document.getElementById('no-spec').style.display = 'none';
+                    document.getElementById('swagger-ui').style.display = 'block';
                     
                     // Initialize Swagger UI
                     window.ui = SwaggerUIBundle({
@@ -98,8 +110,12 @@
                         layout: "StandaloneLayout",
                         validatorUrl: null
                     });
+                    console.log('[Preview] Swagger UI initialized');
                 })
                 .catch(error => {
+                    console.error('[Preview] Error loading spec:', error);
+                    console.error('[Preview] Full error:', error.message, error.stack);
+                    
                     // Show the no-spec message
                     document.getElementById('swagger-ui').style.display = 'none';
                     document.getElementById('no-spec').style.display = 'flex';

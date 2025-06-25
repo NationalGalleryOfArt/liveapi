@@ -22,6 +22,8 @@ except ImportError:
 
 
 class DesignerHandler(SimpleHTTPRequestHandler):
+    # Cache for the generated OpenAPI spec
+    _cached_openapi_spec = None
     def do_GET(self):
         """Handle GET requests with root redirect"""
         if self.path == '/' or self.path == '':
@@ -105,18 +107,74 @@ class DesignerHandler(SimpleHTTPRequestHandler):
                 'api_base_url': ''
             }).encode())
             return
-        elif self.path == '/api/openapi.json':
-            # Serve openapi.json from project .liveapi directory
+        elif self.path == '/api/debug':
+            # Debug endpoint to show what's in cache
+            print(f"🔍 [Debug] Cache exists: {hasattr(self.__class__, '_cached_openapi_spec')}")
+            print(f"🔍 [Debug] Cache has value: {self.__class__._cached_openapi_spec is not None if hasattr(self.__class__, '_cached_openapi_spec') else False}")
+            
+            debug_info = {
+                'cache_exists': hasattr(self.__class__, '_cached_openapi_spec'),
+                'cache_has_value': self.__class__._cached_openapi_spec is not None if hasattr(self.__class__, '_cached_openapi_spec') else False,
+                'project_dir': str(self.__class__.project_dir) if hasattr(self.__class__, 'project_dir') else None,
+            }
+            
+            if hasattr(self.__class__, '_cached_openapi_spec') and self.__class__._cached_openapi_spec:
+                debug_info['cached_title'] = self.__class__._cached_openapi_spec.get('info', {}).get('title')
+                debug_info['cached_paths'] = list(self.__class__._cached_openapi_spec.get('paths', {}).keys())
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(debug_info, indent=2).encode())
+            return
+        elif self.path == '/api/openapi.json' or self.path.startswith('/api/openapi.json?'):
+            # Serve openapi.json - try cache first, then file
+            print(f"🔍 [Server] GET /api/openapi.json requested")
+            
+            # First try to serve from cache
+            print(f"🔍 [Server] Checking cache: hasattr={hasattr(self.__class__, '_cached_openapi_spec')}")
+            if hasattr(self.__class__, '_cached_openapi_spec'):
+                print(f"🔍 [Server] Cache value: {self.__class__._cached_openapi_spec is not None}")
+                if self.__class__._cached_openapi_spec:
+                    print(f"✅ [Server] Serving OpenAPI spec from cache")
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps(self.__class__._cached_openapi_spec).encode())
+                    return
+                else:
+                    print(f"🔍 [Server] Cache exists but is None/empty")
+            else:
+                print(f"🔍 [Server] No cache attribute found")
+            
+            # Then try to serve from file
+            print(f"🔍 [Server] No cache, trying file...")
+            print(f"🔍 [Server] Has project_dir: {hasattr(self.__class__, 'project_dir')}")
             if hasattr(self.__class__, 'project_dir') and self.__class__.project_dir:
+                print(f"🔍 [Server] Project dir: {self.__class__.project_dir}")
                 openapi_file = self.__class__.project_dir / '.liveapi' / 'openapi.json'
+                print(f"🔍 [Server] Looking for file: {openapi_file}")
+                print(f"🔍 [Server] File exists: {openapi_file.exists()}")
+                
                 if openapi_file.exists():
+                    print(f"✅ [Server] Serving openapi.json from file: {openapi_file}")
                     self.send_response(200)
                     self.send_header('Content-Type', 'application/json')
                     self.end_headers()
                     with open(openapi_file, 'rb') as f:
                         self.wfile.write(f.read())
                     return
+                else:
+                    # Debug file system
+                    liveapi_dir = self.__class__.project_dir / '.liveapi'
+                    print(f"🔍 [Server] .liveapi dir exists: {liveapi_dir.exists()}")
+                    if liveapi_dir.exists():
+                        print(f"🔍 [Server] .liveapi contents: {list(liveapi_dir.iterdir())}")
+            else:
+                print(f"❌ [Server] No project_dir set")
+                
             # File not found
+            print(f"❌ [Server] OpenAPI spec not found, returning 404")
             self.send_response(404)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
@@ -280,11 +338,18 @@ class DesignerHandler(SimpleHTTPRequestHandler):
                     transformed_info = api_info
                 
                 # Generate the spec
+                print(f"🔄 [Server] Generating spec with SpecGenerator...")
                 generator = SpecGenerator()
                 spec_dict, _ = generator.generate_spec_with_json(transformed_info)
+                print(f"🔄 [Server] Spec generated successfully, title: {spec_dict.get('info', {}).get('title')}")
+                
+                # Cache the spec for immediate serving
+                self.__class__._cached_openapi_spec = spec_dict
+                print(f"✅ [Server] OpenAPI spec cached in memory")
                 
                 # Save to project .liveapi directory if available
                 if hasattr(self.__class__, 'project_dir') and self.__class__.project_dir:
+                    print(f"🔄 [Server] Saving to project dir: {self.__class__.project_dir}")
                     # Save the working openapi.json to .liveapi directory
                     liveapi_dir = self.__class__.project_dir / '.liveapi'
                     liveapi_dir.mkdir(exist_ok=True)
@@ -292,8 +357,13 @@ class DesignerHandler(SimpleHTTPRequestHandler):
                     
                     with open(working_file, 'w') as f:
                         json.dump(spec_dict, f, indent=2)
+                        f.flush()  # Ensure data is written to disk
+                        os.fsync(f.fileno())  # Force write to disk
                     
-                    print(f"✅ Working OpenAPI spec saved to: {working_file}")
+                    print(f"✅ [Server] Working OpenAPI spec saved to: {working_file}")
+                    print(f"✅ [Server] File exists after save: {working_file.exists()}")
+                else:
+                    print(f"❌ [Server] No project_dir available for saving openapi.json")
                 
                 # Also save to project specifications directory if available
                 if hasattr(self.__class__, 'project_dir') and self.__class__.project_dir:
