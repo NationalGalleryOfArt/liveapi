@@ -36,41 +36,94 @@ if __name__ == "__main__":
     )
 '''
     else:
-        # Multiple specs - combine them
-        imports = []
-        app_creations = []
-
-        for i, spec_path in enumerate(spec_files):
-            relative_spec = spec_path.relative_to(project_root)
-            app_name = f"app_{i + 1}"
-            imports.append(
-                f"from liveapi.implementation import create_app as create_app_{i + 1}"
-            )
-            app_creations.append(f'{app_name} = create_app_{i + 1}("{relative_spec}")')
-
-        content = f'''"""FastAPI application combining multiple APIs using LiveAPI CRUD+ handlers."""
+        # Multiple specs - combine them with unified documentation
+        content = '''"""FastAPI application combining multiple APIs using LiveAPI CRUD+ handlers with unified docs."""
 
 import uvicorn
 from fastapi import FastAPI
-{chr(10).join(imports)}
+from fastapi.exceptions import RequestValidationError
+from pathlib import Path
 
-# Create individual apps
-{chr(10).join(app_creations)}
+from liveapi.implementation.liveapi_router import (
+    LiveAPIRouter,
+    create_business_exception_handler,
+    create_rfc7807_validation_error_handler,
+    add_error_schemas_to_app
+)
+from liveapi.implementation.liveapi_parser import LiveAPIParser
+from liveapi.implementation.exceptions import BusinessException
 
 # Main app that combines all APIs
 app = FastAPI(
     title="Combined LiveAPI Services",
-    description="Multiple CRUD+ APIs combined into one service"
+    description="Multiple CRUD+ APIs combined into one service",
+    version="0.1.0"
 )
 
-# Mount each API under its own prefix
-'''
+# Create a single router instance
+main_router = LiveAPIRouter()
 
-        for i, spec_path in enumerate(spec_files):
-            resource_name = spec_path.stem.split("_")[0]  # Extract base name
-            content += f'app.mount("/{resource_name}", app_{i + 1})\n'
+# Discover and load all APIs from the specifications directory
+spec_dir = Path("specifications")
+loaded_specs = []
 
-        content += """
+if spec_dir.exists() and spec_dir.is_dir():
+    # Check for all spec file types
+    spec_files = list(spec_dir.glob("*.json"))
+    spec_files.extend(spec_dir.glob("*.yaml"))
+    spec_files.extend(spec_dir.glob("*.yml"))
+    
+    for spec_file in spec_files:
+        try:
+            # Parse the spec and create routers
+            parser = LiveAPIParser(str(spec_file), backend_type=main_router.backend_type)
+            parser.load_spec()
+            resources = parser.identify_crud_resources()
+            
+            # Create routers for each resource
+            for resource_name, resource_info in resources.items():
+                model = resource_info["model"]
+                if model:
+                    # Create router with the resource name as prefix
+                    router = main_router._create_resource_router(
+                        resource_name, resource_info, model
+                    )
+                    # Include the router in the main app
+                    app.include_router(router, tags=[resource_name])
+                    loaded_specs.append(f"{spec_file.stem}/{resource_name}")
+                    print(f"✅ Loaded {resource_name} from {spec_file}")
+
+        except Exception as e:
+            print(f"❌ Error loading spec from {spec_file}: {e}")
+
+# Add custom exception handlers
+app.add_exception_handler(BusinessException, create_business_exception_handler())
+app.add_exception_handler(RequestValidationError, create_rfc7807_validation_error_handler())
+
+# Add error schemas to OpenAPI schema
+add_error_schemas_to_app(app)
+
+# Add a root endpoint to list available APIs
+@app.get("/", tags=["info"])
+async def root():
+    """List all available API endpoints."""
+    return {
+        "message": "Combined LiveAPI Services",
+        "loaded_resources": loaded_specs,
+        "docs": "/docs",
+        "openapi": "/openapi.json"
+    }
+
+# Add health check
+@app.get("/health", tags=["info"])
+async def health_check():
+    """Health check endpoint."""
+    return {
+        "status": "healthy",
+        "service": "liveapi.combined",
+        "resources": loaded_specs
+    }
+
 if __name__ == "__main__":
     # Run the development server
     uvicorn.run(
@@ -79,7 +132,7 @@ if __name__ == "__main__":
         port=8000,
         reload=True
     )
-"""
+'''
 
     # Write the main.py file
     main_py_path.write_text(content)

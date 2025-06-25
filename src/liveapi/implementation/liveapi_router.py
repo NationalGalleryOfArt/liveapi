@@ -132,6 +132,9 @@ class LiveAPIRouter:
             description=parser.spec.get("info", {}).get("description", ""),
             version=parser.spec.get("info", {}).get("version", "1.0.0"),
         )
+        
+        # Store the original spec in the app instance for reference
+        app.original_spec = parser.spec
 
         def custom_openapi():
             if app.openapi_schema:
@@ -148,6 +151,14 @@ class LiveAPIRouter:
                 openapi_schema["components"] = {}
             if "schemas" not in openapi_schema["components"]:
                 openapi_schema["components"]["schemas"] = {}
+                
+            # Add standard schemas from the original spec
+            if hasattr(app, 'original_spec') and 'components' in app.original_spec and 'schemas' in app.original_spec['components']:
+                for schema_name, schema in app.original_spec['components']['schemas'].items():
+                    if schema_name not in openapi_schema["components"]["schemas"]:
+                        openapi_schema["components"]["schemas"][schema_name] = schema
+            
+            # Add ValidationError schema
             openapi_schema["components"]["schemas"]["ValidationError"] = {
                 "type": "object",
                 "properties": {
@@ -170,9 +181,37 @@ class LiveAPIRouter:
                 },
                 "required": ["errors"],
             }
-            for path_item in openapi_schema.get("paths", {}).values():
-                for operation in path_item.values():
+            
+            # Add Error schema if not already present
+            if "Error" not in openapi_schema["components"]["schemas"]:
+                openapi_schema["components"]["schemas"]["Error"] = {
+                    "type": "object",
+                    "properties": {
+                        "type": {"type": "string"},
+                        "title": {"type": "string"},
+                        "status": {"type": "integer"},
+                        "detail": {"type": "string"},
+                    },
+                    "required": ["type", "title", "status", "detail"],
+                }
+            
+            # Process paths and operations
+            for path, path_item in openapi_schema.get("paths", {}).items():
+                # Check if this path exists in the original spec
+                original_path_item = app.original_spec.get("paths", {}).get(path, {}) if hasattr(app, 'original_spec') else {}
+                
+                for method, operation in path_item.items():
                     if isinstance(operation, dict) and "responses" in operation:
+                        # Get original operation responses if available
+                        original_operation = original_path_item.get(method, {})
+                        original_responses = original_operation.get("responses", {}) if original_operation else {}
+                        
+                        # Add standard error responses from original spec
+                        for status_code in ["400", "401", "500", "503"]:
+                            if status_code in original_responses and status_code not in operation["responses"]:
+                                operation["responses"][status_code] = original_responses[status_code]
+                        
+                        # Add validation error response
                         if "422" in operation["responses"]:
                             operation["responses"]["422"] = {
                                 "description": "Validation Error",
@@ -184,6 +223,7 @@ class LiveAPIRouter:
                                     }
                                 },
                             }
+            
             app.openapi_schema = openapi_schema
             return app.openapi_schema
 
@@ -226,6 +266,80 @@ class LiveAPIRouter:
         item_path = resource_info["paths"]["item"] or f"/{resource_name}/{{id}}"
 
         operations = resource_info["operations"]
+        
+        # Common error responses to be added to all endpoints
+        error_responses = {
+            400: {
+                "description": "Bad Request",
+                "content": {
+                    "application/problem+json": {
+                        "schema": {"$ref": "#/components/schemas/Error"},
+                        "example": {
+                            "type": "https://tools.ietf.org/html/rfc7807",
+                            "title": "Bad Request",
+                            "status": 400,
+                            "detail": "The request could not be processed due to invalid input"
+                        }
+                    }
+                }
+            },
+            401: {
+                "description": "Unauthorized",
+                "content": {
+                    "application/problem+json": {
+                        "schema": {"$ref": "#/components/schemas/Error"},
+                        "example": {
+                            "type": "https://tools.ietf.org/html/rfc7807",
+                            "title": "Unauthorized",
+                            "status": 401,
+                            "detail": "Authentication credentials were missing or invalid"
+                        }
+                    }
+                }
+            },
+            404: {
+                "description": "Not Found",
+                "content": {
+                    "application/problem+json": {
+                        "schema": {"$ref": "#/components/schemas/Error"},
+                        "example": {
+                            "type": "https://tools.ietf.org/html/rfc7807",
+                            "title": "Not Found",
+                            "status": 404,
+                            "detail": "The requested resource was not found"
+                        }
+                    }
+                }
+            },
+            500: {
+                "description": "Internal Server Error",
+                "content": {
+                    "application/problem+json": {
+                        "schema": {"$ref": "#/components/schemas/Error"},
+                        "example": {
+                            "type": "https://tools.ietf.org/html/rfc7807",
+                            "title": "Internal Server Error",
+                            "status": 500,
+                            "detail": "The server encountered an unexpected condition that prevented it from fulfilling the request"
+                        }
+                    }
+                }
+            },
+            503: {
+                "description": "Service Unavailable",
+                "content": {
+                    "application/problem+json": {
+                        "schema": {"$ref": "#/components/schemas/Error"},
+                        "example": {
+                            "type": "https://tools.ietf.org/html/rfc7807",
+                            "title": "Service Unavailable",
+                            "status": 503,
+                            "detail": "The server is currently unable to handle the request due to temporary overloading or maintenance"
+                        }
+                    }
+                }
+            }
+        }
 
         if "create" in operations:
             op = operations["create"]["operation"]
@@ -237,6 +351,18 @@ class LiveAPIRouter:
                 response_model=model,
                 status_code=201,
                 operation_id=op.get("operationId", f"create_{resource_name}"),
+                responses={
+                    201: {"description": "Created"},
+                    **error_responses,
+                    422: {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {"$ref": "#/components/schemas/ValidationError"}
+                            }
+                        }
+                    }
+                }
             )
             async def create_resource(data: model, service=Depends(service_dependency)):
                 return await service.create(data.model_dump())
@@ -250,6 +376,10 @@ class LiveAPIRouter:
                 description=op.get("description", ""),
                 response_model=model,
                 operation_id=op.get("operationId", f"get_{resource_name}"),
+                responses={
+                    200: {"description": "Success"},
+                    **error_responses
+                }
             )
             async def read_resource(id: str, service=Depends(service_dependency)):
                 return await service.read(id)
@@ -263,6 +393,18 @@ class LiveAPIRouter:
                 description=op.get("description", ""),
                 response_model=model,
                 operation_id=op.get("operationId", f"update_{resource_name}"),
+                responses={
+                    200: {"description": "Success"},
+                    **error_responses,
+                    422: {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {"$ref": "#/components/schemas/ValidationError"}
+                            }
+                        }
+                    }
+                }
             )
             async def update_resource(
                 id: str, data: model, service=Depends(service_dependency)
@@ -278,6 +420,18 @@ class LiveAPIRouter:
                 description=op.get("description", ""),
                 response_model=model,
                 operation_id=op.get("operationId", f"patch_{resource_name}"),
+                responses={
+                    200: {"description": "Success"},
+                    **error_responses,
+                    422: {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {"$ref": "#/components/schemas/ValidationError"}
+                            }
+                        }
+                    }
+                }
             )
             async def patch_resource(
                 id: str, data: Dict[str, Any], service=Depends(service_dependency)
@@ -293,6 +447,10 @@ class LiveAPIRouter:
                 description=op.get("description", ""),
                 status_code=204,
                 operation_id=op.get("operationId", f"delete_{resource_name}"),
+                responses={
+                    204: {"description": "No Content"},
+                    **error_responses
+                }
             )
             async def delete_resource(id: str, service=Depends(service_dependency)):
                 await service.delete(id)
@@ -307,6 +465,10 @@ class LiveAPIRouter:
                 description=op.get("description", ""),
                 response_model=List[model],
                 operation_id=op.get("operationId", f"list_{resource_name}"),
+                responses={
+                    200: {"description": "Success"},
+                    **error_responses
+                }
             )
             async def list_resources(
                 limit: int = 100, offset: int = 0, service=Depends(service_dependency)
@@ -320,3 +482,72 @@ def create_liveapi_app(spec_path: str) -> FastAPI:
     """Convenience function to create a LiveAPI app from a spec."""
     router = LiveAPIRouter()
     return router.create_app_from_spec(spec_path)
+
+
+def add_error_schemas_to_app(app: FastAPI):
+    """Add standard error schemas to a FastAPI app's OpenAPI schema.
+    
+    This function should be called after creating a FastAPI app and including
+    LiveAPIRouter routers, but before serving the app, to ensure that all
+    error schemas referenced in the router endpoints are properly defined.
+    """
+    def custom_openapi():
+        if app.openapi_schema:
+            return app.openapi_schema
+        
+        from fastapi.openapi.utils import get_openapi
+        openapi_schema = get_openapi(
+            title=app.title,
+            version=app.version,
+            description=app.description,
+            routes=app.routes,
+        )
+        
+        # Add components section if not present
+        if "components" not in openapi_schema:
+            openapi_schema["components"] = {}
+        if "schemas" not in openapi_schema["components"]:
+            openapi_schema["components"]["schemas"] = {}
+        
+        # Add Error schema if not already present
+        if "Error" not in openapi_schema["components"]["schemas"]:
+            openapi_schema["components"]["schemas"]["Error"] = {
+                "type": "object",
+                "properties": {
+                    "type": {"type": "string"},
+                    "title": {"type": "string"},
+                    "status": {"type": "integer"},
+                    "detail": {"type": "string"},
+                },
+                "required": ["type", "title", "status", "detail"],
+            }
+        
+        # Add ValidationError schema if not already present
+        if "ValidationError" not in openapi_schema["components"]["schemas"]:
+            openapi_schema["components"]["schemas"]["ValidationError"] = {
+                "type": "object",
+                "properties": {
+                    "errors": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "title": {"type": "string"},
+                                "detail": {"type": "string"},
+                                "status": {"type": "string"},
+                                "source": {
+                                    "type": "object",
+                                    "properties": {"pointer": {"type": "string"}},
+                                },
+                            },
+                            "required": ["title", "detail", "status"],
+                        },
+                    }
+                },
+                "required": ["errors"],
+            }
+        
+        app.openapi_schema = openapi_schema
+        return app.openapi_schema
+    
+    app.openapi = custom_openapi

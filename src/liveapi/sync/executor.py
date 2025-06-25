@@ -41,6 +41,11 @@ def _execute_sync(
 
     for item in plan.items:
         try:
+            if item.spec_name == "main.py":
+                _create_main_py_for_implementations(project_root)
+                success_count += 1
+                continue
+
             # Generate implementation file directly (no templates needed)
             if _generate_implementation_file(
                 item.source_path, implementations_dir, project_root
@@ -53,7 +58,6 @@ def _execute_sync(
 
     # Also create main.py for easy running
     if success_count > 0:
-        _create_main_py_for_implementations(project_root)
         _update_sync_metadata(metadata_manager, change_detector)
         print(f"✅ Successfully generated {success_count} implementation files")
         print("📁 Files created in implementations/ directory")

@@ -4,7 +4,7 @@ from typing import Union
 from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from .liveapi_router import create_liveapi_app
+from .liveapi_router import create_liveapi_app, add_error_schemas_to_app
 from .exceptions import (
     BusinessException,
     InternalServerError,
@@ -58,4 +58,5 @@ def create_app(spec_path: Union[str, Path]) -> FastAPI:
     """
     app = create_liveapi_app(spec_path)
     add_exception_handlers(app)
+    add_error_schemas_to_app(app)
     return app

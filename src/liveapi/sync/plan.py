@@ -46,6 +46,19 @@ def analyze_sync_requirements(
     )
     items.extend(missing_items)
 
+    # Check if main.py is missing
+    if not (project_root / "main.py").exists():
+        items.append(
+            SyncItem(
+                spec_name="main.py",
+                action=SyncAction.CREATE,
+                source_path=None,
+                target_path=project_root / "main.py",
+                description="Create main application entrypoint",
+                requires_manual_review=False,
+            )
+        )
+
     # Estimate effort
     estimated_time = _estimate_sync_effort(items, breaking_changes)
 

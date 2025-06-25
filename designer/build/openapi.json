@@ -24,10 +24,10 @@
     }
   ],
   "paths": {
-    "/items": {
+    "/resource": {
       "get": {
-        "summary": "List items",
-        "description": "List items",
+        "summary": "List resource",
+        "description": "List resource",
         "operationId": "index",
         "responses": {
           "200": {
@@ -37,7 +37,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/Item"
+                    "$ref": "#/components/schemas/Resource"
                   }
                 }
               }
@@ -110,8 +110,8 @@
         }
       },
       "post": {
-        "summary": "Create item",
-        "description": "Create item",
+        "summary": "Create resource",
+        "description": "Create resource",
         "operationId": "create",
         "responses": {
           "201": {
@@ -119,7 +119,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Item"
+                  "$ref": "#/components/schemas/Resource"
                 }
               }
             }
@@ -194,17 +194,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Item"
+                "$ref": "#/components/schemas/Resource"
               }
             }
           }
         }
       }
     },
-    "/items/{id}": {
+    "/resource/{id}": {
       "get": {
-        "summary": "Get item",
-        "description": "Get item",
+        "summary": "Get resource",
+        "description": "Get resource",
         "operationId": "show",
         "responses": {
           "200": {
@@ -212,7 +212,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Item"
+                  "$ref": "#/components/schemas/Resource"
                 }
               }
             }
@@ -295,8 +295,8 @@
         ]
       },
       "put": {
-        "summary": "Update item",
-        "description": "Update item",
+        "summary": "Update resource",
+        "description": "Update resource",
         "operationId": "update",
         "responses": {
           "200": {
@@ -304,7 +304,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Item"
+                  "$ref": "#/components/schemas/Resource"
                 }
               }
             }
@@ -390,15 +390,15 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Item"
+                "$ref": "#/components/schemas/Resource"
               }
             }
           }
         }
       },
       "delete": {
-        "summary": "Delete item",
-        "description": "Delete item",
+        "summary": "Delete resource",
+        "description": "Delete resource",
         "operationId": "destroy",
         "responses": {
           "204": {
@@ -486,7 +486,7 @@
   },
   "components": {
     "schemas": {
-      "Item": {
+      "Resource": {
         "type": "object",
         "properties": {
           "name": {
@@ -520,7 +520,7 @@
           "active"
         ],
         "example": {
-          "name": "Widget A",
+          "name": "resource A",
           "description": "A standard widget",
           "price": 19.99,
           "active": true

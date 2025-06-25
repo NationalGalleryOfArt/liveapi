@@ -34,6 +34,13 @@ def cmd_run(args):
             # Process doesn't exist or PID file is invalid, remove stale PID file
             pid_file.unlink(missing_ok=True)
 
+    # Add current directory to Python path to allow module discovery
+    env = os.environ.copy()
+    python_path = env.get("PYTHONPATH", "")
+    project_root = str(Path.cwd())
+    if project_root not in python_path.split(os.pathsep):
+        env["PYTHONPATH"] = f"{project_root}{os.pathsep}{python_path}"
+
     # Build uvicorn command
     cmd = ["uvicorn", args.app, "--host", args.host, "--port", str(args.port)]
 
@@ -53,6 +60,7 @@ def cmd_run(args):
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             start_new_session=True,  # Detach from parent process
+            env=env,
         )
 
         # Save PID to file
@@ -69,7 +77,7 @@ def cmd_run(args):
         print("   Press Ctrl+C to stop")
 
         try:
-            subprocess.run(cmd, check=True)
+            subprocess.run(cmd, check=True, env=env)
         except subprocess.CalledProcessError as e:
             print(f"❌ Failed to start server: {e}")
             sys.exit(1)
