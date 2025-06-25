@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from .exceptions import NotFoundError, ValidationError, ConflictError
 
 
-class DefaultResourceService:
+class DefaultResource:
     """Standard handlers for resource operations.
 
     This class provides reusable handlers for a standard resource interface:
@@ -249,7 +249,7 @@ def create_resource_router(resource_name: str, model: Type[BaseModel]):
     from fastapi import APIRouter
 
     router = APIRouter()
-    service = DefaultResourceService(model, resource_name)
+    service = DefaultResource(model, resource_name)
 
     # Create
     @router.post(f"/{resource_name}", response_model=model)

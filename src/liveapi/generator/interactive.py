@@ -102,8 +102,8 @@ class InteractiveGenerator:
 
         # Backend selection
         print("\nWhich resource service would you like to use?")
-        print("1. DefaultResourceService (In-memory, for prototypes)")
-        print("2. SQLModelResourceService (PostgreSQL, for production)")
+        print("1. DefaultResource (In-memory, for prototypes)")
+        print("2. SQLModelResource (PostgreSQL, for production)")
         if existing_info and "backend_type" in existing_info:
             current_backend = existing_info["backend_type"]
             print(f"Current: {current_backend}")
@@ -113,6 +113,8 @@ class InteractiveGenerator:
             backend_type = existing_info["backend_type"]
         elif backend_choice == "2":
             backend_type = "sqlmodel"
+        elif backend_choice == "1":
+            backend_type = "default"
         else:
             backend_type = "default"
 

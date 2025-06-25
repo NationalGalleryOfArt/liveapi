@@ -30,20 +30,16 @@ def cmd_designer(args):
     
     # Initialize project if needed
     if status == ProjectStatus.UNINITIALIZED:
-        print("📋 Project not initialized. Let's set it up first.")
-        project_name = input("Project name (default: directory name): ").strip()
-        api_base_url = input("🌐 API base URL (e.g., api.mycompany.com, optional): ").strip()
+        print("📋 Auto-initializing project with defaults...")
         
-        # Initialize the project
+        # Initialize the project with defaults
         metadata_manager.initialize_project(
-            project_name=project_name or None,
-            api_base_url=api_base_url or None
+            project_name=None,  # Use directory name
+            api_base_url=None   # No API base URL
         )
         
-        print(f"✨ Project '{project_name or project_dir.name}' initialized successfully!")
+        print(f"✨ Project '{project_dir.name}' initialized successfully!")
         print("📁 Created .liveapi/ directory for metadata")
-        if api_base_url:
-            print(f"🌐 API base URL configured: {api_base_url}")
     else:
         config = metadata_manager.load_config()
         print(f"📁 Using existing project: {config.project_name}")

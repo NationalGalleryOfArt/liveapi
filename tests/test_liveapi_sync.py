@@ -369,6 +369,11 @@ class TestSyncManager:
             # Initialize project and create spec
             metadata_manager = MetadataManager()
             metadata_manager.initialize_project("test")
+            
+            # Set backend to default (in-memory) for this test
+            config = metadata_manager.load_config()
+            config.backend_type = "default"
+            metadata_manager.save_config(config)
 
             spec_file = temp_project / "specifications" / "users.yaml"
             spec_file.parent.mkdir(parents=True)
@@ -415,6 +420,11 @@ class TestSyncManager:
             # Initialize project
             metadata_manager = MetadataManager()
             metadata_manager.initialize_project("test")
+            
+            # Set backend to default (in-memory) for this test
+            config = metadata_manager.load_config()
+            config.backend_type = "default"
+            metadata_manager.save_config(config)
 
             # Create and track spec
             spec_file = temp_project / "specifications" / "users.yaml"

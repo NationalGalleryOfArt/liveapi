@@ -21,10 +21,11 @@ def handle_no_command():
         print("What would you like to do?")
         print("1. Initialize a new project and generate an API spec")
         print("2. Initialize with existing OpenAPI specs")
-        print("3. Show help")
+        print("3. Launch LiveAPI Designer")
+        print("4. Show help")
         print()
 
-        choice = input("Enter your choice (1-3): ").strip()
+        choice = input("Enter your choice (1-4): ").strip()
 
         if choice == "1":
             # Initialize and generate
@@ -36,8 +37,6 @@ def handle_no_command():
                 name = project_name or None
 
             cmd_init(Args())
-
-            # API key is no longer required
 
             # Ask if they want to generate a spec
             print("\n✨ Would you like to generate an OpenAPI specification now?")
@@ -76,6 +75,23 @@ def handle_no_command():
 
             cmd_init(Args())
 
+        elif choice == "3":
+            # Launch designer
+            print("\n🎨 Launching LiveAPI Designer...")
+            
+            # Auto-initialize if needed
+            class Args:
+                name = None
+
+            cmd_init(Args())
+            
+            from .designer import cmd_designer
+            
+            class DesignerArgs:
+                port = 8888
+                
+            cmd_designer(DesignerArgs())
+
         else:
             print("\nRun 'liveapi --help' for usage information.")
     else:
@@ -88,6 +104,7 @@ def handle_no_command():
         print("  ls .liveapi/prompts/ - View saved prompts and schemas")
         print("  liveapi sync      - Sync implementations with specs")
         print("  liveapi run       - Start development server")
+        print("  liveapi designer  - Launch the web designer")
         print("  liveapi --help    - Show all commands")
         print()
 

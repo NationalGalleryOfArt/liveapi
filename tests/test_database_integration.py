@@ -9,12 +9,14 @@ from unittest.mock import patch, MagicMock
 from src.liveapi.implementation.database import DatabaseManager, get_database_manager
 from src.liveapi.implementation.pydantic_generator import PydanticGenerator
 from src.liveapi.implementation.liveapi_router import LiveAPIRouter
+from src.liveapi.implementation.default_resource_service import DefaultResource
 from src.liveapi.generator.interactive import InteractiveGenerator
 from src.liveapi.metadata.models import ProjectConfig
 
 # Check if SQLModel is available
 try:
     from sqlmodel import Session
+    from src.liveapi.implementation.sql_model_resource_service import SQLModelResource
 
     HAS_SQLMODEL = True
 except ImportError:
@@ -125,14 +127,48 @@ class TestLiveAPIRouterBackendSelection:
                 assert router.backend_type == "sqlmodel"
 
     def test_service_dependency_creation_default(self):
-        """Test service dependency creation with default backend."""
+        """Test service dependency creation with default backend (in-memory)."""
+        from pydantic import BaseModel
+
+        class TestModel(BaseModel):
+            id: str = None
+            name: str
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch("pathlib.Path.cwd", return_value=Path(temp_dir)):
+                router = LiveAPIRouter()
+                service_dependency = router._create_service_dependency(
+                    TestModel, "test"
+                )
+                
+                # Default service doesn't need session parameter
+                service = service_dependency()
+
+                assert isinstance(service, DefaultResource)
+
+    def test_service_dependency_creation_in_memory(self):
+        """Test service dependency creation with in-memory backend."""
         from pydantic import BaseModel
 
         class PydanticTestModel(BaseModel):
             name: str
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            with patch("pathlib.Path.cwd", return_value=Path(temp_dir)):
+            temp_path = Path(temp_dir)
+            config_path = temp_path / ".liveapi" / "config.json"
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Create config with default backend
+            config_data = {
+                "project_name": "test",
+                "created_at": "2023-01-01T00:00:00Z",
+                "backend_type": "default"
+            }
+            with open(config_path, "w") as f:
+                import json
+                json.dump(config_data, f)
+            
+            with patch("pathlib.Path.cwd", return_value=temp_path):
                 router = LiveAPIRouter()
                 service_dependency = router._create_service_dependency(
                     PydanticTestModel, "test"
@@ -140,10 +176,10 @@ class TestLiveAPIRouterBackendSelection:
                 service = service_dependency()
 
                 from src.liveapi.implementation.default_resource_service import (
-                    DefaultResourceService,
+                    DefaultResource,
                 )
 
-                assert isinstance(service, DefaultResourceService)
+                assert isinstance(service, DefaultResource)
 
     @pytest.mark.skipif(
         not HAS_SQLMODEL, reason="SQLModel not available in test environment"
@@ -180,10 +216,10 @@ class TestLiveAPIRouterBackendSelection:
                 service = service_dependency(session=mock_session)
 
                 from src.liveapi.implementation.sql_model_resource_service import (
-                    SQLModelResourceService,
+                    SQLModelResource,
                 )
 
-                assert isinstance(service, SQLModelResourceService)
+                assert isinstance(service, SQLModelResource)
 
 
 class TestInteractiveGeneratorWithBackends:
@@ -258,7 +294,7 @@ class TestDatabaseIntegrationEndToEnd:
             project_name="test", created_at="2023-01-01T00:00:00Z"
         )
 
-        assert config_default.backend_type == "default"
+        assert config_default.backend_type == "sqlmodel"
 
 
 @pytest.mark.skipif(
@@ -268,9 +304,9 @@ class TestSQLModelIntegration:
     """Integration tests for SQLModel backend (requires sqlmodel package)."""
 
     def test_sqlmodel_resource_service_creation(self):
-        """Test SQLModelResourceService instantiation."""
+        """Test SQLModelResource instantiation."""
         from src.liveapi.implementation.sql_model_resource_service import (
-            SQLModelResourceService,
+            SQLModelResource,
         )
         from sqlmodel import SQLModel, Field
 
@@ -280,7 +316,7 @@ class TestSQLModelIntegration:
             name: str
 
         mock_session = MagicMock(spec=Session)
-        service = SQLModelResourceService(
+        service = SQLModelResource(
             SQLModelForServiceTest, "test", session=mock_session
         )
         assert service.resource_name == "test"

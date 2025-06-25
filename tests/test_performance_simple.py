@@ -244,7 +244,7 @@ async def test_crud_handler_performance():
         id: int | None = None
         name: str
 
-    handlers = liveapi.DefaultResourceService(TestModel, "items")
+    handlers = liveapi.DefaultResource(TestModel, "items")
 
     # Test create operation
     times = []

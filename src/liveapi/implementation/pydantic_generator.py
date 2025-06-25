@@ -8,11 +8,11 @@ from datetime import datetime
 class PydanticGenerator:
     """Generates Pydantic models dynamically from OpenAPI schemas."""
 
-    def __init__(self, backend_type: str = "default"):
+    def __init__(self, backend_type: str = "sqlmodel"):
         """Initialize the generator.
 
         Args:
-            backend_type: Backend type - "default" for in-memory, "sqlmodel" for SQL
+            backend_type: Backend type - "default" for in-memory, "sqlmodel" for SQL (default)
         """
         self.backend_type = backend_type
         self.generated_models: Dict[str, Type[Union[BaseModel, Any]]] = {}

@@ -30,7 +30,7 @@ class TestInteractiveMode:
                 "Product inventory items",  # object description
                 "Product Catalog API",  # API name (with default shown)
                 "API for managing product catalog",  # API description (with default shown)
-                "1",  # backend choice (DefaultResourceService)
+                "1",  # backend choice (DefaultResource)
                 # JSON attributes (with double newlines to end input)
                 '{\n  "name": "string",\n  "price": "number",\n  "category": "string",\n  "inStock": "boolean"\n}',
                 "",  # first empty line
@@ -94,7 +94,7 @@ class TestInteractiveMode:
             "Test items",  # object description
             "Test API",  # API name (with default shown)
             "Test description",  # API description (with default shown)
-            "1",  # backend choice (DefaultResourceService)
+            "1",  # backend choice (DefaultResource)
             '{"name": "string"}',  # JSON attributes
             "",  # first empty line
             "",  # second empty line
@@ -182,7 +182,7 @@ class TestInteractiveMode:
             "Test items",  # object description
             "Test API",  # API name (with default shown)
             "Test description",  # API description (with default shown)
-            "1",  # backend choice (DefaultResourceService)
+            "1",  # backend choice (DefaultResource)
             "invalid json {",  # Invalid JSON attributes
             "",  # first empty line
             "",  # second empty line

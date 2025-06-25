@@ -84,7 +84,7 @@ def _generate_implementation_file(
 
         metadata_manager = MetadataManager(project_root)
         config = metadata_manager.load_config()
-        backend_type = getattr(config, "backend_type", "default")
+        backend_type = getattr(config, "backend_type", "sqlmodel")
 
         # Extract resource name from spec
         resource_name = _extract_resource_name_from_spec(spec, spec_path)

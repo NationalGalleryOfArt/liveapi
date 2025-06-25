@@ -1,4 +1,4 @@
-"""Unit and integration tests for the DefaultResourceService."""
+"""Unit and integration tests for the DefaultResource."""
 
 import pytest
 from typing import Dict, Any
@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 from src.liveapi.implementation.default_resource_service import (
-    DefaultResourceService,
+    DefaultResource,
     create_resource_router,
 )
 from src.liveapi.implementation.exceptions import (
@@ -33,13 +33,13 @@ def user_data() -> Dict[str, Any]:
     return {"name": "Test User", "email": "test@example.com"}
 
 
-class TestDefaultResourceService:
-    """Test the DefaultResourceService class."""
+class TestDefaultResource:
+    """Test the DefaultResource class."""
 
     @pytest.fixture(autouse=True)
     def set_up(self):
         """Set up test fixtures."""
-        self.service = DefaultResourceService(UserModel, "users")
+        self.service = DefaultResource(UserModel, "users")
 
     @pytest.mark.asyncio
     async def test_create_success(self, user_data: Dict[str, Any]):
@@ -216,13 +216,13 @@ class TestDefaultResourceService:
         assert len(filtered) == 1
 
 
-class TestDefaultResourceServiceIntegration:
-    """Integration tests for the DefaultResourceService."""
+class TestDefaultResourceIntegration:
+    """Integration tests for the DefaultResource."""
 
     @pytest.fixture(autouse=True)
     def set_up(self):
         """Set up test fixtures."""
-        self.service = DefaultResourceService(UserModel, "users")
+        self.service = DefaultResource(UserModel, "users")
 
     @pytest.mark.asyncio
     async def test_full_crud_workflow(self, user_data: Dict[str, Any]):

@@ -13,7 +13,7 @@ class LiveAPIParser:
     automatically maps them to standard handlers.
     """
 
-    def __init__(self, spec_path: str, backend_type: str = "default"):
+    def __init__(self, spec_path: str, backend_type: str = "sqlmodel"):
         self.spec_path = Path(spec_path)
         self.spec = None
         self.pydantic_generator = PydanticGenerator(backend_type=backend_type)

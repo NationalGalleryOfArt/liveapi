@@ -10,10 +10,10 @@ from sqlalchemy.exc import IntegrityError
 from .exceptions import NotFoundError, ValidationError, ConflictError
 
 
-class SQLModelResourceService:
+class SQLModelResource:
     """Database-backed resource service using SQLModel.
 
-    This class provides the same interface as DefaultResourceService but
+    This class provides the same interface as DefaultResource but
     persists data to a SQL database using SQLModel.
     """
 
@@ -133,17 +133,24 @@ class SQLModelResourceService:
                         setattr(db_resource, key, value)
             else:
                 # PUT: Replace entire resource (except system fields)
-                # Get current values for system fields
-                existing_dict = self._model_to_dict(db_resource)
-
-                # Preserve system fields
+                # Preserve system fields with their original types
                 update_data["id"] = resource_id
-                if "created_at" in existing_dict:
-                    update_data["created_at"] = existing_dict["created_at"]
+                if hasattr(db_resource, "created_at") and db_resource.created_at is not None:
+                    update_data["created_at"] = db_resource.created_at
 
                 # Create new instance to validate all fields
                 for key, value in update_data.items():
                     if hasattr(db_resource, key):
+                        # Handle datetime field conversion
+                        if key in ["created_at", "updated_at"] and isinstance(value, str):
+                            try:
+                                # Try to parse ISO format datetime string
+                                if value.endswith('Z'):
+                                    value = value.replace('Z', '+00:00')
+                                value = datetime.fromisoformat(value)
+                            except (ValueError, AttributeError):
+                                # If parsing fails, skip this field to preserve original
+                                continue
                         setattr(db_resource, key, value)
 
             # Update timestamp

@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlmodel import Session
 from .liveapi_parser import LiveAPIParser
-from .default_resource_service import DefaultResourceService
+from .default_resource_service import DefaultResource
 from .exceptions import BusinessException
 from .database import get_db_session
 
@@ -66,7 +66,7 @@ class LiveAPIRouter:
 
     def __init__(self):
         self.routers: Dict[str, APIRouter] = {}
-        self.handlers: Dict[str, Union[DefaultResourceService, Any]] = {}
+        self.handlers: Dict[str, Union[DefaultResource, Any]] = {}
         self.backend_type = self._load_backend_config()
 
     def _load_backend_config(self) -> str:
@@ -90,10 +90,10 @@ class LiveAPIRouter:
         """Create a dependency factory for the appropriate service."""
         if self.backend_type == "sqlmodel":
             try:
-                from .sql_model_resource_service import SQLModelResourceService
+                from .sql_model_resource_service import SQLModelResource
 
                 def get_sql_service(session: Session = Depends(get_db_session)):
-                    return SQLModelResourceService(
+                    return SQLModelResource(
                         model=model, resource_name=resource_name, session=session
                     )
 
@@ -102,7 +102,7 @@ class LiveAPIRouter:
                 print("⚠️ SQLModel backend not available, falling back to default")
                 # Create a singleton service instance for default backend
                 if resource_name not in self.handlers:
-                    self.handlers[resource_name] = DefaultResourceService(
+                    self.handlers[resource_name] = DefaultResource(
                         model=model, resource_name=resource_name
                     )
 
@@ -113,7 +113,7 @@ class LiveAPIRouter:
         else:
             # Create a singleton service instance for default backend
             if resource_name not in self.handlers:
-                self.handlers[resource_name] = DefaultResourceService(
+                self.handlers[resource_name] = DefaultResource(
                     model=model, resource_name=resource_name
                 )
 

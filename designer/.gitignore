@@ -1,0 +1,6 @@
+# LiveAPI generated files and temporary data
+.liveapi/generated/
+.liveapi/cache/
+.liveapi/backups/
+.liveapi/uvicorn.pid
+.liveapi/*.log

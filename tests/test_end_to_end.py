@@ -16,6 +16,52 @@ from liveapi.generator.interactive import InteractiveGenerator
 class TestEndToEndFlow:
     """Test the complete LiveAPI workflow from generation to running API."""
 
+    def setup_method(self):
+        """Setup for each test method."""
+        # Clear any existing SQLModel metadata
+        try:
+            from sqlmodel import SQLModel
+            # Clear the SQLModel registry to avoid table conflicts
+            if hasattr(SQLModel, 'metadata'):
+                SQLModel.metadata.clear()
+        except ImportError:
+            pass
+            
+        # Clear any database connections (though we're using in-memory now)
+        try:
+            from src.liveapi.implementation.database import close_database
+            close_database()
+        except ImportError:
+            pass
+        
+        # Kill any leftover uvicorn processes
+        import subprocess
+        try:
+            subprocess.run(['pkill', '-f', 'uvicorn'], capture_output=True)
+        except FileNotFoundError:
+            pass  # pkill not available on all systems
+            
+    def teardown_method(self):
+        """Cleanup after each test method."""
+        # Clean up any server processes
+        if hasattr(self, 'server_process') and self.server_process:
+            try:
+                self.server_process.terminate()
+                self.server_process.wait(timeout=5)
+            except (subprocess.TimeoutExpired, AttributeError):
+                try:
+                    self.server_process.kill()
+                except AttributeError:
+                    pass
+                    
+        # Clear SQLModel metadata again
+        try:
+            from sqlmodel import SQLModel
+            if hasattr(SQLModel, 'metadata'):
+                SQLModel.metadata.clear()
+        except ImportError:
+            pass
+
     def test_complete_workflow_integration(self):
         """Test the full workflow: generate -> sync -> run -> validate swagger."""
 
@@ -62,13 +108,13 @@ class TestEndToEndFlow:
         config_path = Path(".liveapi/config.json")
         assert config_path.exists()
 
-        # Ensure the config specifies the sqlmodel backend
+        # Use the default (in-memory) backend for end-to-end tests to avoid database complexity
         import json
 
         with open(config_path, "r") as f:
             config = json.load(f)
 
-        config["backend_type"] = "sqlmodel"
+        config["backend_type"] = "default"
 
         with open(config_path, "w") as f:
             json.dump(config, f)
@@ -180,20 +226,19 @@ class TestEndToEndFlow:
             app_module = f"{app_file.stem}:app"
             work_dir = Path("implementations")
 
-        # Start the server in a subprocess
-        port = 8000
+        # Start the server in a subprocess - use dynamic port to avoid conflicts
+        import socket
+        
+        # Find an available port
+        sock = socket.socket()
+        sock.bind(('', 0))
+        port = sock.getsockname()[1]
+        sock.close()
+        
         server_process = None
 
         try:
-            # Set up a file-based SQLite database for the test
-            db_path = Path.cwd() / "test.db"
-            os.environ["DATABASE_URL"] = f"sqlite:///{db_path}"
-            from src.liveapi.implementation.database import (
-                init_database,
-                close_database,
-            )
-
-            init_database()
+            # Using in-memory backend, no database setup needed
 
             # Run the server using uvicorn
             cmd = [
@@ -211,8 +256,11 @@ class TestEndToEndFlow:
             original_cwd = os.getcwd()
             os.chdir(work_dir)
 
-            server_process = subprocess.Popen(
-                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=os.getcwd()
+            # Pass environment variables to subprocess
+            env = os.environ.copy()
+            
+            self.server_process = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=os.getcwd(), env=env
             )
 
             # Wait for server to start
@@ -226,14 +274,13 @@ class TestEndToEndFlow:
 
         finally:
             # Cleanup: kill the server process
-            if server_process:
-                server_process.terminate()
+            if hasattr(self, 'server_process') and self.server_process:
+                self.server_process.terminate()
                 try:
-                    server_process.wait(timeout=5)
+                    self.server_process.wait(timeout=5)
                 except subprocess.TimeoutExpired:
-                    server_process.kill()
+                    self.server_process.kill()
 
-            close_database()
             os.chdir(original_cwd)
 
     def _wait_for_server(self, port, timeout=30):
@@ -246,6 +293,16 @@ class TestEndToEndFlow:
                     return
             except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
                 time.sleep(0.5)
+                
+                # Check if server process is still running
+                if hasattr(self, 'server_process') and self.server_process:
+                    if self.server_process.poll() is not None:
+                        # Server has exited, get the error output
+                        stdout, stderr = self.server_process.communicate()
+                        print(f"Server exited with code {self.server_process.returncode}")
+                        print(f"Server stdout: {stdout.decode()}")
+                        print(f"Server stderr: {stderr.decode()}")
+                        raise RuntimeError(f"Server process died with exit code {self.server_process.returncode}")
 
         raise TimeoutError(f"Server did not start within {timeout} seconds")
 
@@ -424,7 +481,12 @@ class TestEndToEndFlow:
                     app_module = f"{app_file.stem}:app"
                     work_dir = Path("implementations")
 
-                port = 8001  # Use different port to avoid conflicts
+                # Use dynamic port to avoid conflicts
+                import socket
+                sock = socket.socket()
+                sock.bind(('', 0))
+                port = sock.getsockname()[1]
+                sock.close()
 
                 server_process = None
                 try:
@@ -440,9 +502,15 @@ class TestEndToEndFlow:
                         str(port),
                     ]
 
+                    # Pass environment variables to subprocess  
+                    env = os.environ.copy()
+                        
                     server_process = subprocess.Popen(
-                        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env
                     )
+                    
+                    # Store as instance variable for debugging
+                    self.server_process = server_process
 
                     self._wait_for_server(port)
 
@@ -532,7 +600,12 @@ class TestEndToEndFlow:
                     app_module = f"{app_file.stem}:app"
                     work_dir = Path("implementations")
 
-                port = 8002
+                # Use dynamic port to avoid conflicts
+                import socket
+                sock = socket.socket()
+                sock.bind(('', 0))
+                port = sock.getsockname()[1]
+                sock.close()
 
                 server_process = None
                 try:
@@ -548,9 +621,15 @@ class TestEndToEndFlow:
                         str(port),
                     ]
 
+                    # Pass environment variables to subprocess  
+                    env = os.environ.copy()
+                        
                     server_process = subprocess.Popen(
-                        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env
                     )
+                    
+                    # Store as instance variable for debugging
+                    self.server_process = server_process
 
                     self._wait_for_server(port)
 

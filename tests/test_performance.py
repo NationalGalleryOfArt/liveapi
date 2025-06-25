@@ -159,7 +159,7 @@ async def test_crud_handlers_performance():
         id: int | None = None
         name: str
 
-    handlers = liveapi.DefaultResourceService(TestItem, "items")
+    handlers = liveapi.DefaultResource(TestItem, "items")
 
     # Test create performance
     times = []
@@ -189,7 +189,7 @@ def test_pydantic_model_generation_performance(fast_openapi_spec):
     times = []
     for i in range(10):
         start_time = time.perf_counter()
-        generator = liveapi.PydanticGenerator()
+        generator = liveapi.PydanticGenerator(backend_type="default")
         generator.set_schema_definitions(parser.spec.get("components", {}))
         # Generate a model from the Item schema
         model = generator.generate_model_from_schema(

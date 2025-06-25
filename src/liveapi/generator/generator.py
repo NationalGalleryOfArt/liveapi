@@ -217,7 +217,7 @@ class SpecGenerator:
             name: API name
             description: API description
             examples: List of example objects to include in schema
-            resource_type: Resource service type (DefaultResourceService or SQLModelResourceService)
+            resource_type: Resource service type (DefaultResource or SQLModelResource)
 
         Returns:
             OpenAPI specification as dict
@@ -492,8 +492,8 @@ class SpecGenerator:
             
         # Always add the available options for documentation
         spec["x-resource-type-options"] = [
-            "DefaultResourceService",  # In-memory storage for prototyping
-            "SQLModelResourceService"  # SQL database persistence for production
+            "DefaultResource",  # In-memory storage for prototyping
+            "SQLModelResource"  # SQL database persistence for production
         ]
 
         return spec

@@ -105,12 +105,36 @@ class TestHandleNoCommand:
     def test_uninitialized_project_choice_3(
         self, mock_print, mock_input, mock_metadata
     ):
-        """Test interactive mode choice 3: show help."""
+        """Test interactive mode choice 3: launch designer."""
         mock_manager = Mock()
         mock_manager.get_project_status.return_value = ProjectStatus.UNINITIALIZED
         mock_metadata.return_value = mock_manager
 
         mock_input.return_value = "3"
+
+        with patch("src.liveapi.cli.commands.project.cmd_init") as mock_init, patch(
+            "src.liveapi.cli.commands.designer.cmd_designer"
+        ) as mock_designer:
+            handle_no_command()
+
+            # Verify init was called
+            mock_init.assert_called_once()
+            
+            # Verify designer was called
+            mock_designer.assert_called_once()
+
+    @patch("src.liveapi.cli.commands.project.MetadataManager")
+    @patch("builtins.input")
+    @patch("builtins.print")
+    def test_uninitialized_project_choice_4(
+        self, mock_print, mock_input, mock_metadata
+    ):
+        """Test interactive mode choice 4: show help."""
+        mock_manager = Mock()
+        mock_manager.get_project_status.return_value = ProjectStatus.UNINITIALIZED
+        mock_metadata.return_value = mock_manager
+
+        mock_input.return_value = "4"
 
         handle_no_command()
 
