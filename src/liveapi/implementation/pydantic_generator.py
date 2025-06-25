@@ -69,18 +69,21 @@ class PydanticGenerator:
         for field_name, field_schema in properties.items():
             field_type = self._schema_to_python_type(field_schema, field_name)
 
+            # Extract validation constraints from JSON Schema
+            validation_kwargs = self._extract_validation_constraints(field_schema)
+
             # Handle SQLModel Field vs Pydantic Field
             if self.backend_type == "sqlmodel":
                 from sqlmodel import Field as SQLField
 
                 # Determine if field is required and configure for SQLModel
                 if field_name == "id":  # Special handling for ID field
-                    field_info = SQLField(default=None, primary_key=True)
+                    field_info = SQLField(default=None, primary_key=True, **validation_kwargs)
                     field_type = Optional[field_type]
                 elif field_name in required:
-                    field_info = SQLField()
+                    field_info = SQLField(**validation_kwargs)
                 else:
-                    field_info = SQLField(default=None)
+                    field_info = SQLField(default=None, **validation_kwargs)
                     field_type = Optional[field_type]
 
                 # Add description if available
@@ -97,7 +100,7 @@ class PydanticGenerator:
 
                 # Add field description if available
                 description = field_schema.get("description", None)
-                field_info = Field(default=default, description=description)
+                field_info = Field(default=default, description=description, **validation_kwargs)
 
             field_definitions[field_name] = (field_type, field_info)
 
@@ -249,6 +252,44 @@ class PydanticGenerator:
             return create_model(
                 model_name, __base__=BaseModel, __root__=(root_type, ...)
             )
+
+    def _extract_validation_constraints(self, field_schema: Dict[str, Any]) -> Dict[str, Any]:
+        """Extract validation constraints from JSON Schema to Pydantic Field constraints."""
+        constraints = {}
+        
+        # String constraints
+        if "minLength" in field_schema:
+            constraints["min_length"] = field_schema["minLength"]
+        if "maxLength" in field_schema:
+            constraints["max_length"] = field_schema["maxLength"]
+        if "pattern" in field_schema:
+            # Use raw string for regex patterns to avoid escape warnings
+            constraints["pattern"] = field_schema["pattern"]
+        
+        # Numeric constraints
+        if "minimum" in field_schema:
+            constraints["ge"] = field_schema["minimum"]  # greater than or equal
+        if "maximum" in field_schema:
+            constraints["le"] = field_schema["maximum"]  # less than or equal
+        if "exclusiveMinimum" in field_schema:
+            constraints["gt"] = field_schema["exclusiveMinimum"]  # greater than
+        if "exclusiveMaximum" in field_schema:
+            constraints["lt"] = field_schema["exclusiveMaximum"]  # less than
+        if "multipleOf" in field_schema:
+            constraints["multiple_of"] = field_schema["multipleOf"]
+        
+        # Array constraints
+        if "minItems" in field_schema:
+            constraints["min_items"] = field_schema["minItems"]
+        if "maxItems" in field_schema:
+            constraints["max_items"] = field_schema["maxItems"]
+        
+        # Enum constraints
+        if "enum" in field_schema:
+            # Convert to a choices list for Pydantic
+            constraints["choices"] = field_schema["enum"]
+        
+        return constraints
 
     def _field_to_model_name(self, field_name: str) -> str:
         """Convert field name to model name."""
