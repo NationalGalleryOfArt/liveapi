@@ -5,6 +5,38 @@ All notable changes to the LiveAPI project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.2] - 2025-06-25
+
+### 🐛 Critical Bug Fixes - 422 Validation Error Handling
+
+#### Fixed
+- **JSON Schema Validation Constraints**: Fixed critical issue where OpenAPI validation constraints (`minLength`, `maxLength`, `minimum`, `maximum`, `pattern`, etc.) were not being enforced
+- **422 Error Format Consistency**: Fixed mismatch between OpenAPI documentation and actual 422 error responses
+- **RFC 7807 Compliance**: Ensured all 422 validation errors use proper RFC 7807 format with `application/problem+json` Content-Type
+- **OpenAPI Schema Override**: Fixed issue where existing specs with outdated ValidationError schemas would show incorrect error format in documentation
+
+#### Enhanced
+- **PydanticGenerator**: Added `_extract_validation_constraints()` method to properly translate JSON Schema constraints to Pydantic Field constraints
+- **ValidationError Schema**: Always use correct RFC 7807 format in OpenAPI spec regardless of existing schema definitions
+- **Error Response Examples**: Added proper examples in OpenAPI documentation showing actual error format
+
+#### Changed
+- **Template File Naming**: Renamed template files for better clarity:
+  - `sql_model_service.py.j2` → `sql_model_resource_subclass.py.j2`
+  - `implementation.py.j2` → `default_resource_subclass.py.j2`
+- **Documentation Updates**: Updated CLAUDE.md to reflect new template names and added missing main.py.j2
+
+#### Technical Details
+- Modified `src/liveapi/implementation/pydantic_generator.py` to extract and apply JSON Schema validation constraints
+- Updated `src/liveapi/implementation/liveapi_router.py` to always ensure correct ValidationError schema in OpenAPI spec
+- Updated `src/liveapi/sync/executor.py` to reference renamed template files
+- Fixed typos and added missing templates in project documentation
+
+#### Impact
+- **Before**: Validation constraints in OpenAPI specs were ignored, invalid data would return 201 (success)
+- **After**: Validation constraints are properly enforced, invalid data returns 422 with proper RFC 7807 error format
+- **Compatibility**: No breaking changes, existing projects automatically get the fixes
+
 ## [0.10.1] - 2025-06-25
 
 ### 🎨 LiveAPI Designer - Enhanced Resource Management

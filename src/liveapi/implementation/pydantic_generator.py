@@ -1,6 +1,6 @@
 """Dynamic Pydantic model generation from OpenAPI schemas."""
 
-from typing import Dict, List, Any, Optional, Type, Union
+from typing import Dict, List, Any, Optional, Type, Union, Literal
 from pydantic import BaseModel, create_model, Field
 from datetime import datetime
 
@@ -182,6 +182,26 @@ class PydanticGenerator:
 
         schema_type = schema.get("type", "string")
 
+        # Handle enum constraints first
+        if "enum" in schema:
+            enum_values = schema["enum"]
+            if len(enum_values) == 1:
+                return Literal[enum_values[0]]
+            else:
+                # For multiple enum values, we need to create the Literal type dynamically
+                # This is a workaround for the fact that Literal[*values] doesn't work directly
+                try:
+                    # Create a proper Literal type with all enum values
+                    if all(isinstance(v, str) for v in enum_values):
+                        # All string values
+                        return eval(f'Literal[{", ".join(repr(v) for v in enum_values)}]', {"Literal": Literal})
+                    else:
+                        # Mixed types - fall back to base type
+                        pass
+                except:
+                    # Fall back to base type if creation fails
+                    pass
+        
         if schema_type == "string":
             if "format" in schema and schema["format"] == "date-time":
                 return datetime
@@ -278,16 +298,13 @@ class PydanticGenerator:
         if "multipleOf" in field_schema:
             constraints["multiple_of"] = field_schema["multipleOf"]
         
-        # Array constraints
+        # Array constraints (use min_length/max_length for Pydantic v2)
         if "minItems" in field_schema:
-            constraints["min_items"] = field_schema["minItems"]
+            constraints["min_length"] = field_schema["minItems"]
         if "maxItems" in field_schema:
-            constraints["max_items"] = field_schema["maxItems"]
+            constraints["max_length"] = field_schema["maxItems"]
         
-        # Enum constraints
-        if "enum" in field_schema:
-            # Convert to a choices list for Pydantic
-            constraints["choices"] = field_schema["enum"]
+        # Note: Enum constraints are handled at the type level, not in Field constraints
         
         return constraints
 

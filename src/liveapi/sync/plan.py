@@ -1,7 +1,7 @@
 """Planning logic for synchronization operations."""
 
 from pathlib import Path
-from typing import List
+from typing import List, Final
 
 from ..change_detector import ChangeAnalysis
 from .models import SyncAction, SyncItem, SyncPlan
@@ -170,20 +170,22 @@ def _find_missing_implementations(
     return items
 
 
+# A list of candidate names for implementation files.
+_IMPLEMENTATION_CANDIDATES: Final[List[str]] = [
+    "{spec_name}_service.py",
+    "{spec_name}_implementation.py",
+    "{spec_name}.py",
+    "{spec_name}_impl.py",
+]
+
+
 def _find_implementation_path(spec_name: str, implementations_dir: Path):
     """Find the implementation file for a specification."""
     if not implementations_dir.exists():
         return None
 
-    # Look for various naming patterns
-    candidates = [
-        f"{spec_name}_service.py",
-        f"{spec_name}_implementation.py",
-        f"{spec_name}.py",
-        f"{spec_name}_impl.py",
-    ]
-
-    for candidate in candidates:
+    for candidate_template in _IMPLEMENTATION_CANDIDATES:
+        candidate = candidate_template.format(spec_name=spec_name)
         impl_path = implementations_dir / candidate
         if impl_path.exists():
             return impl_path

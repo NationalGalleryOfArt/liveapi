@@ -33,9 +33,7 @@ class SyncManager:
             self.version_manager,
         )
 
-    def execute_sync_plan(
-        self, plan: SyncPlan, preview_only: bool = False, use_scaffold: bool = False
-    ) -> bool:
+    def execute_sync_plan(self, plan: SyncPlan, preview_only: bool = False) -> bool:
         """Execute a synchronization plan."""
         return execute_sync_plan(
             plan,
@@ -44,5 +42,4 @@ class SyncManager:
             self.metadata_manager,
             self.change_detector,
             self.project_root,
-            use_scaffold,
         )

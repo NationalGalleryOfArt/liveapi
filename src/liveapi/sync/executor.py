@@ -15,7 +15,6 @@ def execute_sync_plan(
     metadata_manager,
     change_detector,
     project_root: Path,
-    use_scaffold: bool = True,
 ) -> bool:
     """Execute a synchronization plan for scaffold mode."""
     if preview_only:

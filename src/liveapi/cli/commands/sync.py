@@ -49,7 +49,6 @@ def cmd_sync(args):
         success = sync_manager.execute_sync_plan(
             sync_plan,
             preview_only=False,
-            use_scaffold=True,  # Always use scaffold mode
         )
 
         if success:
