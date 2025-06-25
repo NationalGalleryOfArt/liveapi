@@ -96,9 +96,9 @@ def _generate_implementation_file(
 
         # Choose template based on backend type
         if backend_type == "sqlmodel":
-            template = env.get_template("sql_model_service.py.j2")
+            template = env.get_template("sql_model_resource_subclass.py.j2")
         else:
-            template = env.get_template("implementation.py.j2")
+            template = env.get_template("default_resource_subclass.py.j2")
 
         # Generate the model for the resource
         from ..implementation.liveapi_parser import LiveAPIParser

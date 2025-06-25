@@ -47,9 +47,10 @@ liveapi/
 │       │   ├── migration.py       # Migration guides
 │       │   └── templates/         # Jinja2 templates
 │       │       ├── database.py.j2
-│       │       ├── implementation.py.j2
+│       │       ├── default_resource_subclass.py.j2
+│       │       ├── main.py.j2
 │       │       ├── requirements_sql.txt.j2
-│       │       └── sql_model_service.py.j2
+│       │       └── sql_model_resource_subclass.py.j2
 │       ├── spec_generator.py      # Facade for generator package
 │       ├── generator/             # Specification generation package
 │       │   ├── __init__.py        # Re-exports
