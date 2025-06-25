@@ -1,12 +1,13 @@
 """
-Stub implementation for {{ resource_name }} service.
+Custom implementation for {{ resource_name }} service.
 
 This file allows you to override the default resource handlers with custom database logic.
 Simply uncomment and modify the methods you want to customize.
 """
 
 from typing import Dict, List, Any
-from liveapi.implementation.default_resource_service import DefaultResourceService
+from pydantic import BaseModel
+from liveapi.implementation.default_resource_service import DefaultResource
 from liveapi.implementation.exceptions import (
     NotFoundError,
     ValidationError,
@@ -17,11 +18,22 @@ from liveapi.implementation.exceptions import (
 )
 
 
-class {{ class_name }}(DefaultResourceService):
+# Define your Pydantic model for {{ resource_name }}
+class {{ model_name }}(BaseModel):
+    """Pydantic model for {{ resource_name }}."""
+    id: str = None
+    # Add your fields here, for example:
+    # name: str
+    # description: str = None
+    # created_at: str = None
+    # updated_at: str = None
+
+
+class {{ class_name }}(DefaultResource):
     """Custom {{ resource_name }} service implementation.
     
-    Update any method below to override the default in-memory behavior
-    with your own database logic.
+    This service inherits from DefaultResource and provides in-memory storage.
+    Update any method below to override the default behavior with your own database logic.
 
     Available exceptions to raise:
     - NotFoundError: Resource not found (404)
@@ -38,6 +50,10 @@ class {{ class_name }}(DefaultResourceService):
                 raise NotFoundError(f"User {resource_id} not found")
             return user
     """
+    
+    def __init__(self):
+        """Initialize the service."""
+        super().__init__(model={{ model_name }}, resource_name="{{ resource_name }}")
     
     async def create(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """

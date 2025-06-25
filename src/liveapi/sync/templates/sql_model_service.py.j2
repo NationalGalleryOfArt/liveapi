@@ -1,135 +1,50 @@
-from typing import Dict, Any, List
-from datetime import datetime, timezone
-import uuid
-
-from sqlmodel import Session, select
-from sqlalchemy.exc import IntegrityError
-
-from liveapi.implementation.database import engine
-from liveapi.implementation.exceptions import NotFoundError, ValidationError, ConflictError
+from liveapi.implementation.sql_model_resource_service import SQLModelResource
 from .models import {{ model_name }}
 
 
-class {{ class_name }}:
-    """Service for {{ resource_name }} resources."""
-
-    def __init__(self):
-        self.session = Session(engine)
-
-    async def create(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a new resource."""
-        try:
-            resource_data = data.copy()
-            
-            resource_id = resource_data.get("id")
-            if not resource_id:
-                resource_id = str(uuid.uuid4())
-                resource_data["id"] = resource_id
-
-            now = datetime.now(timezone.utc)
-            if hasattr({{ model_name }}, 'created_at'):
-                resource_data["created_at"] = now
-            if hasattr({{ model_name }}, 'updated_at'):
-                resource_data["updated_at"] = now
-
-            db_resource = {{ model_name }}(**resource_data)
-            
-            existing = self.session.get({{ model_name }}, resource_id)
-            if existing:
-                raise ConflictError(
-                    f"{{ resource_name }} with ID {resource_id} already exists"
-                )
-            
-            self.session.add(db_resource)
-            self.session.commit()
-            self.session.refresh(db_resource)
-            
-            return db_resource.model_dump(mode="json")
-                
-        except IntegrityError as e:
-            raise ConflictError(f"Database constraint violation: {str(e)}")
-        except Exception as e:
-            if isinstance(e, (ConflictError, ValidationError)):
-                raise
-            raise ValidationError(f"Invalid data: {str(e)}")
-
-    async def read(self, resource_id: str) -> Dict[str, Any]:
-        """Read a single resource by ID."""
-        db_resource = self.session.get({{ model_name }}, resource_id)
-        if not db_resource:
-            raise NotFoundError(
-                f"{{ resource_name }} with ID {resource_id} not found"
-            )
-        
-        return db_resource.model_dump(mode="json")
-
-    async def update(
-        self, resource_id: str, data: Dict[str, Any], partial: bool = False
-    ) -> Dict[str, Any]:
-        """Update an existing resource."""
-        db_resource = self.session.get({{ model_name }}, resource_id)
-        if not db_resource:
-            raise NotFoundError(
-                f"{{ resource_name }} with ID {resource_id} not found"
-            )
-
-        try:
-            update_data = data.copy()
-            
-            if partial:
-                for key, value in update_data.items():
-                    if hasattr(db_resource, key):
-                        setattr(db_resource, key, value)
-            else:
-                existing_dict = db_resource.model_dump(mode="json")
-                
-                update_data["id"] = resource_id
-                if "created_at" in existing_dict:
-                    update_data["created_at"] = existing_dict["created_at"]
-                
-                for key, value in update_data.items():
-                    if hasattr(db_resource, key):
-                        setattr(db_resource, key, value)
-
-            if hasattr(db_resource, 'updated_at'):
-                db_resource.updated_at = datetime.now(timezone.utc)
-
-            self.session.add(db_resource)
-            self.session.commit()
-            self.session.refresh(db_resource)
-            
-            return db_resource.model_dump(mode="json")
-            
-        except Exception as e:
-            self.session.rollback()
-            raise ValidationError(f"Invalid data: {str(e)}")
-
-    async def delete(self, resource_id: str) -> None:
-        """Delete a resource."""
-        db_resource = self.session.get({{ model_name }}, resource_id)
-        if not db_resource:
-            raise NotFoundError(
-                f"{{ resource_name }} with ID {resource_id} not found"
-            )
-
-        self.session.delete(db_resource)
-        self.session.commit()
-
-    async def list(
-        self,
-        limit: int = 100,
-        offset: int = 0,
-        **filters: Any,
-    ) -> List[Dict[str, Any]]:
-        """List resources."""
-        query = select({{ model_name }})
-        
-        if filters:
-            from .utils import apply_filters
-            query = apply_filters(query, {{ model_name }}, filters)
-        
-        query = query.offset(offset).limit(limit)
-        
-        results = self.session.exec(query).all()
-        
-        return [resource.model_dump(mode="json") for resource in results]
+class {{ class_name }}(SQLModelResource):
+    """Custom {{ resource_name }} service implementation.
+    
+    This service inherits from SQLModelResource and provides database persistence.
+    Override any method below to customize the behavior for {{ resource_name }}.
+    
+    Example customizations:
+    - Add custom validation in create/update methods
+    - Implement custom filtering in list method  
+    - Add business logic hooks
+    - Customize error handling
+    """
+    
+    def __init__(self, session):
+        """Initialize the service with the database session."""
+        super().__init__(model={{ model_name }}, resource_name="{{ resource_name }}", session=session)
+    
+    # Uncomment and customize any methods below:
+    
+    # async def create(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    #     """Custom create logic for {{ resource_name }}."""
+    #     # Add any pre-processing here
+    #     # validated_data = self._validate_create_data(data)
+    #     return await super().create(data)
+    
+    # async def update(self, resource_id: str, data: Dict[str, Any], partial: bool = False) -> Dict[str, Any]:
+    #     """Custom update logic for {{ resource_name }}.""" 
+    #     # Add any pre-processing here
+    #     # validated_data = self._validate_update_data(data)
+    #     return await super().update(resource_id, data, partial)
+    
+    # async def list(self, limit: int = 100, offset: int = 0, **filters: Any) -> List[Dict[str, Any]]:
+    #     """Custom list logic for {{ resource_name }}."""
+    #     # Add custom filtering logic here
+    #     # processed_filters = self._process_filters(filters)
+    #     return await super().list(limit=limit, offset=offset, **filters)
+    
+    # def _validate_create_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    #     """Custom validation for create operations."""
+    #     # Add your validation logic here
+    #     return data
+    
+    # def _validate_update_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    #     """Custom validation for update operations."""
+    #     # Add your validation logic here  
+    #     return data
