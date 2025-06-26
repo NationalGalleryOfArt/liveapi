@@ -1,50 +1,161 @@
+from typing import Any, Dict, List
+from sqlmodel import Session, select
+
 from liveapi.implementation.sql_model_resource import SQLModelResource
 from .models import {{ model_name }}
 
 
 class {{ class_name }}(SQLModelResource):
-    """Custom {{ resource_name }} service implementation.
+    """Custom service implementation for the {{ resource_name }} resource.
     
-    This service inherits from SQLModelResource and provides database persistence.
-    Override any method below to customize the behavior for {{ resource_name }}.
-    
-    Example customizations:
-    - Add custom validation in create/update methods
-    - Implement custom filtering in list method  
-    - Add business logic hooks
-    - Customize error handling
+    This service inherits from SQLModelResource which provides the core CRUD logic.
+    You can customize the behavior by overriding the hook methods below.
     """
     
-    def __init__(self, session):
+    def __init__(self, session: Session):
         """Initialize the service with the database session."""
         super().__init__(model={{ model_name }}, resource_name="{{ resource_name }}", session=session)
     
-    # Uncomment and customize any methods below:
+    # --- Custom Data Transformation (DTOs) ---
+    # def to_dto(self, db_resource: {{ model_name }}) -> Dict[str, Any]:
+    #     """
+    #     Transforms the {{ model_name }} database model into an API-friendly dictionary (DTO).
+    #     
+    #     Example:
+    #         return {
+    #             "id": db_resource.id,
+    #             "displayName": db_resource.name,  # Map 'name' field to 'displayName' in API
+    #             "createdAt": db_resource.created_at.isoformat() if db_resource.created_at else None,
+    #             # Add computed fields
+    #             "fullAddress": f"{db_resource.street}, {db_resource.city}",
+    #         }
+    #     """
+    #     return super().to_dto(db_resource)
     
-    # async def create(self, data: Dict[str, Any]) -> Dict[str, Any]:
-    #     """Custom create logic for {{ resource_name }}."""
-    #     # Add any pre-processing here
-    #     # validated_data = self._validate_create_data(data)
-    #     return await super().create(data)
+    # def from_api(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    #     """
+    #     Transforms incoming API data into a format suitable for the {{ model_name }} model.
+    #     
+    #     Example:
+    #         return {
+    #             "name": data.get("displayName"),  # Map 'displayName' from API to 'name' in DB
+    #             "street": data.get("address", {}).get("street"),
+    #             "city": data.get("address", {}).get("city"),
+    #         }
+    #     """
+    #     return super().from_api(data)
     
-    # async def update(self, resource_id: str, data: Dict[str, Any], partial: bool = False) -> Dict[str, Any]:
-    #     """Custom update logic for {{ resource_name }}.""" 
-    #     # Add any pre-processing here
-    #     # validated_data = self._validate_update_data(data)
-    #     return await super().update(resource_id, data, partial)
+    # --- Lifecycle Hooks ---
+    # async def before_create(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    #     """Called just before a new {{ resource_name }} is created.
+    #     
+    #     Example:
+    #         # Validate required fields
+    #         if not data.get("name"):
+    #             raise ValueError("Name is required")
+    #         
+    #         # Set defaults
+    #         if "status" not in data:
+    #             data["status"] = "active"
+    #         
+    #         # Add computed fields
+    #         data["slug"] = data["name"].lower().replace(" ", "-")
+    #         
+    #         return data
+    #     """
+    #     return await super().before_create(data)
     
-    # async def list(self, limit: int = 100, offset: int = 0, **filters: Any) -> List[Dict[str, Any]]:
-    #     """Custom list logic for {{ resource_name }}."""
-    #     # Add custom filtering logic here
-    #     # processed_filters = self._process_filters(filters)
-    #     return await super().list(limit=limit, offset=offset, **filters)
+    # async def after_create(self, resource: {{ model_name }}) -> None:
+    #     """Called just after a new {{ resource_name }} is created.
+    #     
+    #     Example:
+    #         # Send notification
+    #         await send_email(f"New {{ resource_name }} created: {resource.name}")
+    #         
+    #         # Update cache
+    #         await cache.delete(f"{{ resource_name }}_list")
+    #         
+    #         # Create related records
+    #         await create_audit_log("create", resource.id)
+    #     """
+    #     await super().after_create(resource)
     
-    # def _validate_create_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
-    #     """Custom validation for create operations."""
-    #     # Add your validation logic here
-    #     return data
+    # async def before_update(self, resource_id: Any, data: Dict[str, Any]) -> Dict[str, Any]:
+    #     """Called just before a {{ resource_name }} is updated.
+    #     
+    #     Example:
+    #         # Validate update permissions
+    #         existing = await self.read(resource_id)
+    #         if existing.get("status") == "locked":
+    #             raise ValueError("Cannot update locked {{ resource_name }}")
+    #         
+    #         # Track changes
+    #         data["last_modified_by"] = get_current_user_id()
+    #         
+    #         return data
+    #     """
+    #     return await super().before_update(resource_id, data)
     
-    # def _validate_update_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
-    #     """Custom validation for update operations."""
-    #     # Add your validation logic here  
-    #     return data
+    # async def after_update(self, resource: {{ model_name }}) -> None:
+    #     """Called just after a {{ resource_name }} is updated.
+    #     
+    #     Example:
+    #         # Invalidate cache
+    #         await cache.delete(f"{{ resource_name }}:{resource.id}")
+    #         
+    #         # Sync with external systems
+    #         await sync_to_external_api(resource)
+    #     """
+    #     await super().after_update(resource)
+    
+    # async def before_delete(self, resource_id: Any) -> None:
+    #     """Called just before a {{ resource_name }} is deleted.
+    #     
+    #     Example:
+    #         # Check for dependencies
+    #         if await has_active_relationships(resource_id):
+    #             raise ValueError("Cannot delete {{ resource_name }} with active relationships")
+    #         
+    #         # Archive instead of delete
+    #         resource = await self.read(resource_id)
+    #         await archive_resource(resource)
+    #     """
+    #     await super().before_delete(resource_id)
+    
+    # async def after_delete(self, resource_id: Any) -> None:
+    #     """Called just after a {{ resource_name }} is deleted.
+    #     
+    #     Example:
+    #         # Clean up related data
+    #         await delete_related_files(resource_id)
+    #         
+    #         # Update statistics
+    #         await update_resource_count("{{ resource_name }}", -1)
+    #     """
+    #     await super().after_delete(resource_id)
+    
+    # --- Query Hooks ---
+    # def build_list_query(self, query: select, filters: Dict[str, Any]) -> select:
+    #     """Customize the query used to list {{ resource_name }} resources.
+    #     
+    #     Example:
+    #         # Apply default ordering
+    #         query = query.order_by({{ model_name }}.created_at.desc())
+    #         
+    #         # Add joins for related data
+    #         query = query.join(RelatedModel, {{ model_name }}.related_id == RelatedModel.id)
+    #         
+    #         # Add custom filters
+    #         if "search" in filters:
+    #             search_term = filters.pop("search")
+    #             query = query.where(
+    #                 or_(
+    #                     {{ model_name }}.name.contains(search_term),
+    #                     {{ model_name }}.description.contains(search_term)
+    #                 )
+    #             )
+    #         
+    #         # Apply remaining filters
+    #         return super().build_list_query(query, filters)
+    #     """
+    #     return super().build_list_query(query, filters)

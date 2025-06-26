@@ -5,6 +5,41 @@ All notable changes to the LiveAPI project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2025-06-26
+
+### 🪝 SQLModelResource Hook-Based Architecture
+
+#### Added
+- **BaseSQLModelResource**: New abstract base class containing core CRUD logic with extensible hook methods
+- **Hook-Based Customization**: Developers can now customize SQLModel resource behavior without overriding entire CRUD methods
+- **Data Transformation Hooks**:
+  - `to_dto()`: Transform database models to API-friendly formats (e.g., field renaming, computed fields)
+  - `from_api()`: Transform incoming API data to database format (e.g., field mapping, data conversion)
+- **Lifecycle Hooks**:
+  - `before_create()` / `after_create()`: Add validation, defaults, or trigger side effects on creation
+  - `before_update()` / `after_update()`: Validate updates, track changes, or invalidate caches
+  - `before_delete()` / `after_delete()`: Prevent deletion, archive records, or cascade cleanup
+- **Query Customization Hook**:
+  - `build_list_query()`: Add custom filters, joins, or ordering to list operations
+
+#### Changed
+- **SQLModelResource Architecture**: Complete rewrite using template method pattern with extensible hooks
+- **Template Enhancement**: Updated `sql_model_resource_subclass.py.j2` template to generate resource classes with comprehensive hook examples
+- **Improved Partial Updates**: Fixed handling of None values in transformations for proper PATCH support
+
+#### Benefits
+- **Cleaner Code**: Business logic separated from CRUD mechanics
+- **Better Maintainability**: Override only what you need, inherit the rest
+- **Production Ready**: Clear extension points for validation, logging, caching, and external integrations
+- **Type Safe**: Full type hints throughout the hook system
+
+#### Technical Details
+- Created `src/liveapi/implementation/base_sql_model_resource.py` with template method pattern
+- Rewrote `src/liveapi/implementation/sql_model_resource.py` to inherit from base class
+- Added comprehensive test suite in `tests/test_sql_model_resource_hooks.py` with 8 test cases
+- All 155 tests pass including the new hook functionality tests
+- Mock-based testing approach integrates cleanly with existing test infrastructure
+
 ## [0.10.2] - 2025-06-25
 
 ### 🐛 Critical Bug Fixes - 422 Validation Error Handling
