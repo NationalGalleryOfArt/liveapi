@@ -369,7 +369,7 @@ class TestSyncManager:
             # Initialize project and create spec
             metadata_manager = MetadataManager()
             metadata_manager.initialize_project("test")
-            
+
             # Set backend to default (in-memory) for this test
             config = metadata_manager.load_config()
             config.backend_type = "default"
@@ -420,7 +420,7 @@ class TestSyncManager:
             # Initialize project
             metadata_manager = MetadataManager()
             metadata_manager.initialize_project("test")
-            
+
             # Set backend to default (in-memory) for this test
             config = metadata_manager.load_config()
             config.backend_type = "default"

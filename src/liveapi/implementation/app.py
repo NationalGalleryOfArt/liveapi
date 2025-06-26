@@ -5,7 +5,11 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from .liveapi_router import create_liveapi_app, add_error_schemas_to_app, create_rfc7807_validation_error_handler
+from .liveapi_router import (
+    create_liveapi_app,
+    add_error_schemas_to_app,
+    create_rfc7807_validation_error_handler,
+)
 from .exceptions import (
     BusinessException,
     InternalServerError,
@@ -31,7 +35,9 @@ def add_exception_handlers(app: FastAPI):
         )
 
     # Add RFC 7807 validation error handler for 422 responses
-    app.add_exception_handler(RequestValidationError, create_rfc7807_validation_error_handler())
+    app.add_exception_handler(
+        RequestValidationError, create_rfc7807_validation_error_handler()
+    )
 
     @app.exception_handler(Exception)
     async def handle_generic_exception(request: Request, exc: Exception):

@@ -163,7 +163,9 @@ def _create_main_py_for_implementations(project_root: Path) -> None:
     # Get all specification files
     spec_files = list((project_root / "specifications").glob("*.yaml"))
     spec_files.extend(list((project_root / "specifications").glob("*.yml")))
-    spec_files.extend(list((project_root / "specifications").glob("*.json")))  # Also include JSON files
+    spec_files.extend(
+        list((project_root / "specifications").glob("*.json"))
+    )  # Also include JSON files
 
     if spec_files:
         create_crud_main_py(spec_files, project_root)

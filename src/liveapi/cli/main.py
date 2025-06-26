@@ -172,7 +172,9 @@ Examples:
         "--pid-file", help="Custom PID file path (default: .liveapi/uvicorn.pid)"
     )
     run_parser.add_argument(
-        "--no-open", action="store_true", help="Don't automatically open API docs in browser"
+        "--no-open",
+        action="store_true",
+        help="Don't automatically open API docs in browser",
     )
 
     # Kill command
@@ -190,7 +192,7 @@ Examples:
     ping_parser.add_argument(
         "--pid-file", help="Custom PID file path (default: .liveapi/uvicorn.pid)"
     )
-    
+
     # Designer command
     designer_parser = subparsers.add_parser(
         "designer", help="Launch the LiveAPI Designer UI"

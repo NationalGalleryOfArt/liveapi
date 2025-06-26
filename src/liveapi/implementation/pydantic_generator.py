@@ -78,7 +78,9 @@ class PydanticGenerator:
 
                 # Determine if field is required and configure for SQLModel
                 if field_name == "id":  # Special handling for ID field
-                    field_info = SQLField(default=None, primary_key=True, **validation_kwargs)
+                    field_info = SQLField(
+                        default=None, primary_key=True, **validation_kwargs
+                    )
                     field_type = Optional[field_type]
                 elif field_name in required:
                     field_info = SQLField(**validation_kwargs)
@@ -100,7 +102,9 @@ class PydanticGenerator:
 
                 # Add field description if available
                 description = field_schema.get("description", None)
-                field_info = Field(default=default, description=description, **validation_kwargs)
+                field_info = Field(
+                    default=default, description=description, **validation_kwargs
+                )
 
             field_definitions[field_name] = (field_type, field_info)
 
@@ -194,14 +198,17 @@ class PydanticGenerator:
                     # Create a proper Literal type with all enum values
                     if all(isinstance(v, str) for v in enum_values):
                         # All string values
-                        return eval(f'Literal[{", ".join(repr(v) for v in enum_values)}]', {"Literal": Literal})
+                        return eval(
+                            f'Literal[{", ".join(repr(v) for v in enum_values)}]',
+                            {"Literal": Literal},
+                        )
                     else:
                         # Mixed types - fall back to base type
                         pass
-                except:
+                except Exception:
                     # Fall back to base type if creation fails
                     pass
-        
+
         if schema_type == "string":
             if "format" in schema and schema["format"] == "date-time":
                 return datetime
@@ -273,10 +280,12 @@ class PydanticGenerator:
                 model_name, __base__=BaseModel, __root__=(root_type, ...)
             )
 
-    def _extract_validation_constraints(self, field_schema: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_validation_constraints(
+        self, field_schema: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Extract validation constraints from JSON Schema to Pydantic Field constraints."""
         constraints = {}
-        
+
         # String constraints
         if "minLength" in field_schema:
             constraints["min_length"] = field_schema["minLength"]
@@ -285,7 +294,7 @@ class PydanticGenerator:
         if "pattern" in field_schema:
             # Use raw string for regex patterns to avoid escape warnings
             constraints["pattern"] = field_schema["pattern"]
-        
+
         # Numeric constraints
         if "minimum" in field_schema:
             constraints["ge"] = field_schema["minimum"]  # greater than or equal
@@ -297,15 +306,15 @@ class PydanticGenerator:
             constraints["lt"] = field_schema["exclusiveMaximum"]  # less than
         if "multipleOf" in field_schema:
             constraints["multiple_of"] = field_schema["multipleOf"]
-        
+
         # Array constraints (use min_length/max_length for Pydantic v2)
         if "minItems" in field_schema:
             constraints["min_length"] = field_schema["minItems"]
         if "maxItems" in field_schema:
             constraints["max_length"] = field_schema["maxItems"]
-        
+
         # Note: Enum constraints are handled at the type level, not in Field constraints
-        
+
         return constraints
 
     def _field_to_model_name(self, field_name: str) -> str:

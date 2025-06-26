@@ -16,8 +16,6 @@ from src.liveapi.metadata.models import ProjectConfig
 # Check if SQLModel is available
 try:
     from sqlmodel import Session
-    from src.liveapi.implementation.sql_model_resource import SQLModelResource
-
     HAS_SQLMODEL = True
 except ImportError:
     HAS_SQLMODEL = False
@@ -140,7 +138,7 @@ class TestLiveAPIRouterBackendSelection:
                 service_dependency = router._create_service_dependency(
                     TestModel, "test"
                 )
-                
+
                 # Default service doesn't need session parameter
                 service = service_dependency()
 
@@ -157,17 +155,18 @@ class TestLiveAPIRouterBackendSelection:
             temp_path = Path(temp_dir)
             config_path = temp_path / ".liveapi" / "config.json"
             config_path.parent.mkdir(parents=True, exist_ok=True)
-            
+
             # Create config with default backend
             config_data = {
                 "project_name": "test",
                 "created_at": "2023-01-01T00:00:00Z",
-                "backend_type": "default"
+                "backend_type": "default",
             }
             with open(config_path, "w") as f:
                 import json
+
                 json.dump(config_data, f)
-            
+
             with patch("pathlib.Path.cwd", return_value=temp_path):
                 router = LiveAPIRouter()
                 service_dependency = router._create_service_dependency(
@@ -216,10 +215,10 @@ class TestLiveAPIRouterBackendSelection:
                 service = service_dependency(session=mock_session)
 
                 from src.liveapi.implementation.sql_model_resource import (
-                    SQLModelResource,
+                    SQLModelResource as SQLModelResourceService,
                 )
 
-                assert isinstance(service, SQLModelResource)
+                assert isinstance(service, SQLModelResourceService)
 
 
 class TestInteractiveGeneratorWithBackends:
@@ -316,9 +315,7 @@ class TestSQLModelIntegration:
             name: str
 
         mock_session = MagicMock(spec=Session)
-        service = SQLModelResource(
-            SQLModelForServiceTest, "test", session=mock_session
-        )
+        service = SQLModelResource(SQLModelForServiceTest, "test", session=mock_session)
         assert service.resource_name == "test"
         assert service.model == SQLModelForServiceTest
         assert service.session == mock_session

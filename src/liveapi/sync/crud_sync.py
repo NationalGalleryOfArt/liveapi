@@ -13,7 +13,7 @@ def create_crud_main_py(spec_files: List[Path], project_root: Path) -> None:
         project_root: Root directory of the project
     """
     main_py_path = project_root / "main.py"
-    
+
     # Set up Jinja2 environment for templates
     template_dir = Path(__file__).parent / "templates"
     env = Environment(loader=FileSystemLoader(template_dir))
@@ -23,19 +23,13 @@ def create_crud_main_py(spec_files: List[Path], project_root: Path) -> None:
         # Single spec mode
         spec_path = spec_files[0]
         relative_spec = spec_path.relative_to(project_root)
-        
-        content = template.render(
-            single_spec=True,
-            spec_path=str(relative_spec)
-        )
+
+        content = template.render(single_spec=True, spec_path=str(relative_spec))
     else:
-        # Multiple specs mode 
+        # Multiple specs mode
         relative_specs = [str(spec.relative_to(project_root)) for spec in spec_files]
-        
-        content = template.render(
-            single_spec=False,
-            spec_files=relative_specs
-        )
+
+        content = template.render(single_spec=False, spec_files=relative_specs)
 
     # Write the main.py file
     main_py_path.write_text(content)
@@ -62,21 +56,23 @@ def sync_crud_implementation(spec_file: Path, project_root: Path) -> bool:
     try:
         # Just validate that we can parse the spec
         from ..implementation.liveapi_parser import LiveAPIParser
-        
+
         parser = LiveAPIParser(str(spec_file))
         parser.load_spec()
-        
+
         # Identify CRUD resources
         resources = parser.identify_crud_resources()
-        
+
         if resources:
             print(f"✅ CRUD+ sync successful for {spec_file.name}")
-            print(f"   Found {len(resources)} CRUD+ resources: {', '.join(resources.keys())}")
+            print(
+                f"   Found {len(resources)} CRUD+ resources: {', '.join(resources.keys())}"
+            )
         else:
             print(f"⚠️ No CRUD+ resources found in {spec_file.name}")
-            
+
         return True
-        
+
     except Exception as e:
         print(f"❌ Failed to sync {spec_file.name}: {e}")
         return False

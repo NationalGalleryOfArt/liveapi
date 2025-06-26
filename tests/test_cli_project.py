@@ -119,7 +119,7 @@ class TestHandleNoCommand:
 
             # Verify init was called
             mock_init.assert_called_once()
-            
+
             # Verify designer was called
             mock_designer.assert_called_once()
 

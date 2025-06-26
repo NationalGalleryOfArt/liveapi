@@ -292,8 +292,8 @@ class SpecGenerator:
                                 "type": "https://tools.ietf.org/html/rfc7807",
                                 "title": "Bad Request",
                                 "status": 400,
-                                "detail": "The request could not be processed due to invalid input"
-                            }
+                                "detail": "The request could not be processed due to invalid input",
+                            },
                         }
                     },
                 },
@@ -306,8 +306,8 @@ class SpecGenerator:
                                 "type": "https://tools.ietf.org/html/rfc7807",
                                 "title": "Unauthorized",
                                 "status": 401,
-                                "detail": "Authentication credentials were missing or invalid"
-                            }
+                                "detail": "Authentication credentials were missing or invalid",
+                            },
                         }
                     },
                 },
@@ -320,8 +320,8 @@ class SpecGenerator:
                                 "type": "https://tools.ietf.org/html/rfc7807",
                                 "title": "Internal Server Error",
                                 "status": 500,
-                                "detail": "The server encountered an unexpected condition that prevented it from fulfilling the request"
-                            }
+                                "detail": "The server encountered an unexpected condition that prevented it from fulfilling the request",
+                            },
                         }
                     },
                 },
@@ -334,8 +334,8 @@ class SpecGenerator:
                                 "type": "https://tools.ietf.org/html/rfc7807",
                                 "title": "Service Unavailable",
                                 "status": 503,
-                                "detail": "The server is currently unable to handle the request due to temporary overloading or maintenance"
-                            }
+                                "detail": "The server is currently unable to handle the request due to temporary overloading or maintenance",
+                            },
                         }
                     },
                 },
@@ -377,12 +377,10 @@ class SpecGenerator:
                                         "title": "Validation Error",
                                         "detail": "Field 'name' is required",
                                         "status": "422",
-                                        "source": {
-                                            "pointer": "/name"
-                                        }
+                                        "source": {"pointer": "/name"},
                                     }
                                 ]
-                            }
+                            },
                         }
                     },
                 }
@@ -442,8 +440,8 @@ class SpecGenerator:
                 "type": "https://tools.ietf.org/html/rfc7807",
                 "title": "Bad Request",
                 "status": 400,
-                "detail": "The request could not be processed due to invalid input"
-            }
+                "detail": "The request could not be processed due to invalid input",
+            },
         }
 
         # Add RFC 7807 ValidationError schema
@@ -474,16 +472,16 @@ class SpecGenerator:
                         "title": "Validation Error",
                         "detail": "Field 'name' is required",
                         "status": "400",
-                        "source": {"pointer": "/name"}
+                        "source": {"pointer": "/name"},
                     },
                     {
-                        "title": "Validation Error", 
+                        "title": "Validation Error",
                         "detail": "Field 'price' must be a positive number",
                         "status": "400",
-                        "source": {"pointer": "/price"}
-                    }
+                        "source": {"pointer": "/price"},
+                    },
                 ]
-            }
+            },
         }
 
         # Build the complete OpenAPI spec
@@ -506,15 +504,15 @@ class SpecGenerator:
             "paths": paths,
             "components": {"schemas": schemas},
         }
-        
+
         # Add resource_type if provided (using x- prefix for OpenAPI compliance)
         if resource_type:
             spec["x-resource-type"] = resource_type
-            
+
         # Always add the available options for documentation
         spec["x-resource-type-options"] = [
             "DefaultResource",  # In-memory storage for prototyping
-            "SQLModelResource"  # SQL database persistence for production
+            "SQLModelResource",  # SQL database persistence for production
         ]
 
         return spec

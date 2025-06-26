@@ -21,30 +21,33 @@ class TestEndToEndFlow:
         # Clear any existing SQLModel metadata
         try:
             from sqlmodel import SQLModel
+
             # Clear the SQLModel registry to avoid table conflicts
-            if hasattr(SQLModel, 'metadata'):
+            if hasattr(SQLModel, "metadata"):
                 SQLModel.metadata.clear()
         except ImportError:
             pass
-            
+
         # Clear any database connections (though we're using in-memory now)
         try:
             from src.liveapi.implementation.database import close_database
+
             close_database()
         except ImportError:
             pass
-        
+
         # Kill any leftover uvicorn processes
         import subprocess
+
         try:
-            subprocess.run(['pkill', '-f', 'uvicorn'], capture_output=True)
+            subprocess.run(["pkill", "-f", "uvicorn"], capture_output=True)
         except FileNotFoundError:
             pass  # pkill not available on all systems
-            
+
     def teardown_method(self):
         """Cleanup after each test method."""
         # Clean up any server processes
-        if hasattr(self, 'server_process') and self.server_process:
+        if hasattr(self, "server_process") and self.server_process:
             try:
                 self.server_process.terminate()
                 self.server_process.wait(timeout=5)
@@ -53,11 +56,12 @@ class TestEndToEndFlow:
                     self.server_process.kill()
                 except AttributeError:
                     pass
-                    
+
         # Clear SQLModel metadata again
         try:
             from sqlmodel import SQLModel
-            if hasattr(SQLModel, 'metadata'):
+
+            if hasattr(SQLModel, "metadata"):
                 SQLModel.metadata.clear()
         except ImportError:
             pass
@@ -228,14 +232,14 @@ class TestEndToEndFlow:
 
         # Start the server in a subprocess - use dynamic port to avoid conflicts
         import socket
-        
+
         # Find an available port
         sock = socket.socket()
-        sock.bind(('', 0))
+        sock.bind(("", 0))
         port = sock.getsockname()[1]
         sock.close()
-        
-        server_process = None
+
+        # server_process = None  # Unused variable
 
         try:
             # Using in-memory backend, no database setup needed
@@ -258,9 +262,13 @@ class TestEndToEndFlow:
 
             # Pass environment variables to subprocess
             env = os.environ.copy()
-            
+
             self.server_process = subprocess.Popen(
-                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=os.getcwd(), env=env
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                cwd=os.getcwd(),
+                env=env,
             )
 
             # Wait for server to start
@@ -274,7 +282,7 @@ class TestEndToEndFlow:
 
         finally:
             # Cleanup: kill the server process
-            if hasattr(self, 'server_process') and self.server_process:
+            if hasattr(self, "server_process") and self.server_process:
                 self.server_process.terminate()
                 try:
                     self.server_process.wait(timeout=5)
@@ -293,16 +301,20 @@ class TestEndToEndFlow:
                     return
             except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
                 time.sleep(0.5)
-                
+
                 # Check if server process is still running
-                if hasattr(self, 'server_process') and self.server_process:
+                if hasattr(self, "server_process") and self.server_process:
                     if self.server_process.poll() is not None:
                         # Server has exited, get the error output
                         stdout, stderr = self.server_process.communicate()
-                        print(f"Server exited with code {self.server_process.returncode}")
+                        print(
+                            f"Server exited with code {self.server_process.returncode}"
+                        )
                         print(f"Server stdout: {stdout.decode()}")
                         print(f"Server stderr: {stderr.decode()}")
-                        raise RuntimeError(f"Server process died with exit code {self.server_process.returncode}")
+                        raise RuntimeError(
+                            f"Server process died with exit code {self.server_process.returncode}"
+                        )
 
         raise TimeoutError(f"Server did not start within {timeout} seconds")
 
@@ -483,8 +495,9 @@ class TestEndToEndFlow:
 
                 # Use dynamic port to avoid conflicts
                 import socket
+
                 sock = socket.socket()
-                sock.bind(('', 0))
+                sock.bind(("", 0))
                 port = sock.getsockname()[1]
                 sock.close()
 
@@ -502,13 +515,13 @@ class TestEndToEndFlow:
                         str(port),
                     ]
 
-                    # Pass environment variables to subprocess  
+                    # Pass environment variables to subprocess
                     env = os.environ.copy()
-                        
+
                     server_process = subprocess.Popen(
                         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env
                     )
-                    
+
                     # Store as instance variable for debugging
                     self.server_process = server_process
 
@@ -602,8 +615,9 @@ class TestEndToEndFlow:
 
                 # Use dynamic port to avoid conflicts
                 import socket
+
                 sock = socket.socket()
-                sock.bind(('', 0))
+                sock.bind(("", 0))
                 port = sock.getsockname()[1]
                 sock.close()
 
@@ -621,13 +635,13 @@ class TestEndToEndFlow:
                         str(port),
                     ]
 
-                    # Pass environment variables to subprocess  
+                    # Pass environment variables to subprocess
                     env = os.environ.copy()
-                        
+
                     server_process = subprocess.Popen(
                         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env
                     )
-                    
+
                     # Store as instance variable for debugging
                     self.server_process = server_process
 

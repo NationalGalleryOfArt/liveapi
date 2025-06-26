@@ -78,18 +78,18 @@ def handle_no_command():
         elif choice == "3":
             # Launch designer
             print("\n🎨 Launching LiveAPI Designer...")
-            
+
             # Auto-initialize if needed
             class Args:
                 name = None
 
             cmd_init(Args())
-            
+
             from .designer import cmd_designer
-            
+
             class DesignerArgs:
                 port = 8888
-                
+
             cmd_designer(DesignerArgs())
 
         else:

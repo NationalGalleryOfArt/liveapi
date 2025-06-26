@@ -15,21 +15,20 @@ from .database import get_db_session
 
 class HealthResponse(BaseModel):
     """Health check response model."""
+
     status: str
     service: str
     resources: List[str]
-    
-    class Config:
-        schema_extra = {
+
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "status": "healthy",
                 "service": "liveapi.implementation",
-                "resources": [
-                    "art_objects",
-                    "art_locations"
-                ]
+                "resources": ["art_objects", "art_locations"],
             }
         }
+    }
 
 
 def create_business_exception_handler():
@@ -105,6 +104,28 @@ class LiveAPIRouter:
             pass
         return "default"
 
+    def _load_project_config(self) -> Dict[str, str]:
+        """Load project configuration for composite API metadata."""
+        try:
+            project_root = Path.cwd()
+            metadata_dir = project_root / ".liveapi"
+            config_file = metadata_dir / "config.json"
+
+            if config_file.exists():
+                import json
+
+                with open(config_file, "r") as f:
+                    config_data = json.load(f)
+                    return {
+                        "project_name": config_data.get("project_name", "LiveAPI"),
+                        "base_url": config_data.get(
+                            "base_url", "http://localhost:8000"
+                        ),
+                    }
+        except Exception:
+            pass
+        return {"project_name": "LiveAPI", "base_url": "http://localhost:8000"}
+
     def _create_service_dependency(self, model: Type[BaseModel], resource_name: str):
         """Create a dependency factory for the appropriate service."""
         if self.backend_type == "sqlmodel":
@@ -151,7 +172,7 @@ class LiveAPIRouter:
             description=parser.spec.get("info", {}).get("description", ""),
             version=parser.spec.get("info", {}).get("version", "1.0.0"),
         )
-        
+
         # Store the original spec in the app instance for reference
         app.original_spec = parser.spec
 
@@ -170,13 +191,19 @@ class LiveAPIRouter:
                 openapi_schema["components"] = {}
             if "schemas" not in openapi_schema["components"]:
                 openapi_schema["components"]["schemas"] = {}
-                
+
             # Add standard schemas from the original spec
-            if hasattr(app, 'original_spec') and 'components' in app.original_spec and 'schemas' in app.original_spec['components']:
-                for schema_name, schema in app.original_spec['components']['schemas'].items():
+            if (
+                hasattr(app, "original_spec")
+                and "components" in app.original_spec
+                and "schemas" in app.original_spec["components"]
+            ):
+                for schema_name, schema in app.original_spec["components"][
+                    "schemas"
+                ].items():
                     if schema_name not in openapi_schema["components"]["schemas"]:
                         openapi_schema["components"]["schemas"][schema_name] = schema
-            
+
             # Add ValidationError schema
             openapi_schema["components"]["schemas"]["ValidationError"] = {
                 "type": "object",
@@ -200,11 +227,11 @@ class LiveAPIRouter:
                 },
                 "required": ["errors"],
             }
-            
+
             # Remove FastAPI's default HTTPValidationError schema if it exists
             if "HTTPValidationError" in openapi_schema["components"]["schemas"]:
                 del openapi_schema["components"]["schemas"]["HTTPValidationError"]
-            
+
             # Add Error schema if not already present
             if "Error" not in openapi_schema["components"]["schemas"]:
                 openapi_schema["components"]["schemas"]["Error"] = {
@@ -217,23 +244,36 @@ class LiveAPIRouter:
                     },
                     "required": ["type", "title", "status", "detail"],
                 }
-            
+
             # Process paths and operations
             for path, path_item in openapi_schema.get("paths", {}).items():
                 # Check if this path exists in the original spec
-                original_path_item = app.original_spec.get("paths", {}).get(path, {}) if hasattr(app, 'original_spec') else {}
-                
+                original_path_item = (
+                    app.original_spec.get("paths", {}).get(path, {})
+                    if hasattr(app, "original_spec")
+                    else {}
+                )
+
                 for method, operation in path_item.items():
                     if isinstance(operation, dict) and "responses" in operation:
                         # Get original operation responses if available
                         original_operation = original_path_item.get(method, {})
-                        original_responses = original_operation.get("responses", {}) if original_operation else {}
-                        
+                        original_responses = (
+                            original_operation.get("responses", {})
+                            if original_operation
+                            else {}
+                        )
+
                         # Add standard error responses from original spec
                         for status_code in ["400", "401", "500", "503"]:
-                            if status_code in original_responses and status_code not in operation["responses"]:
-                                operation["responses"][status_code] = original_responses[status_code]
-                        
+                            if (
+                                status_code in original_responses
+                                and status_code not in operation["responses"]
+                            ):
+                                operation["responses"][status_code] = (
+                                    original_responses[status_code]
+                                )
+
                         # Add validation error response for operations that accept request bodies
                         if method.lower() in ["post", "put", "patch"]:
                             operation["responses"]["422"] = {
@@ -247,15 +287,22 @@ class LiveAPIRouter:
                                 },
                             }
                         # Remove FastAPI's default 422 responses from GET and DELETE operations
-                        elif method.lower() in ["get", "delete"] and "422" in operation["responses"]:
+                        elif (
+                            method.lower() in ["get", "delete"]
+                            and "422" in operation["responses"]
+                        ):
                             del operation["responses"]["422"]
-            
+
             # Replace any HTTPValidationError references with ValidationError
             import json
+
             openapi_str = json.dumps(openapi_schema)
-            openapi_str = openapi_str.replace('"#/components/schemas/HTTPValidationError"', '"#/components/schemas/ValidationError"')
+            openapi_str = openapi_str.replace(
+                '"#/components/schemas/HTTPValidationError"',
+                '"#/components/schemas/ValidationError"',
+            )
             openapi_schema = json.loads(openapi_str)
-            
+
             app.openapi_schema = openapi_schema
             return app.openapi_schema
 
@@ -278,7 +325,7 @@ class LiveAPIRouter:
             init_database()
 
         @app.get(
-            "/health", 
+            "/health",
             response_model=HealthResponse,
             responses={
                 200: {
@@ -288,15 +335,12 @@ class LiveAPIRouter:
                             "example": {
                                 "status": "healthy",
                                 "service": "liveapi.implementation",
-                                "resources": [
-                                    "art_objects",
-                                    "art_locations"
-                                ]
+                                "resources": ["art_objects", "art_locations"],
                             }
                         }
-                    }
+                    },
                 }
-            }
+            },
         )
         async def health_check():
             return {
@@ -311,32 +355,37 @@ class LiveAPIRouter:
         """Create a FastAPI app from multiple OpenAPI specs using CRUD+ handlers."""
         if len(spec_paths) == 1:
             return self.create_app_from_spec(spec_paths[0])
-        
+
         # For multiple specs, merge them into a composite spec
         all_parsers = []
         all_resources = {}
-        
+
         # Load all specs and collect resources
         for spec_path in spec_paths:
             parser = LiveAPIParser(spec_path, backend_type=self.backend_type)
             parser.load_spec()
             all_parsers.append(parser)
-            
+
             # Collect resources from this spec
             resources = parser.identify_crud_resources()
             all_resources.update(resources)
-        
-        # Create app with info from first spec (or default)
+
+        # Get project configuration for composite API metadata
+        project_config = self._load_project_config()
+        project_name = project_config["project_name"]
+        base_url = project_config["base_url"]
+
+        # Create app with project-specific info
         first_spec = all_parsers[0].spec if all_parsers else {}
         app = FastAPI(
-            title="LiveAPI Composite API",
-            description="API composed of multiple OpenAPI specifications",
+            title=project_name,
+            description=f"Live API Composite API for {base_url}",
             version="1.0.0",
         )
-        
+
         # Store combined spec info for health endpoint
         app.original_spec = first_spec
-        
+
         def custom_openapi():
             if app.openapi_schema:
                 return app.openapi_schema
@@ -352,14 +401,21 @@ class LiveAPIRouter:
                 openapi_schema["components"] = {}
             if "schemas" not in openapi_schema["components"]:
                 openapi_schema["components"]["schemas"] = {}
-                
+
             # Merge schemas from all specs
             for parser in all_parsers:
-                if 'components' in parser.spec and 'schemas' in parser.spec['components']:
-                    for schema_name, schema in parser.spec['components']['schemas'].items():
+                if (
+                    "components" in parser.spec
+                    and "schemas" in parser.spec["components"]
+                ):
+                    for schema_name, schema in parser.spec["components"][
+                        "schemas"
+                    ].items():
                         if schema_name not in openapi_schema["components"]["schemas"]:
-                            openapi_schema["components"]["schemas"][schema_name] = schema
-            
+                            openapi_schema["components"]["schemas"][
+                                schema_name
+                            ] = schema
+
             # Process paths and operations for all specs
             for path, path_item in openapi_schema.get("paths", {}).items():
                 for method, operation in path_item.items():
@@ -377,9 +433,12 @@ class LiveAPIRouter:
                                 },
                             }
                         # Remove FastAPI's default 422 responses from GET and DELETE operations
-                        elif method.lower() in ["get", "delete"] and "422" in operation["responses"]:
+                        elif (
+                            method.lower() in ["get", "delete"]
+                            and "422" in operation["responses"]
+                        ):
                             del operation["responses"]["422"]
-            
+
             # Add ValidationError schema
             openapi_schema["components"]["schemas"]["ValidationError"] = {
                 "type": "object",
@@ -403,7 +462,7 @@ class LiveAPIRouter:
                 },
                 "required": ["errors"],
             }
-            
+
             app.openapi_schema = openapi_schema
             return app.openapi_schema
 
@@ -412,11 +471,12 @@ class LiveAPIRouter:
         # Initialize database if using sqlmodel backend
         if self.backend_type == "sqlmodel":
             from .database import init_database
+
             init_database()
 
         # Add health endpoint
         @app.get(
-            "/health", 
+            "/health",
             response_model=HealthResponse,
             responses={
                 200: {
@@ -426,15 +486,12 @@ class LiveAPIRouter:
                             "example": {
                                 "status": "healthy",
                                 "service": "liveapi.implementation",
-                                "resources": [
-                                    "art_objects",
-                                    "art_locations"
-                                ]
+                                "resources": ["art_objects", "art_locations"],
                             }
                         }
-                    }
+                    },
                 }
-            }
+            },
         )
         async def health_check():
             return {
@@ -462,7 +519,7 @@ class LiveAPIRouter:
         item_path = resource_info["paths"]["item"] or f"/{resource_name}/{{id}}"
 
         operations = resource_info["operations"]
-        
+
         # Common error responses to be added to all endpoints
         error_responses = {
             400: {
@@ -474,10 +531,10 @@ class LiveAPIRouter:
                             "type": "https://tools.ietf.org/html/rfc7807",
                             "title": "Bad Request",
                             "status": 400,
-                            "detail": "The request could not be processed due to invalid input"
-                        }
+                            "detail": "The request could not be processed due to invalid input",
+                        },
                     }
-                }
+                },
             },
             401: {
                 "description": "Unauthorized",
@@ -488,10 +545,10 @@ class LiveAPIRouter:
                             "type": "https://tools.ietf.org/html/rfc7807",
                             "title": "Unauthorized",
                             "status": 401,
-                            "detail": "Authentication credentials were missing or invalid"
-                        }
+                            "detail": "Authentication credentials were missing or invalid",
+                        },
                     }
-                }
+                },
             },
             404: {
                 "description": "Not Found",
@@ -502,10 +559,10 @@ class LiveAPIRouter:
                             "type": "https://tools.ietf.org/html/rfc7807",
                             "title": "Not Found",
                             "status": 404,
-                            "detail": "The requested resource was not found"
-                        }
+                            "detail": "The requested resource was not found",
+                        },
                     }
-                }
+                },
             },
             500: {
                 "description": "Internal Server Error",
@@ -516,10 +573,10 @@ class LiveAPIRouter:
                             "type": "https://tools.ietf.org/html/rfc7807",
                             "title": "Internal Server Error",
                             "status": 500,
-                            "detail": "The server encountered an unexpected condition that prevented it from fulfilling the request"
-                        }
+                            "detail": "The server encountered an unexpected condition that prevented it from fulfilling the request",
+                        },
                     }
-                }
+                },
             },
             503: {
                 "description": "Service Unavailable",
@@ -530,11 +587,11 @@ class LiveAPIRouter:
                             "type": "https://tools.ietf.org/html/rfc7807",
                             "title": "Service Unavailable",
                             "status": 503,
-                            "detail": "The server is currently unable to handle the request due to temporary overloading or maintenance"
-                        }
+                            "detail": "The server is currently unable to handle the request due to temporary overloading or maintenance",
+                        },
                     }
-                }
-            }
+                },
+            },
         }
 
         if "create" in operations:
@@ -554,11 +611,13 @@ class LiveAPIRouter:
                         "description": "Validation Error",
                         "content": {
                             "application/problem+json": {
-                                "schema": {"$ref": "#/components/schemas/ValidationError"}
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
                             }
-                        }
-                    }
-                }
+                        },
+                    },
+                },
             )
             async def create_resource(data: model, service=Depends(service_dependency)):
                 return await service.create(data.model_dump())
@@ -572,10 +631,7 @@ class LiveAPIRouter:
                 description=op.get("description", ""),
                 response_model=model,
                 operation_id=op.get("operationId", f"get_{resource_name}"),
-                responses={
-                    200: {"description": "Success"},
-                    **error_responses
-                }
+                responses={200: {"description": "Success"}, **error_responses},
             )
             async def read_resource(id: str, service=Depends(service_dependency)):
                 return await service.read(id)
@@ -596,11 +652,13 @@ class LiveAPIRouter:
                         "description": "Validation Error",
                         "content": {
                             "application/problem+json": {
-                                "schema": {"$ref": "#/components/schemas/ValidationError"}
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
                             }
-                        }
-                    }
-                }
+                        },
+                    },
+                },
             )
             async def update_resource(
                 id: str, data: model, service=Depends(service_dependency)
@@ -623,11 +681,13 @@ class LiveAPIRouter:
                         "description": "Validation Error",
                         "content": {
                             "application/problem+json": {
-                                "schema": {"$ref": "#/components/schemas/ValidationError"}
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
                             }
-                        }
-                    }
-                }
+                        },
+                    },
+                },
             )
             async def patch_resource(
                 id: str, data: Dict[str, Any], service=Depends(service_dependency)
@@ -643,10 +703,7 @@ class LiveAPIRouter:
                 description=op.get("description", ""),
                 status_code=204,
                 operation_id=op.get("operationId", f"delete_{resource_name}"),
-                responses={
-                    204: {"description": "No Content"},
-                    **error_responses
-                }
+                responses={204: {"description": "No Content"}, **error_responses},
             )
             async def delete_resource(id: str, service=Depends(service_dependency)):
                 await service.delete(id)
@@ -661,10 +718,7 @@ class LiveAPIRouter:
                 description=op.get("description", ""),
                 response_model=List[model],
                 operation_id=op.get("operationId", f"list_{resource_name}"),
-                responses={
-                    200: {"description": "Success"},
-                    **error_responses
-                }
+                responses={200: {"description": "Success"}, **error_responses},
             )
             async def list_resources(
                 limit: int = 100, offset: int = 0, service=Depends(service_dependency)
@@ -682,29 +736,31 @@ def create_liveapi_app(*spec_paths: str) -> FastAPI:
 
 def add_error_schemas_to_app(app: FastAPI):
     """Add standard error schemas to a FastAPI app's OpenAPI schema.
-    
+
     This function should be called after creating a FastAPI app and including
     LiveAPIRouter routers, but before serving the app, to ensure that all
     error schemas referenced in the router endpoints are properly defined.
     """
+
     def custom_openapi():
         if app.openapi_schema:
             return app.openapi_schema
-        
+
         from fastapi.openapi.utils import get_openapi
+
         openapi_schema = get_openapi(
             title=app.title,
             version=app.version,
             description=app.description,
             routes=app.routes,
         )
-        
+
         # Add components section if not present
         if "components" not in openapi_schema:
             openapi_schema["components"] = {}
         if "schemas" not in openapi_schema["components"]:
             openapi_schema["components"]["schemas"] = {}
-        
+
         # Add Error schema if not already present
         if "Error" not in openapi_schema["components"]["schemas"]:
             openapi_schema["components"]["schemas"]["Error"] = {
@@ -717,7 +773,7 @@ def add_error_schemas_to_app(app: FastAPI):
                 },
                 "required": ["type", "title", "status", "detail"],
             }
-        
+
         # Add/update ValidationError schema to ensure correct RFC 7807 format
         openapi_schema["components"]["schemas"]["ValidationError"] = {
             "type": "object",
@@ -746,15 +802,13 @@ def add_error_schemas_to_app(app: FastAPI):
                         "title": "Unprocessable Entity",
                         "detail": "String should have at least 2 characters",
                         "status": "422",
-                        "source": {
-                            "pointer": "/data/attributes/name"
-                        }
+                        "source": {"pointer": "/data/attributes/name"},
                     }
                 ]
-            }
+            },
         }
-        
+
         app.openapi_schema = openapi_schema
         return app.openapi_schema
-    
+
     app.openapi = custom_openapi
