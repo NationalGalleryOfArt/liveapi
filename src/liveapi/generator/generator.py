@@ -365,6 +365,27 @@ class SpecGenerator:
                         }
                     },
                 }
+                # Add 422 validation error response for endpoints that accept request bodies
+                operation["responses"]["422"] = {
+                    "description": "Unprocessable Entity",
+                    "content": {
+                        "application/problem+json": {
+                            "schema": {"$ref": "#/components/schemas/ValidationError"},
+                            "example": {
+                                "errors": [
+                                    {
+                                        "title": "Validation Error",
+                                        "detail": "Field 'name' is required",
+                                        "status": "422",
+                                        "source": {
+                                            "pointer": "/name"
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                }
 
             paths[path][method] = operation
 

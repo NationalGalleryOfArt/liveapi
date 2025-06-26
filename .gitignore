@@ -66,3 +66,5 @@ test-api/
 .liveapi/backups/
 .liveapi/uvicorn.pid
 .liveapi/*.log
+
+liveapi.db
