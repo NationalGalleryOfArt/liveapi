@@ -13,6 +13,25 @@ from .exceptions import BusinessException
 from .database import get_db_session
 
 
+class HealthResponse(BaseModel):
+    """Health check response model."""
+    status: str
+    service: str
+    resources: List[str]
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "status": "healthy",
+                "service": "liveapi.implementation",
+                "resources": [
+                    "art_objects",
+                    "art_locations"
+                ]
+            }
+        }
+
+
 def create_business_exception_handler():
     """Create a handler for business exceptions that returns RFC 7807 format."""
 
@@ -227,6 +246,9 @@ class LiveAPIRouter:
                                     }
                                 },
                             }
+                        # Remove FastAPI's default 422 responses from GET and DELETE operations
+                        elif method.lower() in ["get", "delete"] and "422" in operation["responses"]:
+                            del operation["responses"]["422"]
             
             # Replace any HTTPValidationError references with ValidationError
             import json
@@ -255,7 +277,27 @@ class LiveAPIRouter:
 
             init_database()
 
-        @app.get("/health")
+        @app.get(
+            "/health", 
+            response_model=HealthResponse,
+            responses={
+                200: {
+                    "description": "Health check successful",
+                    "content": {
+                        "application/json": {
+                            "example": {
+                                "status": "healthy",
+                                "service": "liveapi.implementation",
+                                "resources": [
+                                    "art_objects",
+                                    "art_locations"
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        )
         async def health_check():
             return {
                 "status": "healthy",
