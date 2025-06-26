@@ -47,20 +47,21 @@ def add_exception_handlers(app: FastAPI):
         )
 
 
-def create_app(spec_path: Union[str, Path]) -> FastAPI:
+def create_app(*spec_paths: Union[str, Path]) -> FastAPI:
     """
-    Create a FastAPI application from OpenAPI specification using CRUD+ handlers.
+    Create a FastAPI application from OpenAPI specification(s) using CRUD+ handlers.
 
     Args:
-        spec_path: Path to OpenAPI specification file
+        *spec_paths: Path(s) to OpenAPI specification file(s)
 
     Returns:
         FastAPI application with CRUD+ endpoints
 
     Example:
         >>> app = create_app("specifications/users_v1.yaml")
+        >>> app = create_app("specifications/users.json", "specifications/orders.json")
     """
-    app = create_liveapi_app(spec_path)
+    app = create_liveapi_app(*spec_paths)
     add_exception_handlers(app)
     add_error_schemas_to_app(app)
     return app

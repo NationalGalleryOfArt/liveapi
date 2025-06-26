@@ -11,9 +11,8 @@ spec_files = [{% for spec in spec_files %}
     "{{ spec }}",{% endfor %}
 ]
 
-# For multiple specs, create app from the first one
-# In the future, this could be enhanced to support multiple APIs
-app = create_app(spec_files[0]){% endif %}
+# For multiple specs, create composite app from all specifications
+app = create_app(*spec_files){% endif %}
 
 # Add redirect from root to docs for better UX
 @app.get("/", include_in_schema=False)

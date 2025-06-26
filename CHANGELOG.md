@@ -5,6 +5,26 @@ All notable changes to the LiveAPI project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.1] - 2025-06-26
+
+### 🔧 OpenAPI Documentation Improvements
+
+#### Fixed
+- **422 Error Scope**: Fixed FastAPI's default 422 validation errors appearing on GET and DELETE endpoints where they don't belong
+- **Proper 422 Responses**: 422 validation errors now only appear on POST, PUT, and PATCH operations that accept request bodies
+- **Health Endpoint Documentation**: Updated health endpoint OpenAPI example to show proper response format with dynamic resource list
+
+#### Changed
+- **Spec Generation**: Updated OpenAPI spec generator to include 422 validation errors only for operations with request bodies
+- **Router Logic**: Added logic to remove FastAPI's default 422 responses from GET and DELETE operations
+- **Health Response Model**: Added structured response model with proper example for `/health` endpoint
+
+#### Technical Details
+- Modified `src/liveapi/generator/generator.py` to add 422 responses only to POST/PUT operations
+- Updated `src/liveapi/implementation/liveapi_router.py` to suppress unwanted FastAPI 422 defaults
+- Added `HealthResponse` Pydantic model with proper OpenAPI example documentation
+- Health endpoint continues to return dynamic resource list at runtime while showing static example in docs
+
 ## [0.11.0] - 2025-06-26
 
 ### 🪝 SQLModelResource Hook-Based Architecture

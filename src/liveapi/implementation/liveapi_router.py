@@ -307,6 +307,150 @@ class LiveAPIRouter:
 
         return app
 
+    def create_app_from_specs(self, *spec_paths: str) -> FastAPI:
+        """Create a FastAPI app from multiple OpenAPI specs using CRUD+ handlers."""
+        if len(spec_paths) == 1:
+            return self.create_app_from_spec(spec_paths[0])
+        
+        # For multiple specs, merge them into a composite spec
+        all_parsers = []
+        all_resources = {}
+        
+        # Load all specs and collect resources
+        for spec_path in spec_paths:
+            parser = LiveAPIParser(spec_path, backend_type=self.backend_type)
+            parser.load_spec()
+            all_parsers.append(parser)
+            
+            # Collect resources from this spec
+            resources = parser.identify_crud_resources()
+            all_resources.update(resources)
+        
+        # Create app with info from first spec (or default)
+        first_spec = all_parsers[0].spec if all_parsers else {}
+        app = FastAPI(
+            title="LiveAPI Composite API",
+            description="API composed of multiple OpenAPI specifications",
+            version="1.0.0",
+        )
+        
+        # Store combined spec info for health endpoint
+        app.original_spec = first_spec
+        
+        def custom_openapi():
+            if app.openapi_schema:
+                return app.openapi_schema
+            from fastapi.openapi.utils import get_openapi
+
+            openapi_schema = get_openapi(
+                title=app.title,
+                version=app.version,
+                description=app.description,
+                routes=app.routes,
+            )
+            if "components" not in openapi_schema:
+                openapi_schema["components"] = {}
+            if "schemas" not in openapi_schema["components"]:
+                openapi_schema["components"]["schemas"] = {}
+                
+            # Merge schemas from all specs
+            for parser in all_parsers:
+                if 'components' in parser.spec and 'schemas' in parser.spec['components']:
+                    for schema_name, schema in parser.spec['components']['schemas'].items():
+                        if schema_name not in openapi_schema["components"]["schemas"]:
+                            openapi_schema["components"]["schemas"][schema_name] = schema
+            
+            # Process paths and operations for all specs
+            for path, path_item in openapi_schema.get("paths", {}).items():
+                for method, operation in path_item.items():
+                    if isinstance(operation, dict) and "responses" in operation:
+                        # Add validation error response for operations that accept request bodies
+                        if method.lower() in ["post", "put", "patch"]:
+                            operation["responses"]["422"] = {
+                                "description": "Validation Error",
+                                "content": {
+                                    "application/problem+json": {
+                                        "schema": {
+                                            "$ref": "#/components/schemas/ValidationError"
+                                        }
+                                    }
+                                },
+                            }
+                        # Remove FastAPI's default 422 responses from GET and DELETE operations
+                        elif method.lower() in ["get", "delete"] and "422" in operation["responses"]:
+                            del operation["responses"]["422"]
+            
+            # Add ValidationError schema
+            openapi_schema["components"]["schemas"]["ValidationError"] = {
+                "type": "object",
+                "properties": {
+                    "errors": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "title": {"type": "string"},
+                                "detail": {"type": "string"},
+                                "status": {"type": "string"},
+                                "source": {
+                                    "type": "object",
+                                    "properties": {"pointer": {"type": "string"}},
+                                },
+                            },
+                            "required": ["title", "detail", "status"],
+                        },
+                    }
+                },
+                "required": ["errors"],
+            }
+            
+            app.openapi_schema = openapi_schema
+            return app.openapi_schema
+
+        app.openapi = custom_openapi
+
+        # Initialize database if using sqlmodel backend
+        if self.backend_type == "sqlmodel":
+            from .database import init_database
+            init_database()
+
+        # Add health endpoint
+        @app.get(
+            "/health", 
+            response_model=HealthResponse,
+            responses={
+                200: {
+                    "description": "Health check successful",
+                    "content": {
+                        "application/json": {
+                            "example": {
+                                "status": "healthy",
+                                "service": "liveapi.implementation",
+                                "resources": [
+                                    "art_objects",
+                                    "art_locations"
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        )
+        async def health_check():
+            return {
+                "status": "healthy",
+                "service": "liveapi.implementation",
+                "resources": list(all_resources.keys()),
+            }
+
+        # Add routers for all resources from all specs
+        for resource_name, resource_info in all_resources.items():
+            model = resource_info["model"]
+            router = self._create_resource_router(resource_name, resource_info, model)
+            app.include_router(router, tags=[resource_name])
+
+        return app
+
     def _create_resource_router(
         self, resource_name: str, resource_info: Dict[str, Any], model: Type[BaseModel]
     ) -> APIRouter:
@@ -530,10 +674,10 @@ class LiveAPIRouter:
         return router
 
 
-def create_liveapi_app(spec_path: str) -> FastAPI:
-    """Convenience function to create a LiveAPI app from a spec."""
+def create_liveapi_app(*spec_paths: str) -> FastAPI:
+    """Convenience function to create a LiveAPI app from one or more specs."""
     router = LiveAPIRouter()
-    return router.create_app_from_spec(spec_path)
+    return router.create_app_from_specs(*spec_paths)
 
 
 def add_error_schemas_to_app(app: FastAPI):
