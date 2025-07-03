@@ -4,16 +4,52 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LiveAPI Designer</title>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
     <div id="root"></div>
 
+    <style>
+        #monaco-editor {
+            height: 100%;
+            min-height: 500px;
+            padding: 0 !important;
+        }
+    </style>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.40.0/min/vs/loader.min.js"></script>
+
     <script type="text/babel">
         const { useState, useEffect } = React;
+        let editor = null;
+
+        function Modal({ isOpen, onClose, onSubmit, title, children }) {
+            console.log('Modal render, isOpen:', isOpen);
+            if (!isOpen) return null;
+            
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 w-96">
+                        <h3 className="text-lg font-semibold mb-4">{title}</h3>
+                        {children}
+                    </div>
+                </div>
+            );
+        }
+
+        require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.40.0/min/vs' } });
+        window.MonacoEnvironment = {
+            getWorkerUrl: function(workerId, label) {
+                return `data:text/javascript;charset=utf-8,${encodeURIComponent(`
+                    self.MonacoEnvironment = {
+                        baseUrl: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.40.0/min/'
+                    };
+                    importScripts('https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.40.0/min/vs/base/worker/workerMain.js');`
+                )}`;
+            }
+        };
 
         const defaultApiInfo = {
             "api_name": "Items API",
@@ -40,7 +76,57 @@
         };
 
         function App() {
-            const [jsonContent, setJsonContent] = useState(JSON.stringify(defaultApiInfo, null, 2));
+            const [jsonContent, setJsonContent] = useState(null); // Start with empty editor
+            const [isNewApiModalOpen, setIsNewApiModalOpen] = useState(true); // Start with modal open
+            const [newApiForm, setNewApiForm] = useState({
+                objectName: '',
+                objectDescription: ''
+            });
+
+            useEffect(() => {
+                require(['vs/editor/editor.main'], function() {
+                    if (!editor) {
+                        editor = monaco.editor.create(document.getElementById('monaco-editor'), {
+                            value: jsonContent ? JSON.stringify(jsonContent, null, 2) : '',
+                            language: 'json',
+                            theme: 'vs-dark',
+                            automaticLayout: true,
+                            minimap: { enabled: false },
+                            fontSize: 14,
+                            scrollBeyondLastLine: false
+                        });
+
+                        editor.onDidChangeModelContent(() => {
+                            try {
+                                const value = editor.getValue();
+                                const parsed = JSON.parse(value);
+                                setJsonContent(parsed);
+                            } catch (e) {
+                                // Invalid JSON, ignore
+                            }
+                        });
+                    }
+                });
+
+                return () => {
+                    if (editor) {
+                        editor.dispose();
+                        editor = null;
+                    }
+                };
+            }, []);
+
+            useEffect(() => {
+                if (editor && jsonContent) {
+                    const currentValue = editor.getValue();
+                    const newValue = JSON.stringify(jsonContent, null, 2);
+                    if (currentValue !== newValue) {
+                        editor.setValue(newValue);
+                    }
+                } else if (editor && !jsonContent) {
+                    editor.setValue('');
+                }
+            }, [jsonContent]);
             const [copyStatus, setCopyStatus] = useState('');
             const [generateStatus, setGenerateStatus] = useState('');
             const [syncStatus, setSyncStatus] = useState('');
@@ -51,29 +137,56 @@
             const [editingConfig, setEditingConfig] = useState(false);
             const [tempConfig, setTempConfig] = useState({ project_name: '', api_base_url: '' });
             
-            // Load resources and config on mount
+            // First useEffect to load resources and config
             useEffect(() => {
                 loadResources();
                 loadConfig();
                 
-                // Check if we already have a generated spec
                 fetch('/api/openapi.json')
                     .then(response => {
                         if (response.ok) {
-                            // Spec exists, just update preview
                             setPreviewKey(Date.now());
                         }
                     })
-                    .catch(() => {
-                        // No spec exists, that's ok
-                    });
+                    .catch(() => {});
+                    
+                // Force open the modal after a short delay to ensure component is fully rendered
+                setTimeout(() => {
+                    console.log('Forcing modal open on initial load');
+                    setIsNewApiModalOpen(true);
+                    
+                    // Check resources after another short delay
+                    setTimeout(() => {
+                        console.log('Checking resources after delay:', resources);
+                        if (resources.length > 0) {
+                            console.log('Resources found after delay, closing modal');
+                            setIsNewApiModalOpen(false);
+                        } else {
+                            console.log('No resources found after delay, keeping modal open');
+                        }
+                    }, 500);
+                }, 500);
             }, []);
+            
+            // Second useEffect specifically to handle the modal based on resources
+            useEffect(() => {
+                console.log('Resources changed:', resources);
+                if (resources.length === 0) {
+                    console.log('No resources found, opening modal');
+                    setIsNewApiModalOpen(true);
+                } else {
+                    console.log('Resources found, closing modal');
+                    setIsNewApiModalOpen(false);
+                }
+            }, [resources]);
 
             const loadResources = async () => {
+                console.log('Loading resources...');
                 try {
                     const response = await fetch('/api/resources');
                     if (response.ok) {
                         const data = await response.json();
+                        console.log('Resources loaded:', data);
                         setResources(data);
                     }
                 } catch (err) {
@@ -94,10 +207,53 @@
                 }
             };
 
+            const handleNewApiClick = () => {
+                setIsNewApiModalOpen(true);
+            };
+
+            const handleNewApiSubmit = async () => {
+                console.log('Creating new API with form data:', newApiForm);
+                
+                // Create a new API info object with the user's input
+                const newApiInfo = {
+                    api_name: `${newApiForm.objectName} API`,
+                    api_description: `API for managing ${newApiForm.objectName.toLowerCase()}`,
+                    "x-resource-type": "SQLModelResource",
+                    objects: [
+                        {
+                            name: newApiForm.objectName.toLowerCase(),
+                            description: newApiForm.objectDescription || `${newApiForm.objectName} in the system`,
+                            fields: {
+                                name: "string",
+                                description: "string",
+                                price: "number",
+                                active: "boolean"
+                            },
+                            example: {
+                                name: `Sample ${newApiForm.objectName}`,
+                                description: `A sample ${newApiForm.objectName.toLowerCase()}`,
+                                price: 19.99,
+                                active: true
+                            }
+                        }
+                    ]
+                };
+                
+                console.log('New API info:', newApiInfo);
+
+                setSelectedResource(null);
+                setJsonContent(newApiInfo);
+                if (editor) {
+                    editor.setValue(JSON.stringify(newApiInfo, null, 2));
+                }
+                setIsNewApiModalOpen(false);
+                // Automatically generate the new API
+                await handleGenerate();
+            };
+
             const handleResourceSelect = async (resourceName) => {
                 if (!resourceName) {
-                    setSelectedResource(null);
-                    setJsonContent(JSON.stringify(defaultApiInfo, null, 2));
+                    handleNewApiClick();
                     return;
                 }
 
@@ -105,7 +261,7 @@
                     const response = await fetch(`/api/resource/${resourceName}`);
                     if (response.ok) {
                         const data = await response.json();
-                        setJsonContent(JSON.stringify(data, null, 2));
+                        setJsonContent(data);
                         setSelectedResource(resourceName);
                     }
                 } catch (err) {
@@ -127,7 +283,7 @@
                         await loadResources();
                         if (selectedResource === resourceName) {
                             setSelectedResource(null);
-                            setJsonContent(JSON.stringify(defaultApiInfo, null, 2));
+                            setJsonContent(null); // Clear the editor
                         }
                     }
                 } catch (err) {
@@ -154,27 +310,8 @@
                 }
             };
 
-            const handleCopy = async () => {
-                try {
-                    await navigator.clipboard.writeText(jsonContent);
-                    setCopyStatus('Copied!');
-                    setTimeout(() => setCopyStatus(''), 2000);
-                } catch (err) {
-                    setCopyStatus('Failed to copy');
-                    setTimeout(() => setCopyStatus(''), 2000);
-                }
-            };
-
             const handleGenerate = async () => {
-                if (!validateJson()) {
-                    setGenerateStatus('Invalid JSON!');
-                    setTimeout(() => setGenerateStatus(''), 2000);
-                    return;
-                }
-                
                 setGenerateStatus('Generating...');
-                console.log('[Designer] Generating API spec...');
-                console.log('[Designer] JSON content:', jsonContent);
                 
                 try {
                     const response = await fetch('/generate', {
@@ -182,36 +319,33 @@
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: jsonContent
+                        body: JSON.stringify(jsonContent)
                     });
                     
-                    console.log('[Designer] Generate response status:', response.status);
                     const result = await response.json();
-                    console.log('[Designer] Generate result:', result);
                     
                     if (result.success) {
                         setGenerateStatus('Generated!');
-                        // Reload resources
                         await loadResources();
                         
-                        // Wait for the server to actually have the file ready
-                        // Try to fetch the openapi.json endpoint until it succeeds
+                        // Always select the newly created/updated resource
+                        if (result.resource_name) {
+                            setSelectedResource(result.resource_name);
+                        }
+                        
                         let retries = 0;
                         const maxRetries = 10;
                         const checkAndRefresh = async () => {
                             try {
                                 const checkResponse = await fetch('/api/openapi.json');
                                 if (checkResponse.ok) {
-                                    console.log('[Designer] OpenAPI endpoint ready, refreshing preview');
                                     setPreviewKey(Date.now());
                                     setGenerateStatus('');
                                 } else {
                                     retries++;
                                     if (retries < maxRetries) {
-                                        console.log(`[Designer] OpenAPI not ready, retry ${retries}/${maxRetries}`);
                                         setTimeout(checkAndRefresh, 200);
                                     } else {
-                                        console.error('[Designer] Max retries reached, forcing refresh anyway');
                                         setPreviewKey(Date.now());
                                         setGenerateStatus('');
                                     }
@@ -219,25 +353,20 @@
                             } catch (err) {
                                 retries++;
                                 if (retries < maxRetries) {
-                                    console.log(`[Designer] Error checking OpenAPI, retry ${retries}/${maxRetries}:`, err);
                                     setTimeout(checkAndRefresh, 200);
                                 } else {
-                                    console.error('[Designer] Max retries reached after errors, forcing refresh');
                                     setPreviewKey(Date.now());
                                     setGenerateStatus('');
                                 }
                             }
                         };
                         
-                        // Start checking immediately
                         checkAndRefresh();
                     } else {
                         setGenerateStatus('Error: ' + result.error);
-                        console.error('[Designer] Generation error:', result.error);
                         setTimeout(() => setGenerateStatus(''), 3000);
                     }
                 } catch (err) {
-                    console.error('[Designer] Failed to generate:', err);
                     setGenerateStatus('Failed to generate');
                     setTimeout(() => setGenerateStatus(''), 2000);
                 }
@@ -267,20 +396,9 @@
                 }
             };
 
-            const validateJson = () => {
-                try {
-                    JSON.parse(jsonContent);
-                    return true;
-                } catch {
-                    return false;
-                }
-            };
-
-            const isValid = validateJson();
-
             return (
+                <>
                 <div className="h-screen flex flex-col bg-gray-50">
-                    {/* Header */}
                     <header className="bg-white shadow-sm border-b">
                         <div className="px-4 py-3">
                             <div className="flex items-center justify-between mb-2">
@@ -334,94 +452,139 @@
                                     )}
                                 </div>
                             </div>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <label className="text-sm text-gray-600">Resource:</label>
-                                    <select
-                                        value={selectedResource || ''}
-                                        onChange={(e) => handleResourceSelect(e.target.value)}
-                                        className="px-2 py-1 border rounded text-sm"
-                                    >
-                                        <option value="">New Resource</option>
-                                        {resources.map(resource => (
-                                            <option key={resource.name} value={resource.name}>
-                                                {resource.name} - {resource.api_name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    {selectedResource && (
-                                        <button
-                                            onClick={() => handleResourceDelete(selectedResource)}
-                                            className="px-2 py-1 text-red-600 hover:bg-red-50 rounded text-sm"
-                                        >
-                                            Delete
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
                         </div>
                     </header>
 
-                    {/* Main Content */}
-                    <div className="flex-1 flex">
-                        {/* Left Column - JSON Editor */}
+                    <div className="flex-1 flex overflow-hidden">
+                        {/* Left Column - API List */}
+                        <div className="w-1/4 flex flex-col border-r bg-white">
+                            <div className="p-4 border-b flex items-center justify-between bg-[#1b1b1b]">
+                                <h2 className="text-lg font-semibold text-white">API Resources</h2>
+                                <button
+                                    onClick={handleNewApiClick}
+                                    className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                                >
+                                    New API
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto">
+                                {resources.map(resource => (
+                                    <div 
+                                        key={resource.name} 
+                                        className={`p-3 cursor-pointer border-b ${selectedResource === resource.name ? 'bg-blue-100' : 'hover:bg-gray-100'}`}
+                                        onClick={() => handleResourceSelect(resource.name)}
+                                    >
+                                        <div className="flex justify-between items-center">
+                                            <span className="font-semibold">{resource.api_name}</span>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleResourceDelete(resource.name);
+                                                }}
+                                                className="text-red-500 hover:text-red-700"
+                                            >
+                                                Delete
+                                            </button>
+                                        </div>
+                                        <p className="text-sm text-gray-600">{resource.name}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Middle Column - JSON Editor */}
                         <div className="w-1/2 flex flex-col border-r">
-                            <div className="p-4 bg-white border-b flex items-center justify-between">
-                                <h2 className="text-xl font-semibold text-gray-700">API Design JSON</h2>
+                            <div className="p-4 bg-[#1b1b1b] border-b flex items-center justify-between">
+                                <h2 className="text-xl font-semibold text-white">API Design JSON</h2>
                                 <div className="flex items-center gap-2">
-                                    {!isValid && (
-                                        <span className="text-red-600 text-sm">Invalid JSON</span>
-                                    )}
                                     <button
                                         onClick={handleGenerate}
-                                        className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-                                        disabled={!isValid}
+                                        className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
                                     >
-                                        {generateStatus || 'Preview API Spec'}
+                                        {generateStatus || 'Save API'}
                                     </button>
                                     <button
                                         onClick={handleSync}
-                                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                                        className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
                                     >
-                                        {syncStatus || 'Confirm API'}
+                                        {syncStatus || 'Autogenerate APIs'}
                                     </button>
                                 </div>
                             </div>
-                            <div className="flex-1 p-4">
-                                <textarea
-                                    value={jsonContent}
-                                    onChange={(e) => setJsonContent(e.target.value)}
-                                    className={`w-full h-full p-4 font-mono text-sm border rounded-lg resize-none focus:outline-none focus:ring-2 ${
-                                        isValid 
-                                            ? 'border-gray-300 focus:ring-blue-500' 
-                                            : 'border-red-300 focus:ring-red-500'
-                                    }`}
-                                    spellCheck="false"
-                                />
-                            </div>
+                            <div className="flex-1" id="monaco-editor"></div>
                         </div>
 
                         {/* Right Column - Preview */}
                         <div className="w-1/2 flex flex-col">
-                            <div className="p-4 bg-white border-b flex items-center justify-between">
-                                <h2 className="text-xl font-semibold text-gray-700">OpenAPI Preview</h2>
-                            </div>
                             <div className="flex-1 bg-gray-100">
                                 <iframe
                                     key={previewKey}
                                     src={`preview.html?t=${previewKey}`}
                                     className="w-full h-full"
                                     title="OpenAPI Preview"
-                                    onLoad={() => console.log('[Designer] iframe loaded with key:', previewKey)}
                                 />
                             </div>
                         </div>
                     </div>
                 </div>
+                <Modal
+                    isOpen={isNewApiModalOpen}
+                    onClose={() => setIsNewApiModalOpen(false)}
+                    title="Create New API"
+                >
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Object Name
+                            </label>
+                            <input
+                                type="text"
+                                value={newApiForm.objectName}
+                                onChange={(e) => setNewApiForm({
+                                    ...newApiForm,
+                                    objectName: e.target.value
+                                })}
+                                placeholder="e.g., Product, User, Order"
+                                className="w-full px-3 py-2 border rounded-md"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Object Description
+                            </label>
+                            <input
+                                type="text"
+                                value={newApiForm.objectDescription}
+                                onChange={(e) => setNewApiForm({
+                                    ...newApiForm,
+                                    objectDescription: e.target.value
+                                })}
+                                placeholder="e.g., Products in the inventory"
+                                className="w-full px-3 py-2 border rounded-md"
+                            />
+                        </div>
+                        <div className="flex justify-end gap-2 mt-6">
+                            <button
+                                onClick={() => setIsNewApiModalOpen(false)}
+                                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleNewApiSubmit}
+                                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                disabled={!newApiForm.objectName.trim()}
+                            >
+                                Create
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+                </>
             );
         }
 
-        ReactDOM.render(<App />, document.getElementById('root'));
+            ReactDOM.render(<App />, document.getElementById('root'));
     </script>
 </body>
 </html>

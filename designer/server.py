@@ -37,10 +37,18 @@ class DesignerHandler(SimpleHTTPRequestHandler):
             if hasattr(self.__class__, 'project_dir') and self.__class__.project_dir:
                 resources = []
                 
+                print(f"🔍 [Server] Checking for resources in project directory: {self.__class__.project_dir}")
+                
                 # Check .liveapi/prompts for saved schemas
                 prompts_dir = self.__class__.project_dir / '.liveapi' / 'prompts'
+                print(f"🔍 [Server] Checking prompts directory: {prompts_dir}")
+                print(f"🔍 [Server] Prompts directory exists: {prompts_dir.exists()}")
+                
                 if prompts_dir.exists():
-                    for schema_file in prompts_dir.glob('*_schema.json'):
+                    schema_files = list(prompts_dir.glob('*_schema.json'))
+                    print(f"🔍 [Server] Found {len(schema_files)} schema files in prompts directory")
+                    
+                    for schema_file in schema_files:
                         try:
                             with open(schema_file, 'r') as f:
                                 schema_data = json.load(f)
@@ -55,6 +63,31 @@ class DesignerHandler(SimpleHTTPRequestHandler):
                         except Exception as e:
                             print(f"Error reading {schema_file}: {e}")
                 
+                # If no resources found in prompts directory, check specs.json
+                if not resources:
+                    specs_file = self.__class__.project_dir / '.liveapi' / 'specs.json'
+                    print(f"🔍 [Server] No resources found in prompts directory, checking specs.json: {specs_file}")
+                    print(f"🔍 [Server] Specs file exists: {specs_file.exists()}")
+                    
+                    if specs_file.exists():
+                        try:
+                            with open(specs_file, 'r') as f:
+                                specs_data = json.load(f)
+                                print(f"🔍 [Server] Loaded specs.json: {len(specs_data)} entries")
+                                
+                                # Extract resources from specs.json
+                                for resource_name, resource_data in specs_data.items():
+                                    if isinstance(resource_data, dict) and 'info' in resource_data:
+                                        resources.append({
+                                            'name': resource_name,
+                                            'api_name': resource_data.get('info', {}).get('title', 'Unknown API'),
+                                            'description': resource_data.get('info', {}).get('description', ''),
+                                            'file': f".liveapi/specs.json#{resource_name}"
+                                        })
+                        except Exception as e:
+                            print(f"Error reading specs.json: {e}")
+                
+                print(f"✅ [Server] Returning {len(resources)} resources")
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
@@ -62,6 +95,7 @@ class DesignerHandler(SimpleHTTPRequestHandler):
                 return
             
             # No project directory
+            print(f"❌ [Server] No project directory set, returning empty resources")
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
@@ -360,12 +394,14 @@ class DesignerHandler(SimpleHTTPRequestHandler):
                     print(f"✅ Design JSON saved to: {prompt_file}")
                 
                 # Send success response
+                # Send success response with resource name
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
                 self.wfile.write(json.dumps({
                     'success': True,
-                    'message': 'OpenAPI spec generated successfully'
+                    'message': 'OpenAPI spec generated successfully',
+                    'resource_name': transformed_info.get('resource_name', '')
                 }).encode())
                 
             except Exception as e:
