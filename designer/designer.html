@@ -247,8 +247,10 @@
                     editor.setValue(JSON.stringify(newApiInfo, null, 2));
                 }
                 setIsNewApiModalOpen(false);
-                // Automatically generate the new API
-                await handleGenerate();
+                
+                // Don't automatically generate the new API
+                // Let the user click the "Save API" button manually
+                // This avoids timing issues with the editor and state updates
             };
 
             const handleResourceSelect = async (resourceName) => {

@@ -1,0 +1,663 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Location API",
+    "description": "API for managing location",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000",
+      "description": "Development server"
+    },
+    {
+      "url": "https://test-api.example.com",
+      "description": "Test server"
+    },
+    {
+      "url": "https://staging-api.example.com",
+      "description": "Staging server"
+    },
+    {
+      "url": "https://api.example.com",
+      "description": "Production server"
+    }
+  ],
+  "paths": {
+    "/location": {
+      "get": {
+        "summary": "List location",
+        "description": "List location",
+        "operationId": "index",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Location"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "type": "https://tools.ietf.org/html/rfc7807",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "The request could not be processed due to invalid input"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "type": "https://tools.ietf.org/html/rfc7807",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Authentication credentials were missing or invalid"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "type": "https://tools.ietf.org/html/rfc7807",
+                  "title": "Internal Server Error",
+                  "status": 500,
+                  "detail": "The server encountered an unexpected condition that prevented it from fulfilling the request"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "type": "https://tools.ietf.org/html/rfc7807",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "The server is currently unable to handle the request due to temporary overloading or maintenance"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create location",
+        "description": "Create location",
+        "operationId": "create",
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Location"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "type": "https://tools.ietf.org/html/rfc7807",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "The request could not be processed due to invalid input"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "type": "https://tools.ietf.org/html/rfc7807",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Authentication credentials were missing or invalid"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "type": "https://tools.ietf.org/html/rfc7807",
+                  "title": "Internal Server Error",
+                  "status": 500,
+                  "detail": "The server encountered an unexpected condition that prevented it from fulfilling the request"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "type": "https://tools.ietf.org/html/rfc7807",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "The server is currently unable to handle the request due to temporary overloading or maintenance"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                },
+                "example": {
+                  "errors": [
+                    {
+                      "title": "Validation Error",
+                      "detail": "Field 'name' is required",
+                      "status": "422",
+                      "source": {
+                        "pointer": "/name"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Location"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/location/{id}": {
+      "get": {
+        "summary": "Get location",
+        "description": "Get location",
+        "operationId": "show",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Location"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "type": "https://tools.ietf.org/html/rfc7807",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "The request could not be processed due to invalid input"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "type": "https://tools.ietf.org/html/rfc7807",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Authentication credentials were missing or invalid"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "type": "https://tools.ietf.org/html/rfc7807",
+                  "title": "Internal Server Error",
+                  "status": 500,
+                  "detail": "The server encountered an unexpected condition that prevented it from fulfilling the request"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "type": "https://tools.ietf.org/html/rfc7807",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "The server is currently unable to handle the request due to temporary overloading or maintenance"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "id parameter"
+          }
+        ]
+      },
+      "put": {
+        "summary": "Update location",
+        "description": "Update location",
+        "operationId": "update",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Location"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "type": "https://tools.ietf.org/html/rfc7807",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "The request could not be processed due to invalid input"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "type": "https://tools.ietf.org/html/rfc7807",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Authentication credentials were missing or invalid"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "type": "https://tools.ietf.org/html/rfc7807",
+                  "title": "Internal Server Error",
+                  "status": 500,
+                  "detail": "The server encountered an unexpected condition that prevented it from fulfilling the request"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "type": "https://tools.ietf.org/html/rfc7807",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "The server is currently unable to handle the request due to temporary overloading or maintenance"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                },
+                "example": {
+                  "errors": [
+                    {
+                      "title": "Validation Error",
+                      "detail": "Field 'name' is required",
+                      "status": "422",
+                      "source": {
+                        "pointer": "/name"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "id parameter"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Location"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete location",
+        "description": "Delete location",
+        "operationId": "destroy",
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "type": "https://tools.ietf.org/html/rfc7807",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "The request could not be processed due to invalid input"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "type": "https://tools.ietf.org/html/rfc7807",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Authentication credentials were missing or invalid"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "type": "https://tools.ietf.org/html/rfc7807",
+                  "title": "Internal Server Error",
+                  "status": 500,
+                  "detail": "The server encountered an unexpected condition that prevented it from fulfilling the request"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "type": "https://tools.ietf.org/html/rfc7807",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "The server is currently unable to handle the request due to temporary overloading or maintenance"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "id parameter"
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Location": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "active"
+        ],
+        "example": {
+          "id": 1,
+          "name": "Sample Location",
+          "description": "A sample location",
+          "active": true
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail"
+        ],
+        "example": {
+          "type": "https://tools.ietf.org/html/rfc7807",
+          "title": "Bad Request",
+          "status": 400,
+          "detail": "The request could not be processed due to invalid input"
+        }
+      },
+      "ValidationError": {
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "detail": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "pointer": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "title",
+                "detail",
+                "status"
+              ]
+            }
+          }
+        },
+        "required": [
+          "errors"
+        ],
+        "example": {
+          "errors": [
+            {
+              "title": "Validation Error",
+              "detail": "Field 'name' is required",
+              "status": "400",
+              "source": {
+                "pointer": "/name"
+              }
+            },
+            {
+              "title": "Validation Error",
+              "detail": "Field 'price' must be a positive number",
+              "status": "400",
+              "source": {
+                "pointer": "/price"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "x-resource-type": "SQLModelResource",
+  "x-resource-type-options": [
+    "DefaultResource",
+    "SQLModelResource"
+  ]
+}

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Console</title>
+</head>
+<body>
+    <h1>Debug Console</h1>
+    <p>Open your browser's developer tools to see console output.</p>
+    
+    <script>
+        // Fetch the console output from the main application
+        fetch('/index.html')
+            .then(response => response.text())
+            .then(html => {
+                console.log('Loaded index.html');
+                
+                // Create an iframe to load the application
+                const iframe = document.createElement('iframe');
+                iframe.style.width = '100%';
+                iframe.style.height = '500px';
+                iframe.style.border = 'none';
+                iframe.srcdoc = html;
+                document.body.appendChild(iframe);
+                
+                // Listen for errors from the iframe
+                window.addEventListener('error', function(event) {
+                    console.error('Error in iframe:', event.message);
+                });
+                
+                // Try to access the iframe's console
+                iframe.onload = function() {
+                    console.log('Iframe loaded');
+                    try {
+                        const originalConsoleLog = iframe.contentWindow.console.log;
+                        iframe.contentWindow.console.log = function() {
+                            originalConsoleLog.apply(this, arguments);
+                            console.log('Iframe log:', ...arguments);
+                        };
+                        
+                        const originalConsoleError = iframe.contentWindow.console.error;
+                        iframe.contentWindow.console.error = function() {
+                            originalConsoleError.apply(this, arguments);
+                            console.error('Iframe error:', ...arguments);
+                        };
+                    } catch (e) {
+                        console.error('Could not access iframe console:', e);
+                    }
+                };
+            })
+            .catch(error => {
+                console.error('Error loading index.html:', error);
+            });
+    </script>
+</body>
+</html>

@@ -27,9 +27,9 @@ class DesignerHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         """Handle GET requests with root redirect"""
         if self.path == '/' or self.path == '':
-            # Redirect to designer.html
+            # Redirect to index.html
             self.send_response(302)
-            self.send_header('Location', '/designer.html')
+            self.send_header('Location', '/index.html')
             self.end_headers()
             return
         elif self.path == '/api/resources':
@@ -345,7 +345,25 @@ class DesignerHandler(SimpleHTTPRequestHandler):
                 
                 # Generate the spec
                 generator = SpecGenerator()
-                spec_dict, _ = generator.generate_spec_with_json(transformed_info)
+                try:
+                    spec_dict, _ = generator.generate_spec_with_json(transformed_info)
+                    if not spec_dict:
+                        raise ValueError("Failed to generate OpenAPI spec: empty result")
+                except Exception as e:
+                    print(f"❌ [Server] Error generating spec: {str(e)}")
+                    # Create a minimal valid spec as fallback
+                    spec_dict = {
+                        "openapi": "3.0.0",
+                        "info": {
+                            "title": transformed_info.get('name', 'API'),
+                            "description": transformed_info.get('description', ''),
+                            "version": "1.0.0"
+                        },
+                        "paths": {},
+                        "components": {
+                            "schemas": {}
+                        }
+                    }
                 print(f"✅ [Server] Generated OpenAPI spec: {spec_dict.get('info', {}).get('title')}")
                 
                 # Cache the spec for immediate serving
@@ -439,12 +457,27 @@ def run_server(port=8888, project_dir=None):
     if project_dir:
         DesignerHandler.project_dir = Path(project_dir)
     else:
-        DesignerHandler.project_dir = None
+        # Create a temporary project directory in the current directory
+        temp_project_dir = Path(__file__).parent / 'temp_project'
+        temp_project_dir.mkdir(exist_ok=True)
+        
+        # Create necessary subdirectories
+        liveapi_dir = temp_project_dir / '.liveapi'
+        liveapi_dir.mkdir(exist_ok=True)
+        
+        prompts_dir = liveapi_dir / 'prompts'
+        prompts_dir.mkdir(exist_ok=True)
+        
+        specs_dir = temp_project_dir / 'specifications'
+        specs_dir.mkdir(exist_ok=True)
+        
+        print(f"Created temporary project directory: {temp_project_dir}")
+        DesignerHandler.project_dir = temp_project_dir
     
     server_address = ('', port)
     httpd = HTTPServer(server_address, DesignerHandler)
     print(f"LiveAPI Designer Server running on http://localhost:{port}")
-    print(f"Open http://localhost:{port}/designer.html in your browser")
+    print(f"Open http://localhost:{port}/index.html in your browser")
     print("Press Ctrl+C to stop")
     httpd.serve_forever()
 
