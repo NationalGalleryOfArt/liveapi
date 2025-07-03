@@ -60,15 +60,15 @@
                     "name": "items",
                     "description": "Items in the system",
                     "fields": {
+                        "id": "integer",
                         "name": "string",
                         "description": "string",
-                        "price": "number",
                         "active": "boolean"
                     },
                     "example": {
+                        "id": 1,
                         "name": "Widget A",
                         "description": "A standard widget",
-                        "price": 19.99,
                         "active": true
                     }
                 }
@@ -224,15 +224,15 @@
                             name: newApiForm.objectName.toLowerCase(),
                             description: newApiForm.objectDescription || `${newApiForm.objectName} in the system`,
                             fields: {
+                                id: "integer",
                                 name: "string",
                                 description: "string",
-                                price: "number",
                                 active: "boolean"
                             },
                             example: {
+                                id: 1,
                                 name: `Sample ${newApiForm.objectName}`,
                                 description: `A sample ${newApiForm.objectName.toLowerCase()}`,
-                                price: 19.99,
                                 active: true
                             }
                         }
