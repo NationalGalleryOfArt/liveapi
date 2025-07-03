@@ -618,12 +618,28 @@
                     editor.setValue(JSON.stringify(newApiInfo, null, 2));
                 }
                 
-                // Add a delay before generating the API
-                // This gives time for the state to update and the editor to render
+                // Store a reference to the newApiInfo for direct use
+                const apiInfoRef = newApiInfo;
+                
+                // Add a longer delay before generating the API
+                // This gives more time for the state to update and the editor to render
                 setTimeout(() => {
-                    // Automatically generate the API
-                    handleGenerate();
-                }, 1500); // Use a longer delay to ensure everything is ready
+                    // Check if jsonContent is available, if not use our direct reference
+                    if (!jsonContent) {
+                        console.log('Using direct apiInfoRef for generation');
+                        // Use the direct reference to generate the API
+                        generateApi(apiInfoRef).then(result => {
+                            handleGenerateResult(result);
+                        }).catch(err => {
+                            console.error('Error generating API:', err);
+                            setGenerateStatus('Error: ' + (err.message || 'Unknown error'));
+                            setTimeout(() => setGenerateStatus(''), 3000);
+                        });
+                    } else {
+                        // Automatically generate the API using state
+                        handleGenerate();
+                    }
+                }, 2500); // Use a longer delay to ensure everything is ready
             };
 
             const handleResourceSelect = async (resourceName) => {
@@ -665,49 +681,27 @@
                 return false;
             };
 
-            const handleGenerate = async () => {
-                setGenerateStatus('Generating...');
-                
-                // Make sure we have valid JSON content
-                if (!jsonContent) {
-                    console.error('No JSON content to generate');
-                    setGenerateStatus('Error: No JSON content to generate');
-                    setTimeout(() => setGenerateStatus(''), 3000);
-                    return;
-                }
-                
-                try {
-                    console.log('Generating API with content:', jsonContent);
-                    const result = await generateApi(jsonContent);
+            // Helper function to handle generation result
+            const handleGenerateResult = async (result) => {
+                if (result.success) {
+                    setGenerateStatus('Generated!');
+                    const resourcesData = await loadResources();
+                    setResources(resourcesData);
                     
-                    if (result.success) {
-                        setGenerateStatus('Generated!');
-                        const resourcesData = await loadResources();
-                        setResources(resourcesData);
-                        
-                        // Always select the newly created/updated resource
-                        if (result.resource_name) {
-                            setSelectedResource(result.resource_name);
-                        }
-                        
-                        let retries = 0;
-                        const maxRetries = 10;
-                        const checkAndRefresh = async () => {
-                            try {
-                                const checkResponse = await fetch('/api/openapi.json');
-                                if (checkResponse.ok) {
-                                    setPreviewKey(Date.now());
-                                    setGenerateStatus('');
-                                } else {
-                                    retries++;
-                                    if (retries < maxRetries) {
-                                        setTimeout(checkAndRefresh, 200);
-                                    } else {
-                                        setPreviewKey(Date.now());
-                                        setGenerateStatus('');
-                                    }
-                                }
-                            } catch (err) {
+                    // Always select the newly created/updated resource
+                    if (result.resource_name) {
+                        setSelectedResource(result.resource_name);
+                    }
+                    
+                    let retries = 0;
+                    const maxRetries = 10;
+                    const checkAndRefresh = async () => {
+                        try {
+                            const checkResponse = await fetch('/api/openapi.json');
+                            if (checkResponse.ok) {
+                                setPreviewKey(Date.now());
+                                setGenerateStatus('');
+                            } else {
                                 retries++;
                                 if (retries < maxRetries) {
                                     setTimeout(checkAndRefresh, 200);
@@ -716,14 +710,40 @@
                                     setGenerateStatus('');
                                 }
                             }
-                        };
-                        
-                        checkAndRefresh();
-                    } else {
-                        console.error('API generation failed:', result.error);
-                        setGenerateStatus('Error: ' + result.error);
-                        setTimeout(() => setGenerateStatus(''), 3000);
-                    }
+                        } catch (err) {
+                            retries++;
+                            if (retries < maxRetries) {
+                                setTimeout(checkAndRefresh, 200);
+                            } else {
+                                setPreviewKey(Date.now());
+                                setGenerateStatus('');
+                            }
+                        }
+                    };
+                    
+                    checkAndRefresh();
+                } else {
+                    console.error('API generation failed:', result.error);
+                    setGenerateStatus('Error: ' + result.error);
+                    setTimeout(() => setGenerateStatus(''), 3000);
+                }
+            };
+
+            const handleGenerate = async () => {
+                setGenerateStatus('Generating...');
+                
+                // Make sure we have valid JSON content
+                if (!jsonContent) {
+                    console.error('No JSON content to generate');
+                    setGenerateStatus('Error: No JSON content to generate. Please try again or refresh the page.');
+                    setTimeout(() => setGenerateStatus(''), 5000);
+                    return;
+                }
+                
+                try {
+                    console.log('Generating API with content:', jsonContent);
+                    const result = await generateApi(jsonContent);
+                    await handleGenerateResult(result);
                 } catch (err) {
                     console.error('Exception during API generation:', err);
                     setGenerateStatus('Error: ' + (err.message || 'Unknown error'));
